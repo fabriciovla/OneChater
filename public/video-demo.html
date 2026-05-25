@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneChat - Video Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    html, body { overflow: hidden; height: 100%; margin: 0; }
+    body { background: transparent; height: 600px; display: flex; align-items: center; justify-content: center; }
+
+    /* macOS traffic lights */
+    .tl { width: 12px; height: 12px; border-radius: 50%; position: relative; flex-shrink: 0; }
+    .tl-red   { background: #FF5F57; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.18); }
+    .tl-yellow{ background: #FEBC2E; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.18); }
+    .tl-green { background: #28C840; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.18); }
+    .tl::after {
+      content: attr(data-icon);
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 7px; font-weight: 900; color: rgba(0,0,0,0.45);
+      opacity: 0; transition: opacity 0.15s;
+      line-height: 1;
+    }
+    .traffic-lights:hover .tl::after { opacity: 1; }
+
+    @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .cursor { animation: cursor-blink 0.8s ease-in-out infinite; }
+
+    @keyframes pulse-ring { 0%{transform:scale(1);opacity:1} 100%{transform:scale(2.5);opacity:0} }
+    .pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .animate-fadeIn { animation: fadeInUp 0.3s ease-out forwards; }
+
+    .card-shadow {
+      box-shadow:
+        0 40px 120px rgba(0,0,0,0.75),
+        0 0 0 0.5px rgba(255,255,255,0.07);
+    }
+
+    .btn-send {
+      background: #0E0F12;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      transition: all 0.15s;
+    }
+
+    #messagesArea { scrollbar-width: none; }
+    #messagesArea::-webkit-scrollbar { display: none; }
+
+    .sidebar-chat { transition: background 0.15s; border-radius: 8px; }
+    .sidebar-chat:hover { background: rgba(255,255,255,0.04); }
+    .sidebar-chat.active { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
+
+    .mac-toolbar { background: rgba(14,15,18,0.98); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+    .mac-sidebar { background: rgba(10,11,13,0.95); }
+    .mac-chat   { background: rgba(12,13,15,0.98); }
+
+    .input-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.09);
+      transition: border-color 0.2s;
+    }
+    .input-box:focus-within { border-color: rgba(255,255,255,0.25); }
+
+    .model-tag {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.01em;
+      padding: 2px 6px; border-radius: 5px;
+    }
+    .tag-gpt    { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+    .tag-claude { background: rgba(251,146,60,0.12);  color: #fb923c; border: 1px solid rgba(251,146,60,0.2); }
+    .tag-gemini { background: rgba(96,165,250,0.12);  color: #60a5fa; border: 1px solid rgba(96,165,250,0.2); }
+
+    .fusion-badge {
+      font-size: 10px; font-weight: 600;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.8); padding: 1px 7px; border-radius: 20px;
+    }
+
+    .divider { height: 1px; background: rgba(255,255,255,0.04); margin: 6px 0; }
+  </style>
+</head>
+<body>
+
+<div id="outerWrapper" class="relative" style="width: 900px; height: 600px; transition: transform 0.65s cubic-bezier(0.33, 1, 0.68, 1);">
+  <div id="card" class="w-full h-full rounded-xl overflow-hidden card-shadow" style="background:#0E0F12;">
+
+    <!-- macOS Titlebar -->
+    <div class="mac-toolbar flex items-center px-4 gap-3" style="height:40px; border-bottom:1px solid rgba(255,255,255,0.05);">
+
+      <!-- Traffic lights -->
+      <div class="traffic-lights flex items-center gap-1.5">
+        <div class="tl tl-red"    data-icon="✕"></div>
+        <div class="tl tl-yellow" data-icon="−"></div>
+        <div class="tl tl-green"  data-icon="⤢"></div>
+      </div>
+
+      <!-- Sidebar toggle icon -->
+      <button style="opacity:0.3;padding:3px;border-radius:4px;background:transparent;border:none;cursor:default;" title="Alternar barra lateral">
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none">
+          <rect y="0"  width="14" height="1.5" rx="0.75" fill="white"/>
+          <rect y="5"  width="14" height="1.5" rx="0.75" fill="white"/>
+          <rect y="10" width="14" height="1.5" rx="0.75" fill="white"/>
+        </svg>
+      </button>
+
+      <!-- Spacer + centered title -->
+      <div class="flex-1 flex items-center justify-center gap-1.5" style="margin-left:-48px;">
+        <svg viewBox="0 0 100 100" fill="none" width="15" height="15" style="opacity:0.85;">
+          <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white"/>
+          <path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="rgba(255,255,255,0.7)"/>
+          <path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="rgba(255,255,255,0.5)"/>
+        </svg>
+        <span style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.5);letter-spacing:0.01em;">OneChat</span>
+      </div>
+
+      <!-- Model pills -->
+      <div class="flex items-center gap-1.5">
+        <span class="model-tag tag-gpt">GPT-4o</span>
+        <span class="model-tag tag-claude">Claude</span>
+        <span class="model-tag tag-gemini">Gemini</span>
+      </div>
+    </div>
+
+    <!-- Body: sidebar + chat -->
+    <div class="flex" style="height:calc(100% - 40px);">
+
+      <!-- Sidebar -->
+      <div class="mac-sidebar flex flex-col flex-shrink-0" style="width:168px; border-right:1px solid rgba(255,255,255,0.05);">
+
+        <!-- New chat btn -->
+        <div class="px-3 pt-3 pb-2">
+          <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:11px;font-weight:500;cursor:default;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Nuevo chat
+          </button>
+        </div>
+
+        <div class="divider mx-3"></div>
+
+        <!-- Chat list -->
+        <div class="flex-1 px-2 pb-2 space-y-0.5 overflow-hidden">
+
+          <div id="activeChatItem" class="sidebar-chat active px-2 py-2">
+            <p id="activeChatTitle" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-style:italic;">Nuevo chat</p>
+            <p id="activeChatSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;"></p>
+          </div>
+
+          <div class="sidebar-chat px-2 py-2">
+            <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">App en Next.js 14</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">La estructura del proyecto...</p>
+          </div>
+
+          <div class="sidebar-chat px-2 py-2">
+            <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Landing page copy</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">El headline ideal sería...</p>
+          </div>
+
+          <div class="sidebar-chat px-2 py-2">
+            <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">API keys setup</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">Para configurar tus keys...</p>
+          </div>
+
+          <div class="sidebar-chat px-2 py-2">
+            <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Resumen del cliente</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">El banco requiere que...</p>
+          </div>
+        </div>
+
+        <div class="divider mx-3"></div>
+
+        <!-- User -->
+        <div class="px-3 py-2.5 flex items-center gap-2">
+          <div style="width:24px;height:24px;border-radius:50%;background:#0E0F12;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 100 100" fill="none" width="14" height="14">
+              <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white"/>
+              <path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="white"/>
+              <path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="white"/>
+            </svg>
+          </div>
+          <span style="font-size:11px;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">OneChat</span>
+          <svg style="margin-left:auto;flex-shrink:0;opacity:0.25;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+
+      <!-- Chat area -->
+      <div id="chatArea" class="mac-chat flex-1 flex flex-col" style="padding:12px;">
+
+        <!-- Memory chip -->
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);width:fit-content;margin-bottom:10px;">
+          <span class="relative" style="width:6px;height:6px;border-radius:50%;background:white;box-shadow:0 0 8px rgba(255,255,255,0.5);flex-shrink:0;">
+            <span class="absolute inset-0 rounded-full pulse-ring" style="background:white;"></span>
+          </span>
+          <span style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);">Estas usando:</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.45);">Claude - GPT-4o y Gemini</span>
+        </div>
+
+        <!-- Messages area -->
+        <div id="messagesArea" class="flex-1" style="overflow-y:auto;min-height:0;"></div>
+
+        <!-- Input -->
+        <div id="inputWrapper" style="margin-top:8px;">
+          <div id="inputContainer" class="input-box" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;">
+            <svg style="opacity:0.2;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            <div style="flex:1;">
+              <span id="inputText" style="font-size:13px;color:rgba(255,255,255,0.9);"></span>
+              <span id="inputCursor" class="cursor" style="color:rgba(255,255,255,0.6);font-weight:300;">|</span>
+            </div>
+            <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.18);flex-shrink:0;">3 modelos</span>
+            <button id="sendBtn" class="btn-send" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;border:none;cursor:pointer;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mouse cursor -->
+  <div id="cursor" style="position:absolute;left:-60px;top:-60px;pointer-events:none;z-index:9999;opacity:0;will-change:left,top;">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6)) drop-shadow(0 3px 8px rgba(0,0,0,0.35));">
+      <path d="M5 2L5 22L9 17.5L12.5 25.5L15.5 24L12 16.5L19 16.5Z"
+            fill="white" stroke="#1a1a2e" stroke-width="1.4"
+            stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    <!-- click ripple -->
+    <div id="cursorRipple" style="position:absolute;top:-4px;left:-4px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.25);transform:scale(0);opacity:0;pointer-events:none;"></div>
+  </div>
+</div>
+
+<script>
+const fullText  = "¿Qué hace OneChater?";
+const bestResp  = "OneChater fusiona GPT-4o, Claude y Gemini en un chat. Con memoria de tus proyectos, consulto los tres en paralelo y te devuelvo la mejor respuesta usando tus propias API keys.";
+
+const fullText2 = "¿Cómo funciona el Modo Fusión?";
+const bestResp2 = "Activás los tres modelos con un solo clic. Nuestro árbitro filtra las repeticiones y te entrega una única respuesta impecable con el poder combinado de OpenAI, Anthropic y Google.";
+
+const fullText3 = "¿Pierdo el contexto si cambio o agrego otra IA?";
+const bestResp3 = "Nunca. El contexto se almacena en nuestra base de datos, no en las IAs. Podés saltar entre modelos o fusionarlos cuando quieras; el hilo de la conversación y tus archivos se mantienen siempre intactos.";
+
+const fullText4 = "¿Cuánto cuesta usar OneChater?";
+const bestResp4 = "La plataforma cuesta $9 USD al mes por la infraestructura y la memoria en Supabase. No cobran por el uso de palabras: vos traés tus propias API keys y pagás directo a OpenAI, Anthropic o Google solo los centavos que consumas. ¿Estás listo?";
+
+
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function userBubbleHTML(text) {
+  return `
+    <div class="animate-fadeIn" style="display:flex;justify-content:flex-end;align-items:flex-end;gap:8px;margin-bottom:8px;">
+      <div style="padding:8px 12px;border-radius:16px;border-bottom-right-radius:4px;font-size:13px;color:white;background:#0E0F12;box-shadow:0 4px 16px rgba(0,0,0,0.4);max-width:fit-content;">
+        <p style="margin:0;line-height:1.5;font-weight:500;">${text}</p>
+      </div>
+      <div style="width:24px;height:24px;border-radius:50%;background:#0E0F12;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-bottom:2px;">
+        <svg viewBox="0 0 100 100" fill="none" width="14" height="14">
+          <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white"/>
+          <path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="white"/>
+          <path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="white"/>
+        </svg>
+      </div>
+    </div>
+  `;
+}
+
+function responseCardHTML(id, textId) {
+  return `
+    <div id="${id}" style="opacity:0;max-width:93%;margin-bottom:10px;" class="animate-fadeIn">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+          <svg viewBox="0 0 100 100" fill="none" width="18" height="18">
+            <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white" opacity="0.9"/>
+            <path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="white" opacity="0.9"/>
+            <path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="white" opacity="0.9"/>
+          </svg>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span class="fusion-badge">Fusión</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">·</span>
+            <span style="font-size:10px;color:#34d399;font-weight:500;">GPT-4o</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">+</span>
+            <span style="font-size:10px;color:#fb923c;font-weight:500;">Claude</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">+</span>
+            <span style="font-size:10px;color:#60a5fa;font-weight:500;">Gemini</span>
+          </div>
+          <p id="${textId}" style="margin:0;font-size:13px;color:rgba(203,213,225,0.9);line-height:1.6;"></p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function newInputHTML() {
+  return `
+    <div id="inputWrapper" style="margin-top:8px;">
+      <div id="inputContainer2" class="input-box" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;">
+        <svg style="opacity:0.2;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        <div style="flex:1;">
+          <span id="inputText2" style="font-size:13px;color:rgba(255,255,255,0.9);"></span>
+          <span id="inputCursor2" class="cursor" style="color:rgba(255,255,255,0.6);font-weight:300;">|</span>
+        </div>
+        <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.18);flex-shrink:0;">3 modelos</span>
+        <button id="sendBtn2" class="btn-send" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;border:none;cursor:pointer;">
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function cameraTo(cx, cy, s = 1.22) {
+  const outer = document.getElementById("outerWrapper");
+  const W = 900, H = 600;
+
+  const bottomExcess = Math.max(0, cy + (H - cy) * s - H);
+  const rightExcess  = Math.max(0, cx + (W - cx) * s - W);
+
+  const compX = (rightExcess  / W * 100).toFixed(2);
+  const compY = (bottomExcess / H * 100).toFixed(2);
+
+  const ox = ((cx - 450) / W * 100).toFixed(2);
+  const oy = ((cy - 300) / H * 100).toFixed(2);
+
+  outer.style.transform =
+    `translate(-${compX}%, -${compY}%) translate(${ox}%, ${oy}%) scale(${s}) translate(${-ox}%, ${-oy}%)`;
+}
+
+function cameraReset() {
+  document.getElementById("outerWrapper").style.transform = "scale(1)";
+}
+
+function easeInOutQuart(t) {
+  return t < 0.5 ? 8*t*t*t*t : 1 - Math.pow(-2*t+2, 4)/2;
+}
+function easeOutQuart(t) {
+  return 1 - Math.pow(1-t, 4);
+}
+
+function moveCursor(toX, toY, duration = 520, easeFn = easeInOutQuart) {
+  return new Promise(resolve => {
+    const cursor = document.getElementById("cursor");
+    const fromX  = parseFloat(cursor.style.left) || toX;
+    const fromY  = parseFloat(cursor.style.top)  || toY;
+    const t0 = performance.now();
+
+    function frame(now) {
+      const p = Math.min((now - t0) / duration, 1);
+      const e = easeFn(p);
+      cursor.style.left = (fromX + (toX - fromX) * e) + "px";
+      cursor.style.top  = (fromY + (toY - fromY) * e) + "px";
+      p < 1 ? requestAnimationFrame(frame) : resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+async function cursorClick() {
+  const cursor  = document.getElementById("cursor");
+  const ripple  = document.getElementById("cursorRipple");
+
+  cursor.style.transition = "transform 0.07s ease-in";
+  cursor.style.transform  = "scale(0.72)";
+
+  ripple.style.transition = "none";
+  ripple.style.transform  = "scale(0)";
+  ripple.style.opacity    = "1";
+  requestAnimationFrame(() => {
+    ripple.style.transition = "transform 0.35s ease-out, opacity 0.35s ease-out";
+    ripple.style.transform  = "scale(1.6)";
+    ripple.style.opacity    = "0";
+  });
+
+  await sleep(70);
+  cursor.style.transition = "transform 0.14s ease-out";
+  cursor.style.transform  = "scale(1)";
+  await sleep(120);
+  cursor.style.transition = "";
+}
+
+function getLocalPos(el, offsetX = 0, offsetY = 0) {
+  const outer = document.getElementById("outerWrapper");
+  const card  = document.getElementById("card");
+
+  const prevTransition = outer.style.transition;
+  const prevTransform  = outer.style.transform;
+  outer.style.transition = "none";
+  outer.style.transform  = "scale(1)";
+  outer.getBoundingClientRect();
+
+  const cardRect = card.getBoundingClientRect();
+  const elRect   = el.getBoundingClientRect();
+
+  outer.style.transform  = prevTransform;
+  outer.getBoundingClientRect();
+  outer.style.transition = prevTransition;
+
+  return {
+    x: elRect.left - cardRect.left + offsetX,
+    y: elRect.top  - cardRect.top  + offsetY,
+  };
+}
+
+async function typeInInput(inputTextId, inputCursorId, containerId, fromOx = -80, fromOy = -65, moveSpeed = 950, charDelay = 46) {
+  const inputText   = document.getElementById(inputTextId);
+  const inputCursor = document.getElementById(inputCursorId);
+  const cursor      = document.getElementById("cursor");
+  const container   = document.getElementById(containerId);
+
+  const pos = getLocalPos(container, 48, container.offsetHeight / 2);
+
+  if (parseFloat(cursor.style.opacity) >= 0.5) {
+    cursor.style.transition = "opacity 0.18s ease";
+    cursor.style.opacity    = "0";
+    await sleep(200);
+    cursor.style.transition = "";
+  }
+
+  cursor.style.left = (pos.x + fromOx) + "px";
+  cursor.style.top  = (pos.y + fromOy) + "px";
+  await sleep(40);
+
+  cameraTo(pos.x, pos.y);
+  cursor.style.opacity = "1";
+  await moveCursor(pos.x, pos.y, moveSpeed, easeOutQuart);
+
+  await cursorClick();
+  await sleep(110);
+
+  const text = inputTextId === "inputText" ? fullText : inputTextId === "inputText2" ? fullText2 : inputTextId === "inputText3" ? fullText3 : fullText4;
+  for (let i = 0; i <= text.length; i++) {
+    inputText.textContent = text.slice(0, i);
+    await sleep(charDelay);
+  }
+  inputCursor.style.display = "none";
+  await sleep(260);
+}
+
+async function clickSend(btnId, moveSpeed = 700, easeFn = easeInOutQuart) {
+  const sendBtn = document.getElementById(btnId);
+
+  const pos = getLocalPos(
+    sendBtn,
+    sendBtn.offsetWidth  / 2,
+    sendBtn.offsetHeight / 2
+  );
+
+  cameraTo(pos.x, pos.y);
+  await moveCursor(pos.x, pos.y, moveSpeed, easeFn);
+
+  await cursorClick();
+  sendBtn.click();
+
+  cameraReset();
+  await sleep(80);
+}
+
+async function typeResponse(cardId, textId, responseText) {
+  const card        = document.getElementById(cardId);
+  const el          = document.getElementById(textId);
+  const messagesArea = document.getElementById("messagesArea");
+
+  card.style.opacity    = "1";
+  card.style.transition = "opacity 0.3s ease";
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+
+  el.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;">
+    <span style="width:5px;height:5px;border-radius:50%;background:white;animation:dot-bounce 1.2s ease-in-out infinite;"></span>
+    <span style="width:5px;height:5px;border-radius:50%;background:white;animation:dot-bounce 1.2s ease-in-out 0.15s infinite;"></span>
+    <span style="width:5px;height:5px;border-radius:50%;background:white;animation:dot-bounce 1.2s ease-in-out 0.3s infinite;"></span>
+  </span>`;
+
+  await sleep(1400);
+  el.innerHTML = "";
+
+  for (let i = 0; i <= responseText.length; i++) {
+    el.textContent = responseText.slice(0, i);
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+    await sleep(14);
+  }
+}
+
+async function showResponses() {
+  const messagesArea = document.getElementById("messagesArea");
+  const chatArea     = document.getElementById("chatArea");
+  const inputWrapper = document.getElementById("inputWrapper");
+
+  inputWrapper.style.visibility = "hidden";
+
+  // Actualizar sidebar con la pregunta enviada
+  const title = document.getElementById("activeChatTitle");
+  const sub   = document.getElementById("activeChatSub");
+  if (title) { title.textContent = fullText; title.style.color = "rgba(255,255,255,0.85)"; title.style.fontStyle = "normal"; }
+  if (sub)   { sub.textContent   = "Fusiono GPT-4o, Claude..."; sub.style.color = "rgba(255,255,255,0.3)"; }
+
+  messagesArea.insertAdjacentHTML("beforeend", userBubbleHTML(fullText));
+  messagesArea.insertAdjacentHTML("beforeend", responseCardHTML("responseCard", "responseText"));
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+  chatArea.insertAdjacentHTML("beforeend", newInputHTML());
+  inputWrapper.remove();
+}
+
+async function showResponses2() {
+  const messagesArea = document.getElementById("messagesArea");
+  const chatArea     = document.getElementById("chatArea");
+  const inputWrapper = document.getElementById("inputWrapper");
+
+  inputWrapper.style.visibility = "hidden";
+
+  messagesArea.insertAdjacentHTML("beforeend", userBubbleHTML(fullText2));
+  messagesArea.insertAdjacentHTML("beforeend", responseCardHTML("responseCard2", "responseText2"));
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+
+  chatArea.insertAdjacentHTML("beforeend", `
+    <div id="inputWrapper" style="margin-top:8px;">
+      <div id="inputContainer3" class="input-box" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;">
+        <svg style="opacity:0.2;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        <div style="flex:1;">
+          <span id="inputText3" style="font-size:13px;color:rgba(255,255,255,0.9);"></span>
+          <span id="inputCursor3" class="cursor" style="color:rgba(255,255,255,0.6);font-weight:300;">|</span>
+        </div>
+        <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.18);flex-shrink:0;">3 modelos</span>
+        <button id="sendBtn3" class="btn-send" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;border:none;cursor:pointer;">
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </button>
+      </div>
+    </div>
+  `);
+  inputWrapper.remove();
+}
+
+async function showResponses3() {
+  const messagesArea = document.getElementById("messagesArea");
+  const chatArea     = document.getElementById("chatArea");
+  const inputWrapper = document.getElementById("inputWrapper");
+
+  inputWrapper.style.visibility = "hidden";
+
+  messagesArea.insertAdjacentHTML("beforeend", userBubbleHTML(fullText3));
+  messagesArea.insertAdjacentHTML("beforeend", responseCardHTML("responseCard3", "responseText3"));
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+
+  chatArea.insertAdjacentHTML("beforeend", `
+    <div id="inputWrapper" style="margin-top:8px;">
+      <div id="inputContainer4" class="input-box" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;">
+        <svg style="opacity:0.2;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        <div style="flex:1;">
+          <span id="inputText4" style="font-size:13px;color:rgba(255,255,255,0.9);"></span>
+          <span id="inputCursor4" class="cursor" style="color:rgba(255,255,255,0.6);font-weight:300;">|</span>
+        </div>
+        <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.18);flex-shrink:0;">3 modelos</span>
+        <button id="sendBtn4" class="btn-send" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;border:none;cursor:pointer;">
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </button>
+      </div>
+    </div>
+  `);
+  inputWrapper.remove();
+}
+
+async function showResponses4() {
+  const messagesArea = document.getElementById("messagesArea");
+  const chatArea     = document.getElementById("chatArea");
+  const inputWrapper = document.getElementById("inputWrapper");
+
+  inputWrapper.style.visibility = "hidden";
+
+  messagesArea.insertAdjacentHTML("beforeend", userBubbleHTML(fullText4));
+  messagesArea.insertAdjacentHTML("beforeend", responseCardHTML("responseCard4", "responseText4"));
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+
+  chatArea.insertAdjacentHTML("beforeend", `
+    <div style="margin-top:8px;">
+      <div class="input-box" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;">
+        <svg style="opacity:0.2;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        <span style="flex:1;font-size:13px;color:rgba(255,255,255,0.2);">Escribe un mensaje...</span>
+        <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.15);flex-shrink:0;">3 modelos</span>
+        <div class="btn-send" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;opacity:0.35;flex-shrink:0;">
+          <svg width="12" height="12" fill="none" stroke="white" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </div>
+      </div>
+    </div>
+  `);
+  inputWrapper.remove();
+}
+
+async function main() {
+  await sleep(800);
+  // Q1: cursor viene desde arriba-izquierda, tipeo normal
+  await typeInInput("inputText", "inputCursor", "inputContainer", -80, -65, 950, 48);
+  await clickSend("sendBtn", 700, easeInOutQuart);
+  await showResponses();
+  await sleep(200);
+  await typeResponse("responseCard", "responseText", bestResp);
+
+  await sleep(1800);
+  // Q2: cursor viene desde arriba-derecha, más rápido
+  await typeInInput("inputText2", "inputCursor2", "inputContainer2", 220, -100, 700, 38);
+  await clickSend("sendBtn2", 420, easeOutQuart);
+  await showResponses2();
+  await sleep(200);
+  await typeResponse("responseCard2", "responseText2", bestResp2);
+
+  await sleep(1800);
+  // Q3: cursor viene desde abajo-izquierda, tipeo más pausado
+  await typeInInput("inputText3", "inputCursor3", "inputContainer3", -200, 80, 1100, 42);
+  await clickSend("sendBtn3", 900, easeInOutQuart);
+  await showResponses3();
+  await sleep(200);
+  await typeResponse("responseCard3", "responseText3", bestResp3);
+
+  await sleep(1800);
+  // Q4: cursor viene desde arriba-centro, tipeo ágil
+  await typeInInput("inputText4", "inputCursor4", "inputContainer4", 50, -120, 800, 36);
+  await clickSend("sendBtn4", 550, easeOutQuart);
+  await showResponses4();
+  await sleep(200);
+  await typeResponse("responseCard4", "responseText4", bestResp4);
+}
+
+const style = document.createElement("style");
+style.textContent = `
+  @keyframes dot-bounce {
+    0%,60%,100%{transform:translateY(0);opacity:0.5}
+    30%{transform:translateY(-4px);opacity:1}
+  }
+`;
+document.head.appendChild(style);
+
+main();
+</script>
+</body>
+</html>
