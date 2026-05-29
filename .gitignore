@@ -1,2 +1,16 @@
 node_modules/
 .next/
+
+# Secretos — NUNCA subir a git
+.env
+.env*.local
+
+# Artefactos de build
+*.tsbuildinfo
+
+# Screenshots de desarrollo
+/screenshot-*.png
+/shot*.png
+
+# Archivo basura (nombre corrupto)
+*Temponechat.css

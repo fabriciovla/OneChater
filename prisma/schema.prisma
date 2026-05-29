@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Provider {
+  openai
+  anthropic
+  google
+  groq
+  openrouter
+  xai
+  mistral
+  deepseek
+}
+
+// ─── Auth.js models ───────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified") @db.Timestamptz
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  accounts         Account[]
+  chatSessions     ChatSession[]
+  providerSettings UserProviderSetting[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime @db.Timestamptz
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── App models ───────────────────────────────────────────────────────────────
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String   @default("Nueva conversación")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turns ConversationTurn[]
+
+  @@index([userId])
+  @@index([updatedAt(sort: Desc)])
+  @@map("chat_sessions")
+}
+
+model ConversationTurn {
+  id          String   @id @default(cuid())
+  sessionId   String   @map("session_id")
+  userMessage String   @map("user_message")
+  isFusion    Boolean  @default(false) @map("is_fusion")
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  session       ChatSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  responses     TurnResponse[]
+  fusedResponse FusedResponse?
+
+  @@index([sessionId])
+  @@index([sessionId, position])
+  @@map("conversation_turns")
+}
+
+model TurnResponse {
+  id        String   @id @default(cuid())
+  turnId    String   @map("turn_id")
+  provider  Provider
+  model     String
+  content   String   @default("")
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  turn ConversationTurn @relation(fields: [turnId], references: [id], onDelete: Cascade)
+
+  @@unique([turnId, provider])
+  @@index([turnId])
+  @@map("turn_responses")
+}
+
+model FusedResponse {
+  id        String     @id @default(cuid())
+  turnId    String     @unique @map("turn_id")
+  providers Provider[]
+  content   String     @default("")
+  error     String?
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  turn ConversationTurn @relation(fields: [turnId], references: [id], onDelete: Cascade)
+
+  @@map("fused_responses")
+}
+
+model UserProviderSetting {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  provider      Provider
+  apiKeyEnc     String?  @map("api_key_enc")
+  isEnabled     Boolean  @default(true) @map("is_enabled")
+  selectedModel String   @map("selected_model")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("user_provider_settings")
+}
+
+model ProviderDefault {
+  provider     Provider @id
+  displayName  String   @map("display_name")
+  defaultModel String   @map("default_model")
+  baseUrl      String?  @map("base_url")
+
+  @@map("provider_defaults")
+}

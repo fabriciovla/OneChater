@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, Sora } from "next/font/google";
+import { Inter, Sora, Lora } from "next/font/google";
+import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
 const inter = Inter({
@@ -13,6 +14,13 @@ const sora = Sora({
   variable: "--font-sora",
   display: "swap",
   weight: ["300", "400", "500", "600", "700"],
+});
+
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-lora",
+  display: "swap",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -38,8 +46,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${sora.variable}`}>
-      <body className="noise">{children}</body>
+    <html lang="en" className={`${inter.variable} ${sora.variable} ${lora.variable}`}>
+      <body className="noise"><SessionProvider>{children}</SessionProvider></body>
     </html>
   );
 }

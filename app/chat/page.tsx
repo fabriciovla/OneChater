@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, KeyboardEvent } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo, KeyboardEvent } from "react"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
+import Image from "next/image"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Provider = "openai" | "anthropic" | "google"
+type Provider = "openai" | "anthropic" | "google" | "groq" | "openrouter" | "xai" | "mistral" | "deepseek"
 
 interface ModelResponseState {
   content: string
@@ -23,9 +25,17 @@ interface ConversationTurn {
   fusedResponse?: ModelResponseState
 }
 
+interface ChatSession {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  turns?: ConversationTurn[]
+}
+
 // ─── Provider configs ─────────────────────────────────────────────────────────
 
-const PROVIDERS: Provider[] = ["openai", "anthropic", "google"]
+const PROVIDERS: Provider[] = ["openai", "anthropic", "google", "groq", "openrouter", "xai", "mistral", "deepseek"]
 
 const CFG = {
   openai: {
@@ -38,14 +48,11 @@ const CFG = {
       { id: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
     ],
     color: "#10b981",
-    colorBg: "rgba(16,185,129,0.08)",
-    colorBorder: "rgba(16,185,129,0.22)",
-    colorGlow: "rgba(16,185,129,0.15)",
-    badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    colorLight: "rgba(16,185,129,0.1)",
+    colorBorder: "rgba(16,185,129,0.25)",
     dot: "bg-emerald-400",
-    gradient: "from-emerald-500 to-teal-500",
-    Logo: () => (
-      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+    Logo: ({ size = 12 }: { size?: number }) => (
+      <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: size, height: size }}>
         <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.677l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.843-3.369 2.02-1.168a.076.076 0 0 1 .071 0l4.83 2.786a4.494 4.494 0 0 1-.676 8.105v-5.677a.79.79 0 0 0-.402-.677zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.778 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
       </svg>
     ),
@@ -60,14 +67,11 @@ const CFG = {
       { id: "claude-3-opus-20240229", label: "Claude 3 Opus" },
     ],
     color: "#f97316",
-    colorBg: "rgba(249,115,22,0.08)",
-    colorBorder: "rgba(249,115,22,0.22)",
-    colorGlow: "rgba(249,115,22,0.15)",
-    badge: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+    colorLight: "rgba(249,115,22,0.1)",
+    colorBorder: "rgba(249,115,22,0.25)",
     dot: "bg-orange-400",
-    gradient: "from-orange-500 to-amber-500",
-    Logo: () => (
-      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+    Logo: ({ size = 12 }: { size?: number }) => (
+      <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: size, height: size }}>
         <path d="M13.827 3.52h3.603L24 20h-3.603l-6.57-16.48zm-7.258 0h3.767L16.906 20h-3.674l-1.343-3.461H5.017L3.674 20H0L6.57 3.52zm4.132 9.959L8.453 7.687 6.205 13.48H10.7z" />
       </svg>
     ),
@@ -75,20 +79,18 @@ const CFG = {
   google: {
     name: "Gemini",
     label: "Google",
-    defaultModel: "gemini-1.5-flash",
+    defaultModel: "gemini-2.0-flash",
     models: [
-      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+      { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+      { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite" },
       { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
     ],
     color: "#3b82f6",
-    colorBg: "rgba(59,130,246,0.08)",
-    colorBorder: "rgba(59,130,246,0.22)",
-    colorGlow: "rgba(59,130,246,0.15)",
-    badge: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    colorLight: "rgba(59,130,246,0.1)",
+    colorBorder: "rgba(59,130,246,0.25)",
     dot: "bg-blue-400",
-    gradient: "from-blue-500 to-cyan-500",
-    Logo: () => (
-      <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5">
+    Logo: ({ size = 12 }: { size?: number }) => (
+      <svg viewBox="0 0 24 24" fill="none" style={{ width: size, height: size }}>
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
@@ -96,233 +98,441 @@ const CFG = {
       </svg>
     ),
   },
+  groq: {
+    name: "Groq",
+    label: "Groq",
+    defaultModel: "llama-3.3-70b-versatile",
+    models: [
+      { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
+      { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B" },
+      { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
+    ],
+    color: "#f55036",
+    colorLight: "rgba(245,80,54,0.1)",
+    colorBorder: "rgba(245,80,54,0.25)",
+    dot: "bg-orange-500",
+    Logo: ({ size = 12 }: { size?: number }) => (
+      <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: size, height: size }}>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z" />
+      </svg>
+    ),
+  },
+  openrouter: {
+    name: "OpenRouter",
+    label: "OpenRouter",
+    defaultModel: "nvidia/nemotron-3-super-120b-a12b:free",
+    models: [
+      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 120B" },
+      { id: "meta-llama/llama-3.2-3b-instruct:free", label: "Llama 3.2 3B" },
+      { id: "google/gemma-2-9b-it:free", label: "Gemma 2 9B" },
+      { id: "mistralai/mistral-7b-instruct:free", label: "Mistral 7B" },
+    ],
+    color: "#8b5cf6",
+    colorLight: "rgba(139,92,246,0.1)",
+    colorBorder: "rgba(139,92,246,0.25)",
+    dot: "bg-violet-500",
+    Logo: ({ size = 12 }: { size?: number }) => (
+      <svg viewBox="0 0 24 24" fill="none" style={{ width: size, height: size }}>
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  xai: {
+    name: "Grok",
+    label: "xAI",
+    defaultModel: "grok-3",
+    models: [
+      { id: "grok-3", label: "Grok 3" },
+      { id: "grok-3-mini", label: "Grok 3 Mini" },
+      { id: "grok-2-1212", label: "Grok 2" },
+    ],
+    color: "#0f0f0f",
+    colorLight: "rgba(15,15,15,0.07)",
+    colorBorder: "rgba(15,15,15,0.2)",
+    dot: "bg-gray-900",
+    Logo: ({ size = 12 }: { size?: number }) => (
+      <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: size, height: size }}>
+        <path d="M13.544 10.62 20.437 2h-1.633l-5.96 6.98L8.33 2H3l7.232 10.512L3 22h1.633l6.327-7.407L15.67 22H21z" />
+      </svg>
+    ),
+  },
+  mistral: {
+    name: "Mistral",
+    label: "Mistral",
+    defaultModel: "mistral-large-latest",
+    models: [
+      { id: "mistral-large-latest", label: "Mistral Large" },
+      { id: "mistral-small-latest", label: "Mistral Small" },
+      { id: "codestral-latest", label: "Codestral" },
+    ],
+    color: "#ff7000",
+    colorLight: "rgba(255,112,0,0.09)",
+    colorBorder: "rgba(255,112,0,0.25)",
+    dot: "bg-orange-500",
+    Logo: ({ size = 12 }: { size?: number }) => (
+      <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: size, height: size }}>
+        <rect x="2" y="2" width="5" height="5" rx="1" />
+        <rect x="9.5" y="2" width="5" height="5" rx="1" />
+        <rect x="17" y="2" width="5" height="5" rx="1" />
+        <rect x="2" y="9.5" width="5" height="5" rx="1" opacity="0.5" />
+        <rect x="17" y="9.5" width="5" height="5" rx="1" opacity="0.5" />
+        <rect x="2" y="17" width="5" height="5" rx="1" />
+        <rect x="9.5" y="17" width="5" height="5" rx="1" />
+        <rect x="17" y="17" width="5" height="5" rx="1" />
+      </svg>
+    ),
+  },
+  deepseek: {
+    name: "DeepSeek",
+    label: "DeepSeek",
+    defaultModel: "deepseek-chat",
+    models: [
+      { id: "deepseek-chat", label: "DeepSeek V3" },
+      { id: "deepseek-reasoner", label: "DeepSeek R1" },
+    ],
+    color: "#4D6BFE",
+    colorLight: "rgba(77,107,254,0.09)",
+    colorBorder: "rgba(77,107,254,0.25)",
+    dot: "bg-blue-500",
+    Logo: ({ size = 12 }: { size?: number }) => (
+      <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: size, height: size }}>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+      </svg>
+    ),
+  },
 } as const
 
-// ─── Build shared context history ────────────────────────────────────────────
-// All active models' responses from previous turns are combined into one
-// assistant message so every model knows what the others said.
+// ─── DB ↔ Frontend mapping ────────────────────────────────────────────────────
+
+function fromDbTurn(dbTurn: {
+  id: string
+  userMessage: string
+  isFusion: boolean
+  responses?: { provider: string; model: string; content: string; error: string | null }[]
+  fusedResponse?: { content: string; error: string | null; providers: string[] } | null
+}): ConversationTurn {
+  const responses: Partial<Record<Provider, ModelResponseState>> = {}
+  for (const r of dbTurn.responses ?? []) {
+    responses[r.provider as Provider] = { content: r.content, loading: false, done: true, error: r.error ?? undefined }
+  }
+  return {
+    id: dbTurn.id,
+    userMessage: dbTurn.userMessage,
+    isFusion: dbTurn.isFusion,
+    responses,
+    fusedResponse: dbTurn.fusedResponse
+      ? { content: dbTurn.fusedResponse.content, loading: false, done: true, error: dbTurn.fusedResponse.error ?? undefined }
+      : undefined,
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function buildSystemPrompt(provider: Provider, activeProviders: Provider[]): { role: string; content: string } {
+  const others = activeProviders.filter((p) => p !== provider).map((p) => CFG[p].name)
+  const othersStr = others.length > 0 ? ` junto a ${others.join(" y ")}` : ""
+  return {
+    role: "system",
+    content: `Eres ${CFG[provider].name} en una plataforma de chat multi-modelo${othersStr}.
+
+REGLA CRÍTICA: El historial de conversación contiene respuestas de TODOS los modelos participantes. Cada respuesta de asistente tiene prefijos como [${CFG[provider].name}]:${others.map((n) => ` [${n}]:`).join("")} que indican qué modelo dijo cada cosa. Este historial ES tu memoria compartida.
+
+IMPORTANTE: Respondé DIRECTAMENTE sin incluir ningún prefijo como [${CFG[provider].name}]: al inicio. Nunca copies ese formato en tu respuesta. NUNCA digas que no tienes acceso a lo que dijeron otros modelos. Respondé siempre en el idioma del usuario.`,
+  }
+}
 
 function buildSharedHistory(
   turns: ConversationTurn[],
   activeProviders: Provider[],
-  newMessage: string
+  newMessage: string,
+  provider: Provider
 ): { role: string; content: string }[] {
-  const msgs: { role: string; content: string }[] = []
-
+  const msgs: { role: string; content: string }[] = [buildSystemPrompt(provider, activeProviders)]
   for (const turn of turns) {
     msgs.push({ role: "user", content: turn.userMessage })
-
     if (turn.isFusion && turn.fusedResponse?.done && turn.fusedResponse.content && !turn.fusedResponse.error) {
-      // Fusion turn: use synthesized response in history
       msgs.push({ role: "assistant", content: turn.fusedResponse.content })
     } else {
-      const parts = activeProviders
+      const parts = (Object.keys(turn.responses) as Provider[])
         .map((p) => {
           const r = turn.responses[p]
           if (r?.done && r.content && !r.error) return `[${CFG[p].name}]:\n${r.content}`
           return null
         })
         .filter((x): x is string => x !== null)
-      if (parts.length > 0) {
-        msgs.push({ role: "assistant", content: parts.join("\n\n---\n\n") })
-      }
+      if (parts.length > 0) msgs.push({ role: "assistant", content: parts.join("\n\n---\n\n") })
     }
   }
-
   msgs.push({ role: "user", content: newMessage })
   return msgs
 }
 
-// ─── Typing indicator ─────────────────────────────────────────────────────────
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts
+  if (diff < 60_000) return "ahora"
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`
+  return `${Math.floor(diff / 86_400_000)}d`
+}
+
+function groupSessionsByDate(sessions: ChatSession[]): { label: string; sessions: ChatSession[] }[] {
+  const now = new Date()
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const startOfYesterday = startOfDay - 86400000
+  const startOfWeek = startOfDay - 7 * 86400000
+  const startOfMonth = startOfDay - 30 * 86400000
+
+  const buckets: Record<string, ChatSession[]> = { hoy: [], ayer: [], semana: [], mes: [], antiguo: [] }
+  for (const s of sessions) {
+    if (s.updatedAt >= startOfDay) buckets.hoy.push(s)
+    else if (s.updatedAt >= startOfYesterday) buckets.ayer.push(s)
+    else if (s.updatedAt >= startOfWeek) buckets.semana.push(s)
+    else if (s.updatedAt >= startOfMonth) buckets.mes.push(s)
+    else buckets.antiguo.push(s)
+  }
+  const labels: Record<string, string> = { hoy: "Hoy", ayer: "Ayer", semana: "Últimos 7 días", mes: "Últimos 30 días", antiguo: "Más antiguas" }
+  return (["hoy", "ayer", "semana", "mes", "antiguo"] as const)
+    .filter((k) => buckets[k].length > 0)
+    .map((k) => ({ label: labels[k], sessions: buckets[k] }))
+}
+
+const SUGGESTED_PROMPTS: { title: string; subtitle: string; from: string; to: string; icon: React.ReactNode }[] = [
+  {
+    title: "Idea creativa", subtitle: "Brainstormeá ideas para…",
+    from: "from-orange-500", to: "to-amber-500",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
+        <path d="M12 3l1.6 4.2L18 8.8l-4.4 1.6L12 14.6l-1.6-4.2L6 8.8l4.4-1.6L12 3z" /><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z" />
+      </svg>
+    ),
+  },
+  {
+    title: "Explicame", subtitle: "Conceptos complejos en simple",
+    from: "from-amber-400", to: "to-yellow-500",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
+        <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z" />
+      </svg>
+    ),
+  },
+  {
+    title: "Código", subtitle: "Ayudame a debuggear o escribir",
+    from: "from-blue-500", to: "to-cyan-500",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
+        <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+      </svg>
+    ),
+  },
+  {
+    title: "Comparar", subtitle: "Analizá diferencias entre opciones",
+    from: "from-violet-500", to: "to-purple-600",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
+        <line x1="6" y1="20" x2="6" y2="12" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="18" y1="20" x2="18" y2="9" />
+      </svg>
+    ),
+  },
+]
+
+// ─── Typing dots ──────────────────────────────────────────────────────────────
 
 function TypingDots({ color }: { color: string }) {
   return (
-    <span className="inline-flex gap-1 items-end h-4 ml-0.5">
+    <span className="inline-flex gap-1.5 items-center h-4">
       {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-1.5 h-1.5 rounded-full animate-bounce"
-          style={{ background: color, animationDelay: `${i * 0.18}s`, animationDuration: "0.9s" }}
-        />
+        <span key={i} className="w-1.5 h-1.5 rounded-full typing-dot-glow"
+          style={{ background: color, color, animationDelay: `${i * 0.16}s` }} />
       ))}
     </span>
   )
 }
 
-// ─── Model logo avatar ────────────────────────────────────────────────────────
-
-function ModelAvatar({ provider, size = "md" }: { provider: Provider; size?: "sm" | "md" }) {
-  const c = CFG[provider]
-  const dim = size === "sm" ? "w-6 h-6" : "w-8 h-8"
-  return (
-    <div
-      className={`${dim} rounded-xl flex items-center justify-center text-white flex-shrink-0`}
-      style={{ background: `linear-gradient(135deg, ${c.color}cc, ${c.color}66)`, boxShadow: `0 4px 12px ${c.colorGlow}` }}
-    >
-      <c.Logo />
-    </div>
-  )
-}
-
 // ─── Response card ────────────────────────────────────────────────────────────
 
-function ResponseCard({
-  provider,
-  state,
-  selectedModel,
-}: {
-  provider: Provider
-  state: ModelResponseState
-  selectedModel: string
+function ResponseCard({ provider, state, selectedModel, index = 0, animate = false }: {
+  provider: Provider; state: ModelResponseState; selectedModel: string; index?: number; animate?: boolean
 }) {
   const c = CFG[provider]
   const modelLabel = c.models.find((m) => m.id === selectedModel)?.label ?? selectedModel
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    if (!state.content) return
+    navigator.clipboard.writeText(state.content).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
 
   return (
-    <div
-      className="rounded-2xl p-4 flex flex-col gap-3 transition-all duration-300"
-      style={{
-        background: c.colorBg,
-        border: `1px solid ${c.colorBorder}`,
-        boxShadow: state.loading ? `0 0 24px ${c.colorGlow}` : "none",
-      }}
-    >
+    <div className={`group response-card rounded-2xl flex flex-col overflow-hidden bg-white${animate ? " card-enter" : ""}`}
+      style={{ border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", ...(animate && { animationDelay: `${index * 0.1}s` }) }}>
+
       {/* Header */}
-      <div className="flex items-center gap-2.5">
-        <ModelAvatar provider={provider} size="sm" />
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs font-semibold text-white leading-none">{c.name}</span>
-          <span className="text-[10px] text-slate-500 truncate mt-0.5">{modelLabel}</span>
+      <div className="card-header-sheen flex items-center gap-2.5 px-4 py-3"
+        style={{
+          background: `linear-gradient(135deg, ${c.colorLight}, ${c.colorLight.replace(/[\d.]+\)$/, "0.04)")})`,
+          borderBottom: `1px solid ${c.colorBorder}`,
+        }}>
+        <div className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3${animate ? " pop-in" : ""}`}
+          style={{ background: "white", border: `1px solid ${c.colorBorder}`, color: c.color, boxShadow: `0 1px 3px ${c.color}20`, ...(animate && { animationDelay: `${index * 0.1 + 0.18}s` }) }}>
+          <c.Logo size={14} />
         </div>
-        <div className="ml-auto flex-shrink-0">
-          {state.loading ? (
-            <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border"
-              style={{ background: c.colorBg, borderColor: c.colorBorder, color: c.color }}
-            >
-              <span className="w-1 h-1 rounded-full animate-pulse" style={{ background: c.color }} />
+        <div className="flex-1 min-w-0">
+          <span className="text-[13px] font-bold" style={{ color: c.color }}>{c.name}</span>
+          <span className="text-[11px] text-gray-500 ml-1.5">{modelLabel}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {state.loading && (
+            <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: c.color }}>
+              <span className="relative flex items-center justify-center">
+                <span className="absolute w-2 h-2 rounded-full animate-ping opacity-50" style={{ background: c.color }} />
+                <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
+              </span>
               Generando
             </span>
-          ) : state.done && !state.error ? (
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-600 inline-block" />
-          ) : null}
+          )}
+          {state.done && !state.error && state.content && (
+            <button onClick={handleCopy}
+              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
+              style={{ background: "white", border: `1px solid ${c.colorBorder}`, color: copied ? c.color : "#6b7280" }}>
+              {copied ? (
+                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
+              ) : (
+                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copiar</>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Body */}
-      <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap break-words min-h-[20px]">
-        {state.error ? (
-          <span className="text-red-400/90 text-xs flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 flex-shrink-0">
-              <circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" />
-            </svg>
-            {state.error}
-          </span>
-        ) : state.content ? (
-          state.content
-        ) : state.loading ? (
-          <TypingDots color={c.color} />
-        ) : null}
+      {/* Content */}
+      <div className="px-4 py-4 text-[16px] text-gray-900 leading-[1.75] whitespace-pre-wrap break-words min-h-[48px]" style={{ fontFamily: "var(--font-lora), Georgia, serif", fontWeight: 400 }}>
+        {state.error
+          ? <span className="text-red-500 text-sm" style={{ fontFamily: "var(--font-inter), sans-serif" }}>{state.error}</span>
+          : state.content
+          ? <>
+              {state.content}
+              {state.loading && <span className="stream-caret" style={{ background: c.color }} />}
+            </>
+          : state.loading
+          ? <div className="pt-1"><TypingDots color={c.color} /></div>
+          : null}
       </div>
     </div>
   )
 }
 
-// ─── Fusion card ─────────────────────────────────────────────────────────────
+// ─── Fusion card ──────────────────────────────────────────────────────────────
 
-function FusionCard({
-  state,
-  providers,
-}: {
-  state: ModelResponseState
-  providers: Provider[]
-}) {
+function FusionCard({ state, providers, animate = false }: { state: ModelResponseState; providers: Provider[]; animate?: boolean }) {
   const isCollecting = state.loading && state.phase === "collecting"
   const isSynthesizing = state.loading && state.phase === "synthesizing"
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    if (!state.content) return
+    navigator.clipboard.writeText(state.content).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  const isLoading = state.loading
 
   return (
-    <div
-      className="rounded-2xl p-5 flex flex-col gap-3 transition-all duration-300"
-      style={{
-        background: "linear-gradient(135deg, rgba(124,58,237,0.08), rgba(59,130,246,0.06))",
-        border: "1px solid rgba(124,58,237,0.3)",
-        boxShadow: state.loading ? "0 0 32px rgba(124,58,237,0.15)" : "none",
-      }}
-    >
+    <div className={`group response-card rounded-2xl flex flex-col overflow-hidden bg-white relative${animate ? " card-enter" : ""}`}
+      style={{ border: "1px solid rgba(249,115,22,0.2)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+
+      {/* Progress bar on top while loading */}
+      {isLoading && (
+        <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden z-10">
+          <div className="fusion-progress-bar h-full" />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex items-center gap-3">
-        {/* Stacked model avatars */}
-        <div className="flex -space-x-2">
-          {providers.map((p) => {
+      <div className="card-header-sheen flex items-center gap-3 px-4 py-3"
+        style={{
+          background: "linear-gradient(135deg, rgba(249,115,22,0.08), rgba(249,115,22,0.03))",
+          borderBottom: "1px solid rgba(249,115,22,0.15)",
+        }}>
+        <div className="flex -space-x-1.5 flex-shrink-0">
+          {providers.map((p, i) => {
             const Logo = CFG[p].Logo
             return (
-              <div
-                key={p}
-                className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-white flex-shrink-0"
+              <div key={p}
+                className={`w-6 h-6 rounded-lg flex items-center justify-center ring-2 ring-white transition-transform duration-300 group-hover:scale-110${isLoading ? " fusion-logo-pulse" : ""}`}
                 style={{
-                  background: `linear-gradient(135deg, ${CFG[p].color}cc, ${CFG[p].color}66)`,
-                  borderColor: "#07071a",
-                }}
-              >
-                <Logo />
+                  background: CFG[p].colorLight,
+                  color: CFG[p].color,
+                  border: `1px solid ${CFG[p].colorBorder}`,
+                  transitionDelay: `${i * 40}ms`,
+                  animationDelay: `${i * 0.15}s`,
+                }}>
+                <Logo size={11} />
               </div>
             )
           })}
         </div>
-
-        <div className="flex flex-col">
-          <span className="text-xs font-bold text-white leading-none">Respuesta fusionada</span>
-          <span className="text-[10px] text-slate-500 mt-0.5">
-            {providers.map((p) => CFG[p].name).join(" + ")}
-          </span>
+        <div className="flex-1 min-w-0">
+          <span className="text-[13px] font-bold text-orange-600">Fusión</span>
+          <span className="text-[11px] ml-1.5 text-gray-500">{providers.map((p) => CFG[p].name).join(" · ")}</span>
         </div>
-
-        <div className="ml-auto">
+        <div className="flex items-center gap-2">
           {isCollecting && (
-            <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border"
-              style={{ background: "rgba(124,58,237,0.12)", borderColor: "rgba(124,58,237,0.3)", color: "#a78bfa" }}
-            >
-              <span className="w-1 h-1 rounded-full bg-purple-400 animate-pulse" />
-              Consultando modelos…
+            <span className="flex items-center gap-1 text-[10px] font-medium text-orange-500">
+              <span className="relative flex items-center justify-center">
+                <span className="absolute w-2 h-2 rounded-full bg-orange-400/60 animate-ping" />
+                <span className="relative w-1.5 h-1.5 rounded-full bg-orange-500" />
+              </span>
+              Consultando {providers.length}…
             </span>
           )}
           {isSynthesizing && (
-            <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border"
-              style={{ background: "rgba(59,130,246,0.12)", borderColor: "rgba(59,130,246,0.3)", color: "#93c5fd" }}
-            >
-              <span className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" />
+            <span className="flex items-center gap-1 text-[10px] font-medium text-orange-500">
+              <span className="relative flex items-center justify-center">
+                <span className="absolute w-2 h-2 rounded-full bg-orange-400/60 animate-ping" />
+                <span className="relative w-1.5 h-1.5 rounded-full bg-orange-500" />
+              </span>
               Sintetizando…
             </span>
           )}
-          {state.done && !state.error && (
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-600 inline-block" />
+          {state.done && !state.error && state.content && (
+            <button onClick={handleCopy}
+              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
+              style={{ background: "white", border: "1px solid rgba(249,115,22,0.25)", color: copied ? "#f97316" : "#6b7280" }}>
+              {copied ? (
+                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
+              ) : (
+                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copiar</>
+              )}
+            </button>
           )}
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="h-px" style={{ background: "linear-gradient(90deg, rgba(124,58,237,0.3), rgba(59,130,246,0.2), transparent)" }} />
-
       {/* Content */}
-      <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap break-words min-h-[24px]">
-        {state.error ? (
-          <span className="text-red-400 text-xs flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 flex-shrink-0">
-              <circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" />
-            </svg>
-            {state.error}
-          </span>
-        ) : state.content ? (
-          state.content
-        ) : isCollecting ? (
-          <span className="text-slate-600 text-xs italic">
-            Analizando respuestas de {providers.length} modelos…
-          </span>
-        ) : (
-          <TypingDots color="#7c3aed" />
-        )}
+      <div className="px-4 py-4 text-[16px] text-gray-900 leading-[1.75] whitespace-pre-wrap break-words min-h-[48px]" style={{ fontFamily: "var(--font-lora), Georgia, serif", fontWeight: 400 }}>
+        {state.error
+          ? <span className="text-red-500 text-sm" style={{ fontFamily: "var(--font-inter), sans-serif" }}>{state.error}</span>
+          : state.content
+          ? <>
+              {state.content}
+              {isSynthesizing && <span className="stream-caret" style={{ background: "#f97316" }} />}
+            </>
+          : isCollecting
+          ? <div className="flex items-center gap-2 pt-1">
+              <div className="flex gap-1">
+                {providers.map((p, i) => (
+                  <span key={p} className="w-2 h-2 rounded-full typing-dot-glow"
+                    style={{ background: CFG[p].color, color: CFG[p].color, animationDelay: `${i * 0.12}s` }} />
+                ))}
+              </div>
+              <span className="text-gray-400 text-[13px] italic">Recogiendo {providers.length} respuestas…</span>
+            </div>
+          : <div className="pt-1"><TypingDots color="#f97316" /></div>}
       </div>
     </div>
   )
@@ -330,57 +540,48 @@ function FusionCard({
 
 // ─── Turn block ───────────────────────────────────────────────────────────────
 
-function TurnBlock({
-  turn,
-  activeProviders,
-  selectedModels,
-}: {
-  turn: ConversationTurn
-  activeProviders: Provider[]
-  selectedModels: Record<Provider, string>
+function TurnBlock({ turn, activeProviders, selectedModels }: {
+  turn: ConversationTurn; activeProviders: Provider[]; selectedModels: Record<Provider, string>
 }) {
   const cols = activeProviders.length
-  const grid =
-    cols === 1
-      ? "grid-cols-1 max-w-2xl"
-      : cols === 2
-      ? "grid-cols-1 sm:grid-cols-2"
-      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-
+  const grid = cols === 1 ? "grid-cols-1 max-w-2xl" : cols === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+  // Only animate turns created live (not loaded from localStorage on page init)
+  const isNewTurn = useMemo(() => {
+    if (turn.isFusion) return !turn.fusedResponse?.done
+    return Object.values(turn.responses).some((r) => r?.loading)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="space-y-4 w-full max-w-5xl mx-auto">
-      {/* User bubble */}
+    <div className={`space-y-4 w-full max-w-4xl mx-auto${isNewTurn ? " turn-enter" : ""}`}>
+      {/* User message */}
       <div className="flex justify-end">
-        <div
-          className="max-w-[72%] px-5 py-3 rounded-2xl rounded-tr-md text-sm text-white leading-relaxed shadow-lg"
-          style={{
-            background: "linear-gradient(135deg,rgba(124,58,237,0.9),rgba(59,130,246,0.85))",
-            boxShadow: "0 4px 24px rgba(124,58,237,0.25)",
-          }}
-        >
-          {turn.userMessage}
+        <div className="flex items-end gap-2.5 max-w-[78%]">
+          <div className={`px-4 py-3 rounded-2xl rounded-br-md text-[15px] text-white leading-relaxed break-words whitespace-pre-wrap transition-transform duration-200 hover:scale-[1.015]${isNewTurn ? " msg-enter" : ""}`}
+            style={{
+              background: "linear-gradient(135deg, #2a2b30 0%, #1a1b1f 50%, #0e0f12 100%)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}>
+            {turn.userMessage}
+          </div>
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 transition-transform duration-300 hover:scale-110 hover:rotate-6${isNewTurn ? " pop-in" : ""}`}
+            style={{
+              background: "linear-gradient(135deg, #1e1f24, #0a0b0d)",
+              color: "white",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </svg>
+          </div>
         </div>
       </div>
-
-      {/* Fusion mode: single card */}
-      {turn.isFusion && turn.fusedResponse && (
-        <FusionCard state={turn.fusedResponse} providers={activeProviders} />
-      )}
-
-      {/* Normal mode: response grid */}
+      {/* Responses */}
+      {turn.isFusion && turn.fusedResponse && <FusionCard state={turn.fusedResponse} providers={activeProviders} animate={isNewTurn} />}
       {!turn.isFusion && activeProviders.length > 0 && (
         <div className={`grid gap-3 ${grid}`}>
-          {activeProviders.map((p) => {
+          {activeProviders.map((p, idx) => {
             const state = turn.responses[p]
             if (!state) return null
-            return (
-              <ResponseCard
-                key={p}
-                provider={p}
-                state={state}
-                selectedModel={selectedModels[p]}
-              />
-            )
+            return <ResponseCard key={p} provider={p} state={state} selectedModel={selectedModels[p]} index={idx} animate={isNewTurn} />
           })}
         </div>
       )}
@@ -388,148 +589,176 @@ function TurnBlock({
   )
 }
 
-// ─── Custom select ────────────────────────────────────────────────────────────
+// ─── Empty state ──────────────────────────────────────────────────────────────
 
-function StyledSelect({
-  value,
-  onChange,
-  options,
-}: {
-  value: string
-  onChange: (v: string) => void
-  options: readonly { readonly id: string; readonly label: string }[]
+function EmptyState({ hasActive, onActivateDemo, onPromptClick }: {
+  hasActive: boolean; onActivateDemo: () => void; onPromptClick: (prompt: string) => void
 }) {
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none text-xs text-slate-400 rounded-lg px-3 py-2 pr-8 cursor-pointer focus:outline-none transition-colors"
-        style={{
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-        }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(124,58,237,0.4)")}
-        onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
-      >
-        {options.map((o) => (
-          <option key={o.id} value={o.id} style={{ background: "#0d0d2b" }}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
+    <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-12 text-center">
+      {/* Animated logo orb */}
+      <div className="relative orb-float">
+        {/* Orbital ring */}
+        <div className="absolute -inset-8 orb-ring pointer-events-none" aria-hidden>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_10px_3px_rgba(249,115,22,0.5)]" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-violet-400 shadow-[0_0_8px_2px_rgba(139,92,246,0.5)]" />
+          <div className="absolute top-1/2 right-0 -translate-y-1/2 w-1 h-1 rounded-full bg-blue-400 shadow-[0_0_8px_2px_rgba(59,130,246,0.5)]" />
+        </div>
+        {/* Glow blob */}
+        <div className="absolute -inset-3 rounded-[2rem] blur-2xl glow-pulse"
+          style={{ background: "conic-gradient(from 0deg, #f97316, #8b5cf6, #3b82f6, #10b981, #f97316)" }} />
+        <div className="relative w-16 h-16 rounded-3xl flex items-center justify-center"
+          style={{
+            background: "linear-gradient(135deg, #1e1f24, #0a0b0d)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)",
+          }}>
+          <svg viewBox="0 0 100 100" fill="none" className="w-10 h-10">
+            <path d="M 32 22 Q 18 26 18 40 Q 20 54 34 54 Q 48 52 46 38 Q 44 24 32 22 Z" fill="white" />
+            <path d="M 68 26 Q 56 28 54 40 Q 56 54 70 54 Q 84 52 82 38 Q 80 26 68 26 Z" fill="white" />
+            <path d="M 50 56 Q 36 58 36 72 Q 38 86 52 84 Q 66 82 64 68 Q 62 56 50 56 Z" fill="white" />
+          </svg>
+        </div>
       </div>
+
+      <div className="space-y-2 max-w-md heading-enter">
+        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+          {hasActive ? "¿Qué querés preguntar?" : "Conectá tu primera IA"}
+        </h2>
+        <p className="text-sm text-gray-500 leading-relaxed">
+          {hasActive
+            ? "Elegí una pregunta o escribí la tuya. Con más de un modelo activo, las respuestas se fusionan en una sola."
+            : "Seleccioná una IA en el botón inferior e ingresá tu API key, o probá el modo demo sin configurar nada."}
+        </p>
+      </div>
+
+      {/* Suggested prompts grid */}
+      {hasActive && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-2xl mt-2">
+          {SUGGESTED_PROMPTS.map((p, i) => (
+            <button key={i} onClick={() => onPromptClick(`${p.title}: `)}
+              className="group prompt-card flex items-center gap-3 px-4 py-3 rounded-2xl text-left cursor-pointer bg-white prompt-enter active:scale-[0.98]"
+              style={{ border: "1px solid rgba(0,0,0,0.08)", animationDelay: `${0.15 + i * 0.07}s` }}>
+              <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${p.from} ${p.to} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-105`}
+                style={{ boxShadow: "0 4px 12px -2px rgba(14,15,18,0.18), inset 0 1px 0 rgba(255,255,255,0.25)" }}>
+                {p.icon}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-gray-900">{p.title}</div>
+                <div className="text-[11px] text-gray-500 truncate">{p.subtitle}</div>
+              </div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-gray-300 group-hover:text-gray-600 group-hover:translate-x-1 transition-all duration-300">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!hasActive && (
+        <button onClick={onActivateDemo}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white text-sm cursor-pointer transition-all duration-200 hover:opacity-90 active:scale-95"
+          style={{ background: "#1e1f24", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          Probar en modo demo
+        </button>
+      )}
     </div>
   )
 }
 
-// ─── Sidebar provider card ────────────────────────────────────────────────────
+// ─── Model Dropdown ───────────────────────────────────────────────────────────
 
-function ProviderCard({
-  provider,
-  apiKey,
-  setApiKey,
-  isEnabled,
-  setEnabled,
-  selectedModel,
-  setModel,
-}: {
+function ModelDropdown({ provider, selectedModel, onSelect }: {
   provider: Provider
-  apiKey: string
-  setApiKey: (v: string) => void
-  isEnabled: boolean
-  setEnabled: (v: boolean) => void
   selectedModel: string
-  setModel: (v: string) => void
+  onSelect: (id: string) => void
 }) {
   const c = CFG[provider]
-  const hasKey = !!apiKey.trim()
-  const active = isEnabled && hasKey
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const current = c.models.find((m) => m.id === selectedModel)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
 
   return (
-    <div
-      className="rounded-2xl p-3.5 space-y-3 transition-all duration-300"
-      style={{
-        background: active ? c.colorBg : "rgba(255,255,255,0.02)",
-        border: `1px solid ${active ? c.colorBorder : "rgba(255,255,255,0.06)"}`,
-        boxShadow: active ? `0 4px 20px ${c.colorGlow}` : "none",
-      }}
-    >
-      {/* Header row */}
-      <div className="flex items-center gap-2.5">
-        <ModelAvatar provider={provider} size="sm" />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-white leading-none">{c.name}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">{c.label}</div>
-        </div>
-        {/* Toggle */}
-        <button
-          onClick={() => hasKey && setEnabled(!isEnabled)}
-          title={!hasKey ? "Ingresá tu API key primero" : isEnabled ? "Desactivar" : "Activar"}
-          className={`relative w-9 h-5 rounded-full transition-colors duration-300 focus:outline-none flex-shrink-0 ${
-            !hasKey ? "opacity-30 cursor-not-allowed" : "cursor-pointer"
-          }`}
-          style={{ background: active ? c.color : "rgba(255,255,255,0.1)" }}
-        >
-          <span
-            className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-300"
-            style={{ transform: active ? "translateX(16px)" : "translateX(0)" }}
-          />
-        </button>
-      </div>
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all duration-150"
+        style={{
+          background: open ? c.colorLight : "white",
+          border: open ? `1px solid ${c.colorBorder}` : "1px solid rgba(0,0,0,0.12)",
+          color: open ? c.color : "#374151",
+        }}
+      >
+        <span className="max-w-[100px] truncate">{current?.label ?? selectedModel}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ width: 10, height: 10, flexShrink: 0, transition: "transform 0.15s", transform: open ? "rotate(180deg)" : "none", color: open ? c.color : "#9ca3af" }}>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
 
-      {/* API key input */}
-      <div className="relative">
-        <input
-          type="password"
-          placeholder={`sk-... · API key de ${c.label}`}
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="w-full text-xs text-slate-300 rounded-lg px-3 py-2 placeholder-slate-600 focus:outline-none transition-all duration-200"
+      {open && (
+        <div
+          className="absolute right-0 bottom-full mb-1.5 z-50 rounded-xl overflow-hidden dropdown-enter"
           style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            minWidth: "160px",
+            background: "white",
+            border: "1px solid rgba(0,0,0,0.1)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)",
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = `${c.color}66`)}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-        />
-        {hasKey && (
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-            <span className={`w-1.5 h-1.5 rounded-full ${c.dot} inline-block`} />
+        >
+          <div className="px-2.5 pt-2 pb-1">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Modelo</span>
           </div>
-        )}
-      </div>
-
-      {/* Model picker */}
-      <StyledSelect
-        value={selectedModel}
-        onChange={setModel}
-        options={c.models}
-      />
+          <div className="pb-1.5">
+            {c.models.map((m) => {
+              const isSelected = m.id === selectedModel
+              return (
+                <button
+                  key={m.id}
+                  onMouseDown={(e) => { e.preventDefault(); onSelect(m.id); setOpen(false) }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 text-left cursor-pointer transition-colors duration-100 hover:bg-black/[0.04]"
+                  style={{ background: isSelected ? c.colorLight : undefined }}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ background: isSelected ? c.color : "transparent", border: isSelected ? "none" : "1.5px solid #d1d5db" }}
+                  />
+                  <span className="text-[12px] font-medium flex-1" style={{ color: isSelected ? c.color : "#111827" }}>
+                    {m.label}
+                  </span>
+                  {isSelected && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ width: 11, height: 11, color: c.color, flexShrink: 0 }}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// ─── AI Selector ──────────────────────────────────────────────────────────────
 
-function Sidebar({
-  open,
-  apiKeys,
-  setApiKeys,
-  enabled,
-  setEnabled,
-  selectedModels,
-  setSelectedModels,
-  onActivateDemo,
+function AIChipSelector({
+  apiKeys, setApiKeys, enabled, setEnabled, selectedModels, setSelectedModels, onActivateDemo,
 }: {
-  open: boolean
   apiKeys: Record<Provider, string>
   setApiKeys: (k: Record<Provider, string>) => void
   enabled: Record<Provider, boolean>
@@ -538,214 +767,546 @@ function Sidebar({
   setSelectedModels: (m: Record<Provider, string>) => void
   onActivateDemo: () => void
 }) {
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [expanded, setExpanded] = useState<Provider | null>(null)
+  const [draftKey, setDraftKey] = useState("")
+  const panelRef = useRef<HTMLDivElement>(null)
+  const isDemo = PROVIDERS.some((p) => apiKeys[p] === "demo")
+  const activeProviders = PROVIDERS.filter((p) => apiKeys[p].trim() && enabled[p])
+
+  useEffect(() => {
+    if (!panelOpen) return
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setPanelOpen(false); setExpanded(null); setDraftKey("")
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [panelOpen])
+
+  const handleToggle = (p: Provider) => setEnabled({ ...enabled, [p]: !enabled[p] })
+
+  const handleRowClick = (p: Provider) => {
+    if (expanded === p) { setExpanded(null); setDraftKey("") }
+    else { setExpanded(p); setDraftKey(apiKeys[p] === "demo" ? "" : apiKeys[p]) }
+  }
+
+  const handleSaveKey = (p: Provider) => {
+    if (draftKey.trim()) {
+      setApiKeys({ ...apiKeys, [p]: draftKey.trim() })
+      setEnabled({ ...enabled, [p]: true })
+    }
+    setExpanded(null)
+    setDraftKey("")
+  }
+
+  const handleRemoveKey = (p: Provider) => {
+    setApiKeys({ ...apiKeys, [p]: "" })
+    setEnabled({ ...enabled, [p]: false })
+    setExpanded(null)
+    setDraftKey("")
+  }
+
   return (
-    <aside
-      className="flex-shrink-0 overflow-y-auto overflow-x-hidden transition-all duration-300"
-      style={{
-        width: open ? "288px" : "0",
-        opacity: open ? 1 : 0,
-        borderRight: "1px solid rgba(255,255,255,0.05)",
-        background: "rgba(5,5,20,0.8)",
-        backdropFilter: "blur(16px)",
-      }}
-    >
-      <div className="p-4 space-y-3 w-72">
-        {/* Demo mode banner */}
-        {PROVIDERS.some((p) => apiKeys[p] === "demo") && (
-          <div
-            className="rounded-xl px-3 py-2.5 flex items-center gap-2.5"
-            style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.3)" }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse flex-shrink-0" />
-            <span className="text-[10px] text-purple-300 font-medium flex-1">Modo demo activo</span>
-            <button
-              onClick={() => setApiKeys({ openai: "", anthropic: "", google: "" })}
-              className="text-[10px] text-slate-500 hover:text-white transition-colors cursor-pointer underline underline-offset-2"
-            >
-              Salir
-            </button>
+    <div ref={panelRef} className="relative">
+      {/* Trigger */}
+      <button
+        onClick={() => { setPanelOpen(v => !v); if (panelOpen) { setExpanded(null); setDraftKey("") } }}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-all duration-150 select-none"
+        style={{
+          background: panelOpen ? "#1e1f24" : "rgba(0,0,0,0.05)",
+          border: panelOpen ? "1px solid #1e1f24" : "1px solid rgba(0,0,0,0.1)",
+          color: panelOpen ? "white" : "#374151",
+        }}
+      >
+        {activeProviders.length > 0 ? (
+          <div className="flex -space-x-1">
+            {activeProviders.slice(0, 4).map((p) => {
+              const Logo = CFG[p].Logo
+              return (
+                <div key={p} className="w-4 h-4 rounded-full flex items-center justify-center ring-1 ring-white"
+                  style={{ background: CFG[p].colorLight, color: CFG[p].color }}>
+                  <Logo size={9} />
+                </div>
+              )
+            })}
           </div>
+        ) : (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+            <circle cx="12" cy="12" r="3" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+          </svg>
         )}
+        <span>
+          {activeProviders.length > 0
+            ? `${activeProviders.length} IA${activeProviders.length > 1 ? "s" : ""} activa${activeProviders.length > 1 ? "s" : ""}`
+            : "Seleccionar IA"}
+        </span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ width: 10, height: 10, transition: "transform 0.15s", transform: panelOpen ? "rotate(180deg)" : "none" }}>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
 
-        {/* Section label */}
-        <div className="pt-1 pb-1 flex items-center justify-between">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Modelos · {PROVIDERS.filter((p) => enabled[p] && apiKeys[p]).length} activos
-          </p>
-          {!PROVIDERS.some((p) => apiKeys[p] === "demo") && !PROVIDERS.some((p) => apiKeys[p] && apiKeys[p] !== "demo") && (
-            <button
-              onClick={onActivateDemo}
-              className="text-[10px] text-purple-400 hover:text-purple-300 transition-colors cursor-pointer font-medium"
-            >
-              Modo demo
-            </button>
-          )}
-        </div>
+      {/* Panel */}
+      {panelOpen && (
+        <div className="absolute left-0 bottom-full mb-2 z-50 rounded-2xl overflow-hidden panel-enter"
+          style={{ width: "320px", background: "white", border: "1px solid rgba(0,0,0,0.1)", boxShadow: "0 -4px 6px -1px rgba(0,0,0,0.05), 0 -10px 32px rgba(0,0,0,0.12)" }}>
 
-        {PROVIDERS.map((p) => (
-          <ProviderCard
-            key={p}
-            provider={p}
-            apiKey={apiKeys[p]}
-            setApiKey={(v) => setApiKeys({ ...apiKeys, [p]: v })}
-            isEnabled={enabled[p]}
-            setEnabled={(v) => setEnabled({ ...enabled, [p]: v })}
-            selectedModel={selectedModels[p]}
-            setModel={(v) => setSelectedModels({ ...selectedModels, [p]: v })}
-          />
-        ))}
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+            <span className="text-sm font-semibold text-gray-900">Seleccionar IA</span>
+            {isDemo ? (
+              <span className="flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full"
+                style={{ color: "#f97316", background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+                Demo
+                <button onClick={() => setApiKeys({ openai: "", anthropic: "", google: "", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "" })}
+                  className="ml-0.5 hover:opacity-70 cursor-pointer text-gray-400" title="Salir del modo demo">×</button>
+              </span>
+            ) : (
+              <button onClick={() => { onActivateDemo(); setPanelOpen(false) }}
+                className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full cursor-pointer transition-colors"
+                style={{ color: "#f97316", background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.2)" }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 9, height: 9 }}>
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+                Modo demo
+              </button>
+            )}
+          </div>
 
-        {/* Privacy note */}
-        <div
-          className="rounded-xl px-3 py-2.5 flex gap-2.5 items-start mt-1"
-          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-slate-500 flex-shrink-0 mt-0.5">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          <p className="text-[10px] text-slate-600 leading-relaxed">
-            Keys nunca guardadas en servidor. Solo viajan en tus requests.
-          </p>
-        </div>
-      </div>
-    </aside>
-  )
-}
+          {/* List */}
+          <div className="overflow-y-auto" style={{ maxHeight: "360px" }}>
+            {PROVIDERS.map((p) => {
+              const c = CFG[p]
+              const hasKey = !!apiKeys[p].trim() && apiKeys[p] !== "demo"
+              const isDemoKey = apiKeys[p] === "demo"
+              const active = (hasKey || isDemoKey) && enabled[p]
+              const isExp = expanded === p
+              const currentModel = c.models.find(m => m.id === selectedModels[p])?.label ?? selectedModels[p]
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+              return (
+                <div key={p} style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                  {/* Row */}
+                  <div className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-black/[0.02]"
+                    onClick={() => handleRowClick(p)}>
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: active ? c.colorLight : "rgba(0,0,0,0.04)", border: `1px solid ${active ? c.colorBorder : "rgba(0,0,0,0.07)"}`, color: active ? c.color : "#9ca3af" }}>
+                      <c.Logo size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold" style={{ color: active ? "#111827" : "#374151" }}>{c.name}</div>
+                      <div className="text-[11px] truncate" style={{ color: active ? c.color : "#9ca3af" }}>
+                        {isDemoKey ? "Modo demo" : hasKey ? currentModel : "Sin API key · click para agregar"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      {(hasKey || isDemoKey) && (
+                        <button onClick={() => handleToggle(p)}
+                          className="w-8 h-4 rounded-full transition-colors duration-200 relative cursor-pointer flex-shrink-0"
+                          style={{ background: active ? c.color : "rgba(0,0,0,0.15)" }}>
+                          <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all duration-200"
+                            style={{ left: active ? "17px" : "2px" }} />
+                        </button>
+                      )}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                        style={{ width: 12, height: 12, color: "#9ca3af", transition: "transform 0.15s", transform: isExp ? "rotate(180deg)" : "none" }}>
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                  </div>
 
-function EmptyState({
-  hasActive,
-  onActivateDemo,
-}: {
-  hasActive: boolean
-  onActivateDemo: () => void
-}) {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-12">
-      {/* Decorative orb */}
-      <div className="relative">
-        <div
-          className="absolute rounded-full blur-2xl"
-          style={{ background: "radial-gradient(circle, rgba(124,58,237,0.3) 0%, transparent 70%)", width: "140px", height: "140px", left: "-20px", top: "-20px" }}
-        />
-        <div
-          className="relative w-20 h-20 rounded-2xl flex items-center justify-center"
-          style={{
-            background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(59,130,246,0.15))",
-            border: "1px solid rgba(124,58,237,0.3)",
-            boxShadow: "0 8px 32px rgba(124,58,237,0.2), inset 0 1px 0 rgba(255,255,255,0.08)",
-          }}
-        >
-          <svg viewBox="0 0 100 100" fill="none" className="w-10 h-10">
-            <path d="M 32 22 Q 18 26 18 40 Q 20 54 34 54 Q 48 52 46 38 Q 44 24 32 22 Z" fill="rgba(139,92,246,0.8)" />
-            <path d="M 68 26 Q 56 28 54 40 Q 56 54 70 54 Q 84 52 82 38 Q 80 26 68 26 Z" fill="rgba(59,130,246,0.8)" />
-            <path d="M 50 56 Q 36 58 36 72 Q 38 86 52 84 Q 66 82 64 68 Q 62 56 50 56 Z" fill="rgba(34,211,238,0.8)" />
-          </svg>
-        </div>
-      </div>
-
-      <div className="text-center space-y-2 max-w-sm">
-        <h2 className="text-xl font-bold text-white">
-          {hasActive ? "Empezá a chatear" : "¿Sin API keys por ahora?"}
-        </h2>
-        <p className="text-sm text-slate-500 leading-relaxed">
-          {hasActive
-            ? "Escribí un mensaje y todos los modelos activos van a responder en paralelo con contexto compartido."
-            : "Podés probar la interfaz completa con respuestas simuladas. Sin registro, sin tarjeta."}
-        </p>
-      </div>
-
-      {!hasActive && (
-        <div className="flex flex-col items-center gap-3">
-          {/* Demo button */}
-          <button
-            onClick={onActivateDemo}
-            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold text-white text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95"
-            style={{
-              background: "linear-gradient(135deg,#7c3aed,#3b82f6)",
-              boxShadow: "0 4px 24px rgba(124,58,237,0.4)",
-            }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-            Probar en modo demo
-          </button>
-          <p className="text-xs text-slate-600">Activa GPT · Claude · Gemini con respuestas simuladas</p>
-        </div>
-      )}
-
-      {hasActive && (
-        <div
-          className="flex items-center gap-2 px-4 py-2.5 rounded-full text-xs text-purple-300"
-          style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.25)" }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-          Enter para enviar · Shift+Enter nueva línea
+                  {/* Expanded config */}
+                  {isExp && (
+                    <div className="px-4 pb-3 pt-1 flex flex-col gap-2" style={{ background: c.colorLight }}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="password"
+                          placeholder={`API key de ${c.label}…`}
+                          value={draftKey}
+                          onChange={(e) => setDraftKey(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSaveKey(p) }}
+                          className="flex-1 text-xs rounded-lg px-3 py-2 focus:outline-none text-gray-900 placeholder-gray-400 min-w-0 bg-white"
+                          style={{ border: `1px solid ${c.colorBorder}` }}
+                          autoComplete="off" spellCheck={false} autoFocus
+                        />
+                        <button onClick={() => handleSaveKey(p)} disabled={!draftKey.trim()}
+                          className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer disabled:opacity-30 hover:opacity-85 flex-shrink-0"
+                          style={{ background: c.color }} title="Guardar">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </button>
+                        {hasKey && (
+                          <button onClick={() => handleRemoveKey(p)}
+                            className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-red-50 flex-shrink-0 bg-white"
+                            style={{ border: "1px solid rgba(0,0,0,0.09)" }} title="Eliminar key">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, color: "#ef4444" }}>
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-medium text-gray-500">Modelo:</span>
+                        <ModelDropdown provider={p} selectedModel={selectedModels[p]}
+                          onSelect={(id) => setSelectedModels({ ...selectedModels, [p]: id })} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
+// ─── History Item ─────────────────────────────────────────────────────────────
+
+function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
+  session: ChatSession; active: boolean; onSelect: () => void; onDelete: () => void; delay?: number
+}) {
+  return (
+    <div
+      className="group flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all duration-150 relative history-item-enter"
+      style={{
+        background: active ? "#ffffff" : "transparent",
+        boxShadow: active ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+        border: active ? "1px solid rgba(0,0,0,0.06)" : "1px solid transparent",
+        animationDelay: `${delay}ms`,
+      }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "rgba(0,0,0,0.03)" }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent" }}
+      onClick={onSelect}
+    >
+      {/* Active indicator bar */}
+      {active && <span className="history-active-bar absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full" />}
+
+      <span className="flex-1 text-[12.5px] truncate min-w-0 font-medium"
+        style={{ color: active ? "#111827" : "#4b5563" }}>
+        {session.title}
+      </span>
+      <span className="text-[10px] flex-shrink-0 group-hover:hidden tabular-nums" style={{ color: active ? "#9ca3af" : "#b8b8b8" }}>
+        {formatRelativeTime(session.updatedAt)}
+      </span>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete() }}
+        className="hidden group-hover:flex w-5 h-5 flex-shrink-0 items-center justify-center rounded-md transition-colors hover:bg-red-50 cursor-pointer"
+        style={{ color: "#9ca3af" }}
+        title="Eliminar"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 hover:text-red-500">
+          <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+// ─── Sidebar (history only, light theme) ─────────────────────────────────────
+
+function Sidebar({
+  open, sessions, activeSessionId, onSelectSession, onDeleteSession, onNewSession,
+}: {
+  open: boolean
+  sessions: ChatSession[]
+  activeSessionId: string | null
+  onSelectSession: (id: string) => void
+  onDeleteSession: (id: string) => void
+  onNewSession: () => void
+}) {
+  return (
+    <aside
+      className="flex-shrink-0 overflow-hidden transition-all duration-300"
+      style={{
+        width: open ? "240px" : "0",
+        opacity: open ? 1 : 0,
+        background: "#f5f5f4",
+        borderRight: "1px solid rgba(0,0,0,0.07)",
+      }}
+    >
+      <div className="flex flex-col h-full w-[240px]">
+
+        {/* New chat button */}
+        <div className="p-3 flex-shrink-0">
+          <button
+            onClick={onNewSession}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer transition-all hover:shadow-sm"
+            style={{ background: "#ffffff", color: "#374151", border: "1px solid rgba(0,0,0,0.09)" }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Nueva conversación
+          </button>
+        </div>
+
+        {/* History grouped by date */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-3">
+          {sessions.length === 0 && (
+            <div className="px-3 py-10 text-center flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-400">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <p className="text-[11px] text-gray-500 leading-relaxed">Sin conversaciones aún.<br />Empezá a chatear para verlas acá.</p>
+            </div>
+          )}
+          {groupSessionsByDate(sessions).map((group) => (
+            <div key={group.label} className="mt-2 first:mt-1">
+              <div className="px-2 pb-1 pt-1.5">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                  {group.label}
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                {group.sessions.map((s) => (
+                  <HistoryItem
+                    key={s.id}
+                    session={s}
+                    active={s.id === activeSessionId}
+                    onSelect={() => onSelectSession(s.id)}
+                    onDelete={() => onDeleteSession(s.id)}
+                    delay={sessions.indexOf(s) * 35}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+// ─── Slash commands ───────────────────────────────────────────────────────────
+
+const SLASH_COMMANDS = [
+  { id: "clear",   label: "/clear",   desc: "Borrar conversación actual" },
+  { id: "new",     label: "/new",     desc: "Nueva conversación" },
+  { id: "fusion",  label: "/fusion",  desc: "Activar todos los modelos con key" },
+  { id: "solo",    label: "/solo",    desc: "Usar solo el primer modelo activo" },
+  { id: "models",  label: "/models",  desc: "Ver modelos activos" },
+  { id: "sidebar", label: "/sidebar", desc: "Abrir/cerrar sidebar" },
+  { id: "retry",   label: "/retry",   desc: "Reenviar último mensaje" },
+  { id: "copy",    label: "/copy",    desc: "Copiar última respuesta" },
+  { id: "demo",    label: "/demo",    desc: "Activar modo demo" },
+  { id: "help",    label: "/help",    desc: "Ver todos los comandos" },
+]
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
-  const [turns, setTurns] = useState<ConversationTurn[]>([])
+  const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const activeSessionIdRef = useRef<string | null>(null)
+  const sessionsRef = useRef<ChatSession[]>([])
+  const [turns, setTurnsState] = useState<ConversationTurn[]>([])
+  const persistingRef = useRef<Set<string>>(new Set())
+  const { data: session } = useSession()
+
   const [input, setInput] = useState("")
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
-  const [fusionMode, setFusionMode] = useState(false)
+  const [cmdIndex, setCmdIndex] = useState(0)
+  const [toast, setToast] = useState("")
+  const [toastHiding, setToastHiding] = useState(false)
+  const [toastKey, setToastKey] = useState(0)
+  const [sendKey, setSendKey] = useState(0)
+  const [inputFocused, setInputFocused] = useState(false)
 
   const [apiKeys, setApiKeysRaw] = useState<Record<Provider, string>>({
-    openai: "",
-    anthropic: "",
-    google: "",
+    openai: "", anthropic: "", google: "", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "",
   })
   const [enabled, setEnabledRaw] = useState<Record<Provider, boolean>>({
-    openai: true,
-    anthropic: true,
-    google: true,
+    openai: true, anthropic: true, google: true, groq: true, openrouter: true, xai: true, mistral: true, deepseek: true,
   })
   const [selectedModels, setSelectedModelsRaw] = useState<Record<Provider, string>>({
     openai: "gpt-4o",
     anthropic: "claude-3-5-sonnet-20241022",
-    google: "gemini-1.5-flash",
+    google: "gemini-2.0-flash",
+    groq: "llama-3.3-70b-versatile",
+    openrouter: "nvidia/nemotron-3-super-120b-a12b:free",
+    xai: "grok-3",
+    mistral: "mistral-large-latest",
+    deepseek: "deepseek-chat",
   })
+  const selectedModelsRef = useRef(selectedModels)
+  useEffect(() => { selectedModelsRef.current = selectedModels }, [selectedModels])
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  useEffect(() => { activeSessionIdRef.current = activeSessionId }, [activeSessionId])
+  useEffect(() => { sessionsRef.current = sessions }, [sessions])
+
+  const loadTurnsForSession = useCallback(async (sessionId: string) => {
+    try {
+      const dbTurns = await fetch(`/api/sessions/${sessionId}/turns`).then((r) => r.json())
+      const mapped: ConversationTurn[] = dbTurns.map(fromDbTurn)
+      mapped.forEach((t) => persistingRef.current.add(t.id))
+      setTurnsState(mapped)
+    } catch {
+      setTurnsState([])
+    }
+  }, [])
+
+  // Init: load sessions from DB, preferences from localStorage
   useEffect(() => {
+    if (!session?.user?.id) return
     try {
       const k = localStorage.getItem("oc_keys")
-      if (k) setApiKeysRaw(JSON.parse(k))
+      if (k) setApiKeysRaw({ openai: "", anthropic: "", google: "", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "", ...JSON.parse(k) })
       const e = localStorage.getItem("oc_enabled")
-      if (e) setEnabledRaw(JSON.parse(e))
+      if (e) setEnabledRaw({ openai: true, anthropic: true, google: true, groq: true, openrouter: true, xai: true, mistral: true, deepseek: true, ...JSON.parse(e) })
       const m = localStorage.getItem("oc_models")
-      if (m) setSelectedModelsRaw(JSON.parse(m))
+      if (m) {
+        const parsed = JSON.parse(m)
+        if (parsed.google === "gemini-1.5-flash") parsed.google = "gemini-2.0-flash"
+        setSelectedModelsRaw({ openai: "gpt-4o", anthropic: "claude-3-5-sonnet-20241022", google: "gemini-2.0-flash", groq: "llama-3.3-70b-versatile", openrouter: "nvidia/nemotron-3-super-120b-a12b:free", xai: "grok-3", mistral: "mistral-large-latest", deepseek: "deepseek-chat", ...parsed })
+        localStorage.setItem("oc_models", JSON.stringify(parsed))
+      }
     } catch {}
-  }, [])
+
+    fetch(`/api/sessions`)
+      .then((r) => r.json())
+      .then(async (data: ChatSession[]) => {
+        setSessions(data)
+        sessionsRef.current = data
+        if (data.length > 0) {
+          setActiveSessionId(data[0].id)
+          activeSessionIdRef.current = data[0].id
+          await loadTurnsForSession(data[0].id)
+        }
+      })
+      .catch(() => {})
+  }, [session?.user?.id, loadTurnsForSession])
+
+  // Persist completed turns to DB
+  useEffect(() => {
+    const sid = activeSessionIdRef.current
+    if (!sid) return
+    turns.forEach((turn, idx) => {
+      if (persistingRef.current.has(turn.id)) return
+      const allDone = turn.isFusion
+        ? (turn.fusedResponse?.done === true)
+        : Object.values(turn.responses).length > 0 &&
+          Object.values(turn.responses).every((r) => r?.done === true)
+      if (!allDone) return
+      persistingRef.current.add(turn.id)
+      const sm = selectedModelsRef.current
+      const enrichedResponses = Object.fromEntries(
+        (Object.keys(turn.responses) as Provider[]).map((p) => [
+          p,
+          { ...turn.responses[p], model: sm[p] ?? "" },
+        ])
+      )
+      fetch(`/api/sessions/${sid}/turns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turn: { ...turn, responses: enrichedResponses }, position: idx }),
+      })
+        .then(() => {
+          if (idx === 0) {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === sid ? { ...s, title: turn.userMessage.slice(0, 50), updatedAt: Date.now() } : s
+              )
+            )
+          }
+        })
+        .catch(() => { persistingRef.current.delete(turn.id) })
+    })
+  }, [turns])
 
   const setApiKeys = useCallback((k: Record<Provider, string>) => {
-    setApiKeysRaw(k)
-    localStorage.setItem("oc_keys", JSON.stringify(k))
+    setApiKeysRaw(k); localStorage.setItem("oc_keys", JSON.stringify(k))
   }, [])
   const setEnabled = useCallback((e: Record<Provider, boolean>) => {
-    setEnabledRaw(e)
-    localStorage.setItem("oc_enabled", JSON.stringify(e))
+    setEnabledRaw(e); localStorage.setItem("oc_enabled", JSON.stringify(e))
   }, [])
   const setSelectedModels = useCallback((m: Record<Provider, string>) => {
-    setSelectedModelsRaw(m)
-    localStorage.setItem("oc_models", JSON.stringify(m))
+    setSelectedModelsRaw(m); localStorage.setItem("oc_models", JSON.stringify(m))
   }, [])
+
+  const setTurns = useCallback((updater: ConversationTurn[] | ((prev: ConversationTurn[]) => ConversationTurn[])) => {
+    setTurnsState((prev) => typeof updater === "function" ? updater(prev) : updater)
+  }, [])
+
+  const ensureActiveSession = useCallback(async (): Promise<string> => {
+    const existingId = activeSessionIdRef.current
+    if (existingId && sessionsRef.current.some((s) => s.id === existingId)) return existingId
+    const res = await fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Nueva conversación" }),
+    })
+    const newSession: ChatSession = await res.json()
+    activeSessionIdRef.current = newSession.id
+    setActiveSessionId(newSession.id)
+    setSessions((prev) => {
+      const updated = [newSession, ...prev]
+      sessionsRef.current = updated
+      return updated
+    })
+    return newSession.id
+  }, [])
+
+  const handleNewSession = useCallback(async () => {
+    const res = await fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Nueva conversación" }),
+    })
+    const newSession: ChatSession = await res.json()
+    setSessions((prev) => {
+      const updated = [newSession, ...prev]
+      sessionsRef.current = updated
+      return updated
+    })
+    setActiveSessionId(newSession.id)
+    activeSessionIdRef.current = newSession.id
+    setTurnsState([])
+    setInput("")
+    textareaRef.current?.focus()
+  }, [])
+
+  const handleSelectSession = useCallback(async (id: string) => {
+    setActiveSessionId(id)
+    activeSessionIdRef.current = id
+    await loadTurnsForSession(id)
+    textareaRef.current?.focus()
+  }, [loadTurnsForSession])
+
+  const handleDeleteSession = useCallback(async (id: string) => {
+    await fetch(`/api/sessions/${id}`, { method: "DELETE" }).catch(() => {})
+    setSessions((prev) => {
+      const updated = prev.filter((s) => s.id !== id)
+      sessionsRef.current = updated
+      if (activeSessionIdRef.current === id) {
+        const nextId = updated[0]?.id ?? null
+        setActiveSessionId(nextId)
+        activeSessionIdRef.current = nextId
+        if (nextId) loadTurnsForSession(nextId)
+        else setTurnsState([])
+      }
+      return updated
+    })
+  }, [loadTurnsForSession])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [turns])
 
   const activeProviders = PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim())
+  const fusionMode = activeProviders.length > 1
 
   const streamProvider = useCallback(
     async (provider: Provider, messages: { role: string; content: string }[], turnId: string) => {
@@ -753,62 +1314,39 @@ export default function ChatPage() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages,
-            provider,
-            apiKey: apiKeys[provider],
-            model: selectedModels[provider],
-          }),
+          body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: selectedModels[provider] }),
         })
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
-
         const reader = res.body.getReader()
         const dec = new TextDecoder()
-
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           const chunk = dec.decode(value)
-          setTurns((prev) =>
-            prev.map((t) =>
-              t.id === turnId
-                ? {
-                    ...t,
-                    responses: {
-                      ...t.responses,
-                      [provider]: {
-                        ...t.responses[provider]!,
-                        content: (t.responses[provider]?.content ?? "") + chunk,
-                      },
-                    },
-                  }
-                : t
-            )
-          )
-        }
-
-        setTurns((prev) =>
-          prev.map((t) =>
+          setTurns((prev) => prev.map((t) =>
             t.id === turnId
-              ? { ...t, responses: { ...t.responses, [provider]: { ...t.responses[provider]!, loading: false, done: true } } }
+              ? { ...t, responses: { ...t.responses, [provider]: { ...t.responses[provider]!, content: (t.responses[provider]?.content ?? "") + chunk } } }
               : t
-          )
-        )
+          ))
+        }
+        setTurns((prev) => prev.map((t) => {
+          if (t.id !== turnId) return t
+          const raw = t.responses[provider]?.content ?? ""
+          const cleaned = raw.replace(/^\s*\[[\w\s\-.]+\]:\s*/i, "")
+          return { ...t, responses: { ...t.responses, [provider]: { ...t.responses[provider]!, content: cleaned, loading: false, done: true } } }
+        }))
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Error desconocido"
-        setTurns((prev) =>
-          prev.map((t) =>
-            t.id === turnId
-              ? { ...t, responses: { ...t.responses, [provider]: { content: "", loading: false, done: true, error: msg } } }
-              : t
-          )
-        )
+        setTurns((prev) => prev.map((t) =>
+          t.id === turnId
+            ? { ...t, responses: { ...t.responses, [provider]: { content: "", loading: false, done: true, error: msg } } }
+            : t
+        ))
       }
     },
-    [apiKeys, selectedModels]
+    [apiKeys, selectedModels, setTurns]
   )
 
-  // Collect full response without streaming to UI (used in fusion mode)
   const collectFull = useCallback(async (provider: Provider, messages: { role: string; content: string }[]): Promise<string> => {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -827,7 +1365,6 @@ export default function ChatPage() {
     return text
   }, [apiKeys, selectedModels])
 
-  // Stream synthesis into fusedResponse
   const streamFusion = useCallback(async (provider: Provider, messages: { role: string; content: string }[], turnId: string) => {
     try {
       const res = await fetch("/api/chat", {
@@ -838,84 +1375,126 @@ export default function ChatPage() {
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
       const reader = res.body.getReader()
       const dec = new TextDecoder()
-      // Switch phase to synthesizing
       setTurns((prev) => prev.map((t) => t.id === turnId ? { ...t, fusedResponse: { ...t.fusedResponse!, phase: "synthesizing" } } : t))
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         const chunk = dec.decode(value)
-        setTurns((prev) => prev.map((t) => t.id === turnId
-          ? { ...t, fusedResponse: { ...t.fusedResponse!, content: (t.fusedResponse?.content ?? "") + chunk } }
-          : t
+        setTurns((prev) => prev.map((t) =>
+          t.id === turnId ? { ...t, fusedResponse: { ...t.fusedResponse!, content: (t.fusedResponse?.content ?? "") + chunk } } : t
         ))
       }
-      setTurns((prev) => prev.map((t) => t.id === turnId
-        ? { ...t, fusedResponse: { ...t.fusedResponse!, loading: false, done: true } }
-        : t
+      setTurns((prev) => prev.map((t) =>
+        t.id === turnId ? { ...t, fusedResponse: { ...t.fusedResponse!, loading: false, done: true } } : t
       ))
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error"
-      setTurns((prev) => prev.map((t) => t.id === turnId
-        ? { ...t, fusedResponse: { content: "", loading: false, done: true, error: msg } }
-        : t
+      setTurns((prev) => prev.map((t) =>
+        t.id === turnId ? { ...t, fusedResponse: { content: "", loading: false, done: true, error: msg } } : t
       ))
     }
-  }, [apiKeys, selectedModels])
+  }, [apiKeys, selectedModels, setTurns])
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg); setToastHiding(false); setToastKey((k) => k + 1)
+    setTimeout(() => setToastHiding(true), 1800)
+    setTimeout(() => setToast(""), 2000)
+  }, [])
+
+  const execCommand = useCallback((id: string) => {
+    setInput("")
+    if (id === "clear") {
+      setTurns([]); textareaRef.current?.focus()
+    } else if (id === "new") {
+      handleNewSession()
+    } else if (id === "sidebar") {
+      setSidebarOpen((v) => !v); textareaRef.current?.focus()
+    } else if (id === "fusion") {
+      const withKeys = PROVIDERS.filter((p) => apiKeys[p] && apiKeys[p] !== "demo")
+      if (withKeys.length === 0) {
+        setTurns((prev) => [...prev, { id: crypto.randomUUID(), userMessage: "/fusion", responses: { openai: { content: "No hay modelos con API key configurada.", loading: false, done: true } } }])
+      } else {
+        const next = Object.fromEntries(PROVIDERS.map((p) => [p, withKeys.includes(p)])) as Record<Provider, boolean>
+        setEnabled(next)
+        showToast(`Fusión activa — ${withKeys.map((p) => CFG[p].name).join(", ")}`)
+      }
+      textareaRef.current?.focus()
+    } else if (id === "solo") {
+      const active = PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim())
+      if (active.length > 0) {
+        const next = Object.fromEntries(PROVIDERS.map((p) => [p, p === active[0]])) as Record<Provider, boolean>
+        setEnabled(next)
+        showToast(`Solo ${CFG[active[0]].name} activo`)
+      }
+      textareaRef.current?.focus()
+    } else if (id === "retry") {
+      const last = [...turns].reverse().find((t) => t.userMessage && !t.userMessage.startsWith("/"))
+      if (last) setInput(last.userMessage)
+      textareaRef.current?.focus()
+    } else if (id === "copy") {
+      const last = [...turns].reverse().find((t) => !t.userMessage.startsWith("/"))
+      if (last) {
+        const text = last.isFusion
+          ? (last.fusedResponse?.content ?? "")
+          : (Object.entries(last.responses) as [Provider, ModelResponseState | undefined][])
+              .map(([p, r]) => r?.content ? `[${CFG[p].name}]:\n${r.content}` : null)
+              .filter((x): x is string => x !== null)
+              .join("\n\n---\n\n")
+        navigator.clipboard.writeText(text).then(() => showToast("Copiado al portapapeles")).catch(() => {})
+      }
+      textareaRef.current?.focus()
+    } else if (id === "demo") {
+      setApiKeys({ openai: "demo", anthropic: "demo", google: "demo", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "" })
+      setEnabled({ openai: true, anthropic: true, google: true, groq: false, openrouter: false, xai: false, mistral: false, deepseek: false })
+      textareaRef.current?.focus()
+    } else if (id === "models") {
+      const active = PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim())
+      const msg = active.length > 0 ? `Modelos activos: ${active.map((p) => CFG[p].name).join(", ")}` : "No hay modelos activos."
+      setTurns((prev) => [...prev, { id: crypto.randomUUID(), userMessage: "/models", responses: { openai: { content: msg, loading: false, done: true } } }])
+    } else if (id === "help") {
+      const msg = SLASH_COMMANDS.map((c) => `${c.label} — ${c.desc}`).join("\n")
+      setTurns((prev) => [...prev, { id: crypto.randomUUID(), userMessage: "/help", responses: { openai: { content: msg, loading: false, done: true } } }])
+    }
+  }, [setApiKeys, setEnabled, enabled, apiKeys, turns, handleNewSession, showToast, setTurns])
 
   const handleSend = useCallback(async () => {
     const msg = input.trim()
-    if (!msg || isLoading || activeProviders.length === 0) return
+    if (!msg) return
+    const matchedCmd = SLASH_COMMANDS.find((c) => c.label === msg)
+    if (matchedCmd) { execCommand(matchedCmd.id); return }
+    if (isLoading || activeProviders.length === 0) return
 
+    await ensureActiveSession()
     setInput("")
     if (textareaRef.current) textareaRef.current.style.height = "auto"
     setIsLoading(true)
+    setSendKey((k) => k + 1)
 
     const turnId = crypto.randomUUID()
     const currentTurns = turns
-    const sharedHistory = buildSharedHistory(currentTurns, activeProviders, msg)
 
     if (fusionMode) {
-      // ── Fusion mode: collect all → synthesize → stream one response ──
       setTurns((prev) => [...prev, {
-        id: turnId,
-        userMessage: msg,
-        responses: {},
-        isFusion: true,
+        id: turnId, userMessage: msg, responses: {}, isFusion: true,
         fusedResponse: { content: "", loading: true, done: false, phase: "collecting" },
       }])
-
-      // Collect all model responses in parallel (silent, no UI streaming)
-      const results = await Promise.allSettled(
-        activeProviders.map((p) => collectFull(p, sharedHistory))
-      )
-
-      // Build synthesis prompt
+      const results = await Promise.allSettled(activeProviders.map((p) => collectFull(p, buildSharedHistory(currentTurns, activeProviders, msg, p))))
       const parts = activeProviders
         .map((p, i) => {
           const r = results[i]
-          if (r.status === "fulfilled" && r.value.trim()) {
-            return `[${CFG[p].name}]:\n${r.value.trim()}`
-          }
+          if (r.status === "fulfilled" && r.value.trim()) return `[${CFG[p].name}]:\n${r.value.trim()}`
           return null
         })
         .filter((x): x is string => x !== null)
-
       if (parts.length === 0) {
-        setTurns((prev) => prev.map((t) => t.id === turnId
-          ? { ...t, fusedResponse: { content: "", loading: false, done: true, error: "Ningún modelo respondió" } }
-          : t
-        ))
+        setTurns((prev) => prev.map((t) => t.id === turnId ? { ...t, fusedResponse: { content: "", loading: false, done: true, error: "Ningún modelo respondió" } } : t))
         setIsLoading(false)
         return
       }
-
       const synthesisMsg =
         `A continuación están las respuestas de distintos modelos de IA a la pregunta del usuario: "${msg}"\n\n` +
         parts.join("\n\n---\n\n") +
-        `\n\nSintetizá estas respuestas en UNA SOLA respuesta unificada, clara y completa. ` +
-        `Tomá los mejores insights de cada modelo, eliminá redundancias y presentá la información de forma coherente. ` +
-        `Respondé directamente y naturalmente, sin mencionar que estás sintetizando ni referenciar los modelos por nombre.`
-
+        `\n\nSintetizá estas respuestas en UNA SOLA respuesta unificada, clara y completa. Tomá los mejores insights de cada modelo, eliminá redundancias y presentá la información de forma coherente. Respondé directamente y naturalmente, sin mencionar que estás sintetizando ni referenciar los modelos por nombre.`
       const synthProvider = activeProviders[0]
       const synthHistory = [
         ...currentTurns.flatMap((t): { role: string; content: string }[] => {
@@ -925,149 +1504,107 @@ export default function ChatPage() {
         }),
         { role: "user", content: synthesisMsg },
       ]
-
       await streamFusion(synthProvider, synthHistory, turnId)
-
     } else {
-      // ── Normal mode: all models respond in parallel ──
       const initialResponses: Partial<Record<Provider, ModelResponseState>> = {}
       activeProviders.forEach((p) => { initialResponses[p] = { content: "", loading: true, done: false } })
       setTurns((prev) => [...prev, { id: turnId, userMessage: msg, responses: initialResponses }])
-      await Promise.all(activeProviders.map((p) => streamProvider(p, sharedHistory, turnId)))
+      await Promise.all(activeProviders.map((p) => streamProvider(p, buildSharedHistory(currentTurns, activeProviders, msg, p), turnId)))
     }
 
     setIsLoading(false)
     textareaRef.current?.focus()
-  }, [input, isLoading, fusionMode, activeProviders, turns, streamProvider, collectFull, streamFusion])
+  }, [input, isLoading, activeProviders, turns, fusionMode, streamProvider, collectFull, streamFusion, execCommand, ensureActiveSession, setTurns])
+
+  const filteredCmds = input.startsWith("/")
+    ? SLASH_COMMANDS.filter((c) => c.label.startsWith(input.toLowerCase().split(" ")[0]))
+    : []
+  const showCmdPalette = filteredCmds.length > 0 && !input.includes(" ")
 
   const handleKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+    if (showCmdPalette) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setCmdIndex((i) => (i + 1) % filteredCmds.length) }
+      if (e.key === "ArrowUp") { e.preventDefault(); setCmdIndex((i) => (i - 1 + filteredCmds.length) % filteredCmds.length) }
+      if (e.key === "Tab") { e.preventDefault(); setInput(filteredCmds[cmdIndex]?.label ?? input); return }
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); execCommand(filteredCmds[cmdIndex]?.id ?? ""); return }
+      if (e.key === "Escape") { setInput(""); return }
     }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
   const activeCount = activeProviders.length
 
   const activateDemo = useCallback(() => {
-    const demoKeys: Record<Provider, string> = { openai: "demo", anthropic: "demo", google: "demo" }
-    const demoEnabled: Record<Provider, boolean> = { openai: true, anthropic: true, google: true }
-    setApiKeys(demoKeys)
-    setEnabled(demoEnabled)
+    setApiKeys({ openai: "demo", anthropic: "demo", google: "demo", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "" })
+    setEnabled({ openai: true, anthropic: true, google: true, groq: false, openrouter: false, xai: false, mistral: false, deepseek: false })
   }, [setApiKeys, setEnabled])
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: "#07071a" }}>
+    <div className="flex flex-col h-screen overflow-hidden bg-white">
 
-      {/* ── Topbar ─────────────────────────────────────────────────────── */}
+      {/* ── Topbar ────────────────────────────────────────────────────── */}
       <header
-        className="flex items-center gap-3 px-4 h-14 flex-shrink-0 z-10"
-        style={{
-          background: "rgba(7,7,26,0.85)",
-          backdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
+        className="flex items-center gap-3 px-4 h-14 flex-shrink-0 z-20"
+        style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}
       >
-        {/* Sidebar toggle */}
         <button
           onClick={() => setSidebarOpen((v) => !v)}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-all cursor-pointer hover:bg-white/5"
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:bg-black/[0.05] active:scale-95"
+          style={{ color: "#6b7280" }}
           title="Panel lateral"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4.5 h-4.5">
-            <rect x="3" y="3" width="18" height="18" rx="2.5" />
-            <path d="M9 3v18" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" />
           </svg>
         </button>
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group cursor-pointer">
-          <svg viewBox="0 0 100 100" fill="none" className="w-7 h-7 group-hover:opacity-80 transition-opacity">
-            <path d="M 32 22 Q 18 26 18 40 Q 20 54 34 54 Q 48 52 46 38 Q 44 24 32 22 Z" fill="white" />
-            <path d="M 68 26 Q 56 28 54 40 Q 56 54 70 54 Q 84 52 82 38 Q 80 26 68 26 Z" fill="white" />
-            <path d="M 50 56 Q 36 58 36 72 Q 38 86 52 84 Q 66 82 64 68 Q 62 56 50 56 Z" fill="white" />
-          </svg>
-          <span className="text-sm font-semibold text-slate-300 group-hover:text-white transition-colors">OneChat</span>
+        <Link href="/" className="flex items-center group cursor-pointer">
+          <Image src="/OneChater-35-blobs/svg/horizontal-light.svg" alt="OneChat" height={48} width={180}
+            className="h-9 w-auto opacity-90 group-hover:opacity-100 transition-opacity" priority />
         </Link>
 
-        <div className="w-px h-4 bg-white/10 mx-1" />
+        <div className="flex-1" />
 
-        {/* Active model chips */}
-        <div className="flex items-center gap-1.5 flex-1 overflow-hidden">
-          {activeCount > 0 ? (
-            PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim()).map((p) => {
-              const c = CFG[p]
-              return (
-                <span
-                  key={p}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border flex-shrink-0"
-                  style={{ background: c.colorBg, borderColor: c.colorBorder, color: "#e2e8f0" }}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
-                  {c.name}
-                </span>
-              )
-            })
-          ) : (
-            <span className="text-xs text-slate-600 italic">Sin modelos activos</span>
-          )}
-
-          {/* Shared context badge */}
-          {activeCount > 1 && (
-            <span
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ml-1 flex-shrink-0"
-              style={{ background: "rgba(124,58,237,0.1)", borderColor: "rgba(124,58,237,0.3)", color: "#a78bfa" }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-              Contexto compartido
+        {activeCount > 1 && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide"
+            style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.12), rgba(234,88,12,0.08))", border: "1px solid rgba(249,115,22,0.25)", color: "#c2410c" }}>
+            <span className="relative flex items-center justify-center">
+              <span className="absolute w-2 h-2 rounded-full bg-orange-400 animate-ping opacity-60" />
+              <span className="relative w-1.5 h-1.5 rounded-full bg-orange-500" />
             </span>
-          )}
-        </div>
+            FUSIÓN · {activeCount}
+          </span>
+        )}
 
-        {/* New chat */}
-        <button
-          onClick={() => { setTurns([]); setInput(""); textareaRef.current?.focus() }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white border transition-all cursor-pointer hover:bg-white/5"
-          style={{ borderColor: "rgba(255,255,255,0.08)" }}
-        >
+        <button onClick={handleNewSession}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
+          style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Nuevo chat
+          Nuevo
         </button>
       </header>
 
-      {/* ── Body ───────────────────────────────────────────────────────── */}
+      {/* ── Body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Sidebar */}
         <Sidebar
           open={sidebarOpen}
-          apiKeys={apiKeys}
-          setApiKeys={setApiKeys}
-          enabled={enabled}
-          setEnabled={setEnabled}
-          selectedModels={selectedModels}
-          setSelectedModels={setSelectedModels}
-          onActivateDemo={activateDemo}
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
+          onNewSession={handleNewSession}
         />
 
-        {/* Main column */}
-        <div className="flex flex-col flex-1 overflow-hidden relative">
-
-          {/* Background orbs */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute w-96 h-96 rounded-full blur-3xl opacity-5 -top-24 -right-24" style={{ background: "radial-gradient(circle, #7c3aed, transparent)" }} />
-            <div className="absolute w-80 h-80 rounded-full blur-3xl opacity-5 bottom-32 -left-24" style={{ background: "radial-gradient(circle, #3b82f6, transparent)" }} />
-          </div>
+        <div className="flex flex-col flex-1 overflow-hidden">
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-8 relative">
+          <div className="flex-1 overflow-y-auto chat-scroll chat-backdrop px-4 md:px-8 py-10 space-y-10">
             {turns.length === 0 ? (
-              <EmptyState hasActive={activeCount > 0} onActivateDemo={activateDemo} />
+              <EmptyState hasActive={activeCount > 0} onActivateDemo={activateDemo}
+                onPromptClick={(p) => { setInput(p); textareaRef.current?.focus() }} />
             ) : (
               turns.map((turn) => (
                 <TurnBlock
@@ -1081,97 +1618,120 @@ export default function ChatPage() {
             <div ref={bottomRef} className="h-2" />
           </div>
 
-          {/* ── Input bar ───────────────────────────────────────────── */}
-          <div
-            className="flex-shrink-0 px-4 md:px-6 py-4 relative z-10"
-            style={{
-              background: "rgba(7,7,26,0.9)",
-              backdropFilter: "blur(16px)",
-              borderTop: "1px solid rgba(255,255,255,0.06)",
-            }}
-          >
-            {/* Warning */}
-            {activeCount === 0 && (
-              <div
-                className="flex items-center justify-center gap-2 mb-3 px-4 py-2.5 rounded-xl text-xs text-amber-300/80 max-w-2xl mx-auto"
-                style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 flex-shrink-0">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                Configurá al menos una API key en el panel lateral para empezar
+          {/* ── Input area ────────────────────────────────────────────── */}
+          <div className="flex-shrink-0 px-4 md:px-8 py-4 bg-white" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+
+            {toast && (
+              <div key={toastKey} className="max-w-3xl mx-auto mb-2 flex justify-center">
+                <div className="toast-animated flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white"
+                  style={{
+                    background: "#1e1f24", boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                    animation: toastHiding ? "toastOut 0.2s ease-in forwards" : "toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both",
+                  }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-green-400">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {toast}
+                </div>
               </div>
             )}
 
-            <div
-              className="flex gap-3 items-end max-w-4xl mx-auto rounded-2xl px-4 py-3 transition-all duration-200"
+            {showCmdPalette && (
+              <div className="max-w-3xl mx-auto mb-2 rounded-xl overflow-hidden border border-black/10 bg-white shadow-lg">
+                {filteredCmds.map((cmd, i) => (
+                  <button key={cmd.id}
+                    onMouseDown={(e) => { e.preventDefault(); execCommand(cmd.id) }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer"
+                    style={{ background: i === cmdIndex ? "rgba(0,0,0,0.04)" : "transparent" }}
+                    onMouseEnter={() => setCmdIndex(i)}>
+                    <span className="text-sm font-mono font-semibold text-gray-900">{cmd.label}</span>
+                    <span className="text-xs text-gray-600">{cmd.desc}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Input card */}
+            <div className="input-card-lift max-w-3xl mx-auto rounded-2xl overflow-visible bg-white"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                boxShadow: isLoading ? "0 0 32px rgba(124,58,237,0.12)" : "none",
-              }}
-            >
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => {
-                  setInput(e.target.value)
-                  e.target.style.height = "auto"
-                  e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px"
-                }}
-                onKeyDown={handleKey}
-                placeholder={
-                  activeCount > 0
-                    ? `Preguntale a ${PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim()).map((p) => CFG[p].name).join(", ")}…`
-                    : "Configurá tus API keys para empezar…"
-                }
-                disabled={activeCount === 0 || isLoading}
-                rows={1}
-                className="flex-1 bg-transparent text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none disabled:opacity-40 leading-relaxed"
-                style={{ maxHeight: "160px" }}
-              />
+                border: inputFocused ? "1px solid rgba(0,0,0,0.2)" : "1px solid rgba(0,0,0,0.11)",
+                transform: inputFocused ? "translateY(-1px)" : "translateY(0)",
+                boxShadow: isLoading
+                  ? "0 0 0 3px rgba(249,115,22,0.08), 0 2px 8px rgba(0,0,0,0.06)"
+                  : inputFocused
+                    ? "0 0 0 3px rgba(0,0,0,0.055), 0 4px 18px rgba(0,0,0,0.09)"
+                    : "0 2px 8px rgba(0,0,0,0.06)",
+              }}>
 
-              {/* Fusion toggle */}
-              <button
-                onClick={() => setFusionMode((v) => !v)}
-                title={fusionMode ? "Modo fusión activo — click para desactivar" : "Activar modo fusión"}
-                className="h-9 px-3 rounded-xl flex items-center gap-1.5 flex-shrink-0 text-xs font-semibold transition-all duration-200 cursor-pointer"
-                style={
-                  fusionMode
-                    ? { background: "linear-gradient(135deg,rgba(124,58,237,0.3),rgba(59,130,246,0.2))", border: "1px solid rgba(124,58,237,0.5)", color: "#c4b5fd" }
-                    : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b" }
-                }
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                </svg>
-                Fusión
-              </button>
-
-              {/* Send */}
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || activeCount === 0 || isLoading}
-                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
-                style={{ background: "linear-gradient(135deg,#7c3aed,#3b82f6)", boxShadow: "0 4px 16px rgba(124,58,237,0.4)" }}
-              >
-                {isLoading ? (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 animate-spin">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                  </svg>
-                )}
-              </button>
+              {/* Textarea + send */}
+              <div className="flex gap-3 items-end px-4 py-3">
+                <AIChipSelector
+                  apiKeys={apiKeys}
+                  setApiKeys={setApiKeys}
+                  enabled={enabled}
+                  setEnabled={setEnabled}
+                  selectedModels={selectedModels}
+                  setSelectedModels={setSelectedModels}
+                  onActivateDemo={activateDemo}
+                />
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value)
+                    setCmdIndex(0)
+                    e.target.style.height = "auto"
+                    e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px"
+                  }}
+                  onFocus={() => {
+                    if (blurTimerRef.current) clearTimeout(blurTimerRef.current)
+                    setInputFocused(true)
+                  }}
+                  onBlur={() => {
+                    blurTimerRef.current = setTimeout(() => setInputFocused(false), 200)
+                  }}
+                  onKeyDown={handleKey}
+                  placeholder={
+                    activeCount > 0
+                      ? `Preguntale a ${activeProviders.map((p) => CFG[p].name).join(", ")}…`
+                      : "Seleccioná una IA para empezar…"
+                  }
+                  disabled={activeCount === 0 || isLoading}
+                  rows={1}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder-gray-600 resize-none focus:outline-none disabled:opacity-70 leading-relaxed"
+                  style={{ maxHeight: "160px" }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || activeCount === 0 || isLoading}
+                  className="send-btn w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{
+                    background: "linear-gradient(135deg, #2a2b30, #1e1f24)",
+                    boxShadow: "0 2px 6px rgba(14,15,18,0.18), inset 0 1px 0 rgba(255,255,255,0.08)",
+                  }}>
+                  {isLoading ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 animate-spin">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                  ) : (
+                    <span key={sendKey} className={sendKey > 0 ? "send-icon-pop inline-flex" : "inline-flex"}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                      </svg>
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
 
-            <p className="text-center text-[11px] text-slate-700 mt-2">
+            <p className="text-center text-[11px] text-gray-500 mt-2">
               {fusionMode
-                ? "Modo fusión: los 3 modelos responden internamente y se sintetiza una sola respuesta"
-                : "Enter para enviar · Shift+Enter nueva línea · Contexto compartido entre modelos"}
+                ? "Fusión automática · los modelos responden internamente y se sintetiza una sola respuesta"
+                : "Enter para enviar · Shift+Enter nueva línea"}
             </p>
           </div>
         </div>

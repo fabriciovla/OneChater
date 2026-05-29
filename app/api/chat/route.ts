@@ -16,6 +16,16 @@ export async function POST(req: NextRequest) {
           await streamAnthropic(messages, apiKey, model, controller, encoder)
         } else if (provider === "google") {
           await streamGoogle(messages, apiKey, model, controller, encoder)
+        } else if (provider === "groq") {
+          await streamGroq(messages, apiKey, model, controller, encoder)
+        } else if (provider === "openrouter") {
+          await streamOpenRouter(messages, apiKey, model, controller, encoder)
+        } else if (provider === "xai") {
+          await streamOpenAICompat("https://api.x.ai/v1/chat/completions", "xAI", messages, apiKey, model || "grok-3", controller, encoder)
+        } else if (provider === "mistral") {
+          await streamOpenAICompat("https://api.mistral.ai/v1/chat/completions", "Mistral", messages, apiKey, model || "mistral-large-latest", controller, encoder)
+        } else if (provider === "deepseek") {
+          await streamOpenAICompat("https://api.deepseek.com/v1/chat/completions", "DeepSeek", messages, apiKey, model || "deepseek-chat", controller, encoder)
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Error desconocido"
@@ -144,6 +154,10 @@ const DEMO_PERSONAS: Record<string, { intro: string; style: string }> = {
     intro: "Gemini",
     style: "Aporto perspectivas adicionales y ejemplos prácticos.",
   },
+  groq: {
+    intro: "Llama (Groq)",
+    style: "Respondo ultra rápido con inferencia acelerada.",
+  },
 }
 
 function buildDemoResponse(provider: string, messages: { role: string; content: string }[]): string {
@@ -210,7 +224,6 @@ async function streamGoogle(
   controller: ReadableStreamDefaultController,
   encoder: TextEncoder
 ) {
-  // Convert to Google format — merge consecutive same-role messages
   type GMsg = { role: "user" | "model"; parts: { text: string }[] }
   const googleMessages = messages.reduce<GMsg[]>((acc, m) => {
     const role: "user" | "model" = m.role === "assistant" ? "model" : "user"
@@ -222,9 +235,9 @@ async function streamGoogle(
     return acc
   }, [])
 
-  const modelName = model || "gemini-1.5-flash"
+  const modelName = model || "gemini-2.0-flash"
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -235,6 +248,38 @@ async function streamGoogle(
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`Google ${res.status}: ${text.slice(0, 200)}`)
+  }
+
+  const json = await res.json()
+  const text: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ""
+
+  const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+  const words = text.split(" ")
+  for (let i = 0; i < words.length; i++) {
+    controller.enqueue(encoder.encode((i === 0 ? "" : " ") + words[i]))
+    await delay(18)
+  }
+}
+
+async function streamGroq(
+  messages: { role: string; content: string }[],
+  apiKey: string,
+  model: string,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model: model || "llama-3.3-70b-versatile", messages, stream: true }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Groq ${res.status}: ${text.slice(0, 200)}`)
   }
 
   const reader = res.body!.getReader()
@@ -250,9 +295,102 @@ async function streamGoogle(
     for (const line of lines) {
       if (!line.startsWith("data: ")) continue
       const data = line.slice(6).trim()
+      if (data === "[DONE]") continue
       try {
         const json = JSON.parse(data)
-        const text: string | undefined = json.candidates?.[0]?.content?.parts?.[0]?.text
+        const text: string | undefined = json.choices?.[0]?.delta?.content
+        if (text) controller.enqueue(encoder.encode(text))
+      } catch {}
+    }
+  }
+}
+
+async function streamOpenAICompat(
+  baseUrl: string,
+  providerName: string,
+  messages: { role: string; content: string }[],
+  apiKey: string,
+  model: string,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const res = await fetch(baseUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model, messages, stream: true }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`${providerName} ${res.status}: ${text.slice(0, 200)}`)
+  }
+
+  const reader = res.body!.getReader()
+  const dec = new TextDecoder()
+  let buf = ""
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += dec.decode(value, { stream: true })
+    const lines = buf.split("\n")
+    buf = lines.pop() ?? ""
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue
+      const data = line.slice(6).trim()
+      if (data === "[DONE]") continue
+      try {
+        const json = JSON.parse(data)
+        const text: string | undefined = json.choices?.[0]?.delta?.content
+        if (text) controller.enqueue(encoder.encode(text))
+      } catch {}
+    }
+  }
+}
+
+async function streamOpenRouter(
+  messages: { role: string; content: string }[],
+  apiKey: string,
+  model: string,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://onechat.app",
+      "X-Title": "OneChater",
+    },
+    body: JSON.stringify({ model: model || "nvidia/nemotron-3-super-120b-a12b:free", messages, stream: true }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`OpenRouter ${res.status}: ${text.slice(0, 200)}`)
+  }
+
+  const reader = res.body!.getReader()
+  const dec = new TextDecoder()
+  let buf = ""
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += dec.decode(value, { stream: true })
+    const lines = buf.split("\n")
+    buf = lines.pop() ?? ""
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue
+      const data = line.slice(6).trim()
+      if (data === "[DONE]") continue
+      try {
+        const json = JSON.parse(data)
+        const text: string | undefined = json.choices?.[0]?.delta?.content
         if (text) controller.enqueue(encoder.encode(text))
       } catch {}
     }
