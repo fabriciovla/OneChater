@@ -1,7 +1,5 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
-
 export async function sendOTPEmail({
   to,
   code,
@@ -138,6 +136,10 @@ export async function sendOTPEmail({
 </body>
 </html>`
 
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) throw new Error("RESEND_API_KEY no configurada")
+
+  const resend = new Resend(apiKey)
   await resend.emails.send({
     from: "OneChater <noreply@onechater.app>",
     to,
