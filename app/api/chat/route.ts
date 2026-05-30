@@ -1,14 +1,22 @@
 import { NextRequest } from "next/server"
 
 export async function POST(req: NextRequest) {
-  const { messages, provider, apiKey, model } = await req.json()
+  const { messages, provider, apiKey, model, mode } = await req.json()
 
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        if (apiKey === "demo") {
+        if (mode === "image") {
+          const prompt =
+            [...messages].reverse().find((m: { role: string }) => m.role === "user")?.content ?? ""
+          if (apiKey === "demo") await imageDemo(prompt, provider, controller, encoder)
+          else if (provider === "openai") await imageOpenAI(prompt, apiKey, model, controller, encoder)
+          else if (provider === "google") await imageGoogle(prompt, apiKey, model, controller, encoder)
+          else if (provider === "xai") await imageXAI(prompt, apiKey, model, controller, encoder)
+          else controller.enqueue(encoder.encode(`[Error: ${provider} no genera imágenes]`))
+        } else if (apiKey === "demo") {
           await streamDemo(messages, provider, controller, encoder)
         } else if (provider === "openai") {
           await streamOpenAI(messages, apiKey, model, controller, encoder)
@@ -349,6 +357,111 @@ async function streamOpenAICompat(
       } catch {}
     }
   }
+}
+
+// ─── Image generation ──────────────────────────────────────────────────────────
+// Cada función emite UNA sola data URL (base64) como contenido del stream.
+// El front detecta el prefijo `data:image` y renderiza <img> en vez de texto.
+
+async function imageOpenAI(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const m = model || "dall-e-3"
+  const body: Record<string, unknown> = { model: m, prompt, n: 1, size: "1024x1024" }
+  // gpt-image-1 devuelve b64 por defecto y rechaza response_format; DALL·E sí lo necesita.
+  if (m.startsWith("dall-e")) body.response_format = "b64_json"
+
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 200)}`)
+
+  const json = await res.json()
+  const b64: string | undefined = json.data?.[0]?.b64_json
+  if (!b64) throw new Error("OpenAI no devolvió imagen")
+  controller.enqueue(encoder.encode(`data:image/png;base64,${b64}`))
+}
+
+async function imageXAI(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const res = await fetch("https://api.x.ai/v1/images/generations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ model: model || "grok-2-image", prompt, response_format: "b64_json", n: 1 }),
+  })
+  if (!res.ok) throw new Error(`xAI ${res.status}: ${(await res.text()).slice(0, 200)}`)
+
+  const json = await res.json()
+  const b64: string | undefined = json.data?.[0]?.b64_json
+  if (!b64) throw new Error("xAI no devolvió imagen")
+  controller.enqueue(encoder.encode(`data:image/png;base64,${b64}`))
+}
+
+async function imageGoogle(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const modelName = model || "gemini-2.5-flash-image"
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+      }),
+    }
+  )
+  if (!res.ok) throw new Error(`Google ${res.status}: ${(await res.text()).slice(0, 200)}`)
+
+  const json = await res.json()
+  const parts: { inlineData?: { mimeType?: string; data?: string } }[] =
+    json.candidates?.[0]?.content?.parts ?? []
+  const img = parts.find((p) => p.inlineData?.data)
+  if (!img?.inlineData?.data) throw new Error("Gemini no devolvió imagen")
+  const mime = img.inlineData.mimeType || "image/png"
+  controller.enqueue(encoder.encode(`data:${mime};base64,${img.inlineData.data}`))
+}
+
+async function imageDemo(
+  prompt: string,
+  provider: string,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const colors: Record<string, [string, string]> = {
+    openai: ["#10b981", "#059669"],
+    google: ["#3b82f6", "#2563eb"],
+    xai: ["#0f0f0f", "#374151"],
+  }
+  const [c1, c2] = colors[provider] ?? ["#f97316", "#ea580c"]
+  const label = prompt.slice(0, 40).replace(/[<>&]/g, "")
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/>
+    </linearGradient></defs>
+    <rect width="512" height="512" fill="url(#g)"/>
+    <text x="256" y="240" font-family="sans-serif" font-size="26" fill="white" text-anchor="middle" font-weight="bold">Imagen demo</text>
+    <text x="256" y="280" font-family="sans-serif" font-size="16" fill="rgba(255,255,255,0.85)" text-anchor="middle">${label}</text>
+  </svg>`
+  const b64 = Buffer.from(svg).toString("base64")
+  await new Promise((r) => setTimeout(r, 600))
+  controller.enqueue(encoder.encode(`data:image/svg+xml;base64,${b64}`))
 }
 
 async function streamOpenRouter(

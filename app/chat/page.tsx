@@ -202,6 +202,27 @@ const CFG = {
   },
 } as const
 
+// ─── Image generation ──────────────────────────────────────────────────────────
+
+const IMAGE_CAPABLE: Provider[] = ["openai", "google", "xai"]
+
+const IMAGE_MODELS: Partial<Record<Provider, { id: string; label: string }[]>> = {
+  openai: [
+    { id: "dall-e-3", label: "DALL·E 3" },
+    { id: "gpt-image-1", label: "GPT Image 1" },
+  ],
+  google: [{ id: "gemini-2.5-flash-image", label: "Nano Banana" }],
+  xai: [{ id: "grok-2-image", label: "Grok 2 Image" }],
+}
+
+const DEFAULT_IMAGE_MODELS: Partial<Record<Provider, string>> = {
+  openai: "dall-e-3",
+  google: "gemini-2.5-flash-image",
+  xai: "grok-2-image",
+}
+
+const isImageContent = (c: string) => c.startsWith("data:image")
+
 // ─── DB ↔ Frontend mapping ────────────────────────────────────────────────────
 
 function fromDbTurn(dbTurn: {
@@ -256,7 +277,10 @@ function buildSharedHistory(
       const parts = (Object.keys(turn.responses) as Provider[])
         .map((p) => {
           const r = turn.responses[p]
-          if (r?.done && r.content && !r.error) return `[${CFG[p].name}]:\n${r.content}`
+          if (r?.done && r.content && !r.error) {
+            const body = isImageContent(r.content) ? "[imagen generada]" : r.content
+            return `[${CFG[p].name}]:\n${body}`
+          }
           return null
         })
         .filter((x): x is string => x !== null)
@@ -354,7 +378,10 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
   provider: Provider; state: ModelResponseState; selectedModel: string; index?: number; animate?: boolean
 }) {
   const c = CFG[provider]
-  const modelLabel = c.models.find((m) => m.id === selectedModel)?.label ?? selectedModel
+  const isImg = !state.error && isImageContent(state.content)
+  const modelLabel = isImg
+    ? (IMAGE_MODELS[provider]?.find((m) => m.id === DEFAULT_IMAGE_MODELS[provider])?.label ?? "Imagen")
+    : (c.models.find((m) => m.id === selectedModel)?.label ?? selectedModel)
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -393,7 +420,15 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
               Generando
             </span>
           )}
-          {state.done && !state.error && state.content && (
+          {state.done && !state.error && state.content && isImg && (
+            <a href={state.content} download={`onechat-${provider}.png`}
+              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
+              style={{ background: "white", border: `1px solid ${c.colorBorder}`, color: "#6b7280" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+              Descargar
+            </a>
+          )}
+          {state.done && !state.error && state.content && !isImg && (
             <button onClick={handleCopy}
               className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
               style={{ background: "white", border: `1px solid ${c.colorBorder}`, color: copied ? c.color : "#6b7280" }}>
@@ -411,6 +446,12 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
       <div className="px-4 py-4 text-[16px] text-gray-900 leading-[1.75] whitespace-pre-wrap break-words min-h-[48px]" style={{ fontFamily: "var(--font-lora), Georgia, serif", fontWeight: 400 }}>
         {state.error
           ? <span className="text-red-500 text-sm" style={{ fontFamily: "var(--font-inter), sans-serif" }}>{state.error}</span>
+          : isImg
+          ? <a href={state.content} target="_blank" rel="noopener noreferrer" className="block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={state.content} alt="Imagen generada" className="rounded-xl w-full h-auto transition-transform duration-200 hover:scale-[1.01]"
+                style={{ border: "1px solid rgba(0,0,0,0.06)" }} />
+            </a>
           : state.content
           ? <>
               {state.content}
@@ -1120,6 +1161,7 @@ export default function ChatPage() {
   const [toastKey, setToastKey] = useState(0)
   const [sendKey, setSendKey] = useState(0)
   const [inputFocused, setInputFocused] = useState(false)
+  const [imageMode, setImageMode] = useState(false)
 
   const [apiKeys, setApiKeysRaw] = useState<Record<Provider, string>>({
     openai: "", anthropic: "", google: "", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "",
@@ -1309,12 +1351,12 @@ export default function ChatPage() {
   const fusionMode = activeProviders.length > 1
 
   const streamProvider = useCallback(
-    async (provider: Provider, messages: { role: string; content: string }[], turnId: string) => {
+    async (provider: Provider, messages: { role: string; content: string }[], turnId: string, opts?: { mode?: "image"; model?: string }) => {
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: selectedModels[provider] }),
+          body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: opts?.model ?? selectedModels[provider], mode: opts?.mode }),
         })
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
         const reader = res.body.getReader()
@@ -1464,6 +1506,12 @@ export default function ChatPage() {
     if (matchedCmd) { execCommand(matchedCmd.id); return }
     if (isLoading || activeProviders.length === 0) return
 
+    const imgProviders = activeProviders.filter((p) => IMAGE_CAPABLE.includes(p))
+    if (imageMode && imgProviders.length === 0) {
+      showToast("Activá OpenAI, Google o xAI para generar imágenes")
+      return
+    }
+
     await ensureActiveSession()
     setInput("")
     if (textareaRef.current) textareaRef.current.style.height = "auto"
@@ -1473,7 +1521,14 @@ export default function ChatPage() {
     const turnId = crypto.randomUUID()
     const currentTurns = turns
 
-    if (fusionMode) {
+    if (imageMode) {
+      const initialResponses: Partial<Record<Provider, ModelResponseState>> = {}
+      imgProviders.forEach((p) => { initialResponses[p] = { content: "", loading: true, done: false } })
+      setTurns((prev) => [...prev, { id: turnId, userMessage: msg, responses: initialResponses }])
+      await Promise.all(imgProviders.map((p) =>
+        streamProvider(p, [{ role: "user", content: msg }], turnId, { mode: "image", model: DEFAULT_IMAGE_MODELS[p] })
+      ))
+    } else if (fusionMode) {
       setTurns((prev) => [...prev, {
         id: turnId, userMessage: msg, responses: {}, isFusion: true,
         fusedResponse: { content: "", loading: true, done: false, phase: "collecting" },
@@ -1514,7 +1569,7 @@ export default function ChatPage() {
 
     setIsLoading(false)
     textareaRef.current?.focus()
-  }, [input, isLoading, activeProviders, turns, fusionMode, streamProvider, collectFull, streamFusion, execCommand, ensureActiveSession, setTurns])
+  }, [input, isLoading, activeProviders, turns, fusionMode, imageMode, showToast, streamProvider, collectFull, streamFusion, execCommand, ensureActiveSession, setTurns])
 
   const filteredCmds = input.startsWith("/")
     ? SLASH_COMMANDS.filter((c) => c.label.startsWith(input.toLowerCase().split(" ")[0]))
@@ -1674,6 +1729,20 @@ export default function ChatPage() {
                   setSelectedModels={setSelectedModels}
                   onActivateDemo={activateDemo}
                 />
+                <button
+                  onClick={() => setImageMode((v) => !v)}
+                  title={imageMode ? "Modo imagen activo" : "Generar imágenes"}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer transition-all duration-150 active:scale-95"
+                  style={{
+                    background: imageMode ? "linear-gradient(135deg, #f97316, #ea580c)" : "rgba(0,0,0,0.05)",
+                    color: imageMode ? "white" : "#6b7280",
+                    border: imageMode ? "1px solid #ea580c" : "1px solid rgba(0,0,0,0.1)",
+                    boxShadow: imageMode ? "0 2px 8px rgba(249,115,22,0.3)" : "none",
+                  }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </button>
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -1692,9 +1761,11 @@ export default function ChatPage() {
                   }}
                   onKeyDown={handleKey}
                   placeholder={
-                    activeCount > 0
-                      ? `Preguntale a ${activeProviders.map((p) => CFG[p].name).join(", ")}…`
-                      : "Seleccioná una IA para empezar…"
+                    activeCount === 0
+                      ? "Seleccioná una IA para empezar…"
+                      : imageMode
+                      ? "Describí la imagen que querés generar…"
+                      : `Preguntale a ${activeProviders.map((p) => CFG[p].name).join(", ")}…`
                   }
                   disabled={activeCount === 0 || isLoading}
                   rows={1}
@@ -1729,7 +1800,9 @@ export default function ChatPage() {
             </div>
 
             <p className="text-center text-[11px] text-gray-500 mt-2">
-              {fusionMode
+              {imageMode
+                ? "Modo imagen · cada IA capaz (OpenAI, Google, xAI) genera su propia imagen"
+                : fusionMode
                 ? "Fusión automática · los modelos responden internamente y se sintetiza una sola respuesta"
                 : "Enter para enviar · Shift+Enter nueva línea"}
             </p>
