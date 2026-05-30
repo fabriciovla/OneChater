@@ -55,7 +55,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         content: turn.responses[p]?.content ?? "",
         error: turn.responses[p]?.error ?? null,
       }))
-    if (rows.length > 0) await prisma.turnResponse.createMany({ data: rows })
+    // create individual (1 statement c/u) en vez de createMany: el adapter
+    // Neon HTTP falla con createMany.
+    for (const data of rows) {
+      await prisma.turnResponse.create({ data })
+    }
   }
 
   // Update session title from first real turn
