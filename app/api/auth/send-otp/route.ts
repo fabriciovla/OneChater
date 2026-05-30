@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("send-otp error:", err)
-    return NextResponse.json({ error: "Error al enviar el código" }, { status: 500 })
+    const detail = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: "Error al enviar el código", detail }, { status: 500 })
   }
 }
