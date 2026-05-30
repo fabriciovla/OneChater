@@ -141,7 +141,7 @@ export async function sendOTPEmail({
 
   const resend = new Resend(apiKey)
   await resend.emails.send({
-    from: "OneChater <noreply@onechater.app>",
+    from: "OneChater <onboarding@resend.dev>",
     to,
     subject: `${code} es tu código de acceso a OneChater`,
     html,
