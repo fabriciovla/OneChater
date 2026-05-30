@@ -1729,20 +1729,6 @@ export default function ChatPage() {
                   setSelectedModels={setSelectedModels}
                   onActivateDemo={activateDemo}
                 />
-                <button
-                  onClick={() => setImageMode((v) => !v)}
-                  title={imageMode ? "Modo imagen activo" : "Generar imágenes"}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer transition-all duration-150 active:scale-95"
-                  style={{
-                    background: imageMode ? "linear-gradient(135deg, #f97316, #ea580c)" : "rgba(0,0,0,0.05)",
-                    color: imageMode ? "white" : "#6b7280",
-                    border: imageMode ? "1px solid #ea580c" : "1px solid rgba(0,0,0,0.1)",
-                    boxShadow: imageMode ? "0 2px 8px rgba(249,115,22,0.3)" : "none",
-                  }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-                  </svg>
-                </button>
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -1776,6 +1762,20 @@ export default function ChatPage() {
                   className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder-gray-600 resize-none focus:outline-none disabled:opacity-70 leading-relaxed"
                   style={{ maxHeight: "160px" }}
                 />
+                <button
+                  onClick={() => setImageMode((v) => !v)}
+                  title={imageMode ? "Modo imagen activo" : "Generar imágenes"}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer transition-all duration-150 active:scale-95"
+                  style={{
+                    background: imageMode ? "linear-gradient(135deg, #f97316, #ea580c)" : "rgba(0,0,0,0.05)",
+                    color: imageMode ? "white" : "#6b7280",
+                    border: imageMode ? "1px solid #ea580c" : "1px solid rgba(0,0,0,0.1)",
+                    boxShadow: imageMode ? "0 2px 8px rgba(249,115,22,0.3)" : "none",
+                  }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </button>
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() || activeCount === 0 || isLoading}
