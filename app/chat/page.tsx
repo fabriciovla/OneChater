@@ -33,19 +33,27 @@ interface ChatSession {
   turns?: ConversationTurn[]
 }
 
+// A durable fact the AI remembers about the user across ALL conversations.
+interface Memory {
+  id: string
+  content: string
+  category?: string | null
+  createdAt: number
+}
+
 // ─── Provider configs ─────────────────────────────────────────────────────────
 
 const PROVIDERS: Provider[] = ["openai", "anthropic", "google", "groq", "openrouter", "xai", "mistral", "deepseek"]
 
 const CFG = {
   openai: {
-    name: "GPT-4o",
+    name: "GPT-5",
     label: "OpenAI",
-    defaultModel: "gpt-4o",
+    defaultModel: "gpt-5.5",
     models: [
-      { id: "gpt-4o", label: "GPT-4o" },
-      { id: "gpt-4o-mini", label: "GPT-4o mini" },
-      { id: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+      { id: "gpt-5.5", label: "GPT-5.5" },
+      { id: "gpt-5.4", label: "GPT-5.4" },
+      { id: "gpt-5.4-mini", label: "GPT-5.4 mini" },
     ],
     color: "#10b981",
     colorLight: "rgba(16,185,129,0.1)",
@@ -60,11 +68,11 @@ const CFG = {
   anthropic: {
     name: "Claude",
     label: "Anthropic",
-    defaultModel: "claude-3-5-sonnet-20241022",
+    defaultModel: "claude-sonnet-4-6",
     models: [
-      { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
-      { id: "claude-3-haiku-20240307", label: "Claude 3 Haiku" },
-      { id: "claude-3-opus-20240229", label: "Claude 3 Opus" },
+      { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
+      { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+      { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
     ],
     color: "#f97316",
     colorLight: "rgba(249,115,22,0.1)",
@@ -79,11 +87,11 @@ const CFG = {
   google: {
     name: "Gemini",
     label: "Google",
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     models: [
-      { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-      { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite" },
-      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+      { id: "gemini-3-pro-preview", label: "Gemini 3 Pro" },
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
     ],
     color: "#3b82f6",
     colorLight: "rgba(59,130,246,0.1)",
@@ -104,8 +112,8 @@ const CFG = {
     defaultModel: "llama-3.3-70b-versatile",
     models: [
       { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
+      { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B" },
       { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B" },
-      { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
     ],
     color: "#f55036",
     colorLight: "rgba(245,80,54,0.1)",
@@ -140,11 +148,11 @@ const CFG = {
   xai: {
     name: "Grok",
     label: "xAI",
-    defaultModel: "grok-3",
+    defaultModel: "grok-4.3",
     models: [
+      { id: "grok-4.3", label: "Grok 4.3" },
+      { id: "grok-4-0709", label: "Grok 4" },
       { id: "grok-3", label: "Grok 3" },
-      { id: "grok-3-mini", label: "Grok 3 Mini" },
-      { id: "grok-2-1212", label: "Grok 2" },
     ],
     color: "#0f0f0f",
     colorLight: "rgba(15,15,15,0.07)",
@@ -161,7 +169,8 @@ const CFG = {
     label: "Mistral",
     defaultModel: "mistral-large-latest",
     models: [
-      { id: "mistral-large-latest", label: "Mistral Large" },
+      { id: "mistral-large-latest", label: "Mistral Large 3" },
+      { id: "mistral-medium-latest", label: "Mistral Medium 3.5" },
       { id: "mistral-small-latest", label: "Mistral Small" },
       { id: "codestral-latest", label: "Codestral" },
     ],
@@ -187,8 +196,8 @@ const CFG = {
     label: "DeepSeek",
     defaultModel: "deepseek-chat",
     models: [
-      { id: "deepseek-chat", label: "DeepSeek V3" },
-      { id: "deepseek-reasoner", label: "DeepSeek R1" },
+      { id: "deepseek-chat", label: "DeepSeek V4" },
+      { id: "deepseek-reasoner", label: "DeepSeek V4 Reasoner" },
     ],
     color: "#4D6BFE",
     colorLight: "rgba(77,107,254,0.09)",
@@ -247,18 +256,75 @@ function fromDbTurn(dbTurn: {
   }
 }
 
+// ─── Cross-conversation memory ──────────────────────────────────────────────────
+
+// Cheapest decent model per provider for the background extraction call, so
+// capturing memory costs the user almost nothing. Falls back to selected model.
+const MEMORY_MODELS: Partial<Record<Provider, string>> = {
+  openai: "gpt-5.4-mini",
+  anthropic: "claude-haiku-4-5-20251001",
+  google: "gemini-2.5-flash-lite",
+  groq: "llama-3.1-8b-instant",
+  mistral: "mistral-small-latest",
+  deepseek: "deepseek-chat",
+  xai: "grok-3",
+  openrouter: "nvidia/nemotron-3-super-120b-a12b:free",
+}
+
+// Instructions for the extractor model. `known` are facts we already store,
+// passed so the model doesn't return duplicates.
+function buildExtractPrompt(known: string[]): string {
+  return `Sos un extractor de memoria de largo plazo para un asistente de IA. A partir del intercambio, extraé SOLO hechos durables sobre el USUARIO que convenga recordar en futuras conversaciones: su stack/tecnologías, proyectos y clientes, preferencias de trabajo, decisiones tomadas, tono/estilo, y datos personales relevantes para sus tareas.
+
+NO incluyas: preguntas puntuales, contenido efímero, obviedades, ni nada que ya sé.
+
+Ya sé esto (NO lo repitas ni lo reformules):
+${known.length ? known.map((k) => `- ${k}`).join("\n") : "(nada todavía)"}
+
+Devolvé EXCLUSIVAMENTE un array JSON válido, con 0 a 5 objetos:
+[{"content":"hecho corto en español","category":"stack|project|preference|decision|tone|other"}]
+
+REGLA DE FORMATO ESTRICTA: tu respuesta tiene que EMPEZAR con "[" y TERMINAR con "]". Nada de texto antes o después, nada de explicaciones, nada de markdown ni \`\`\`. Si no hay nada nuevo que valga la pena, devolvé exactamente: []`
+}
+
+// Pull a JSON fact array out of an LLM response (which may wrap it in prose
+// or a ```json fence). Returns clamped, validated facts.
+function parseFacts(raw: string): { content: string; category: string | null }[] {
+  try {
+    const m = raw.match(/\[[\s\S]*\]/)
+    if (!m) return []
+    const arr = JSON.parse(m[0])
+    if (!Array.isArray(arr)) return []
+    return arr
+      .filter((x) => x && typeof x.content === "string" && x.content.trim().length > 2)
+      .slice(0, 5)
+      .map((x) => ({
+        content: String(x.content).trim().slice(0, 400),
+        category: typeof x.category === "string" ? x.category.slice(0, 40) : null,
+      }))
+  } catch {
+    return []
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildSystemPrompt(provider: Provider, activeProviders: Provider[]): { role: string; content: string } {
+function buildSystemPrompt(provider: Provider, activeProviders: Provider[], memories: Memory[]): { role: string; content: string } {
   const others = activeProviders.filter((p) => p !== provider).map((p) => CFG[p].name)
   const othersStr = others.length > 0 ? ` junto a ${others.join(" y ")}` : ""
+  const memBlock = memories.length
+    ? `\n\nMEMORIA DEL USUARIO (aprendida en conversaciones anteriores, vale para TODA charla con cualquier modelo):\n${memories
+        .slice(0, 40)
+        .map((m) => `- ${m.content}`)
+        .join("\n")}\n\nUsá esta memoria cuando sea relevante. No la recites entera ni digas "según mi memoria"; simplemente actuá como alguien que ya conoce al usuario y su contexto.`
+    : ""
   return {
     role: "system",
     content: `Eres ${CFG[provider].name} en una plataforma de chat multi-modelo${othersStr}.
 
 REGLA CRÍTICA: El historial de conversación contiene respuestas de TODOS los modelos participantes. Cada respuesta de asistente tiene prefijos como [${CFG[provider].name}]:${others.map((n) => ` [${n}]:`).join("")} que indican qué modelo dijo cada cosa. Este historial ES tu memoria compartida.
 
-IMPORTANTE: Respondé DIRECTAMENTE sin incluir ningún prefijo como [${CFG[provider].name}]: al inicio. Nunca copies ese formato en tu respuesta. NUNCA digas que no tienes acceso a lo que dijeron otros modelos. Respondé siempre en el idioma del usuario.`,
+IMPORTANTE: Respondé DIRECTAMENTE sin incluir ningún prefijo como [${CFG[provider].name}]: al inicio. Nunca copies ese formato en tu respuesta. NUNCA digas que no tienes acceso a lo que dijeron otros modelos. Respondé siempre en el idioma del usuario.${memBlock}`,
   }
 }
 
@@ -266,9 +332,10 @@ function buildSharedHistory(
   turns: ConversationTurn[],
   activeProviders: Provider[],
   newMessage: string,
-  provider: Provider
+  provider: Provider,
+  memories: Memory[] = []
 ): { role: string; content: string }[] {
-  const msgs: { role: string; content: string }[] = [buildSystemPrompt(provider, activeProviders)]
+  const msgs: { role: string; content: string }[] = [buildSystemPrompt(provider, activeProviders, memories)]
   for (const turn of turns) {
     msgs.push({ role: "user", content: turn.userMessage })
     if (turn.isFusion && turn.fusedResponse?.done && turn.fusedResponse.content && !turn.fusedResponse.error) {
@@ -1126,6 +1193,99 @@ function Sidebar({
   )
 }
 
+// ─── Memory drawer ────────────────────────────────────────────────────────────
+
+const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  stack:      { label: "Stack",       color: "#3b82f6" },
+  project:    { label: "Proyecto",    color: "#10b981" },
+  preference: { label: "Preferencia", color: "#f97316" },
+  decision:   { label: "Decisión",    color: "#8b5cf6" },
+  tone:       { label: "Tono",        color: "#ec4899" },
+  other:      { label: "Otro",        color: "#6b7280" },
+}
+
+function MemoryDrawer({ memories, onClose, onDelete }: {
+  memories: Memory[]
+  onClose: () => void
+  onDelete: (id: string) => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} style={{ animation: "memFadeIn 0.2s ease both" }} />
+      <div className="relative h-full w-full max-w-[420px] flex flex-col bg-white shadow-2xl"
+        style={{ borderLeft: "1px solid rgba(0,0,0,0.08)", animation: "memDrawerIn 0.32s cubic-bezier(0.22,1,0.36,1) both" }}>
+
+        {/* Header */}
+        <div className="flex items-start gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0"
+            style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)", boxShadow: "0 6px 16px -4px rgba(124,58,237,0.5)" }}>
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+              <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
+              <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
+              <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] font-semibold text-gray-900 leading-tight">Memoria</div>
+            <div className="text-[12px] text-gray-500 mt-0.5 leading-snug">
+              {memories.length > 0
+                ? `${memories.length} ${memories.length === 1 ? "hecho que las IAs recuerdan" : "hechos que las IAs recuerdan"} de vos — en todos tus chats y modelos.`
+                : "Lo que las IAs aprendan de vos aparecerá acá y te acompaña en cada chat y modelo."}
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-black/[0.05] transition-all cursor-pointer flex-shrink-0" title="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+          {memories.length === 0 ? (
+            <div className="flex flex-col items-center text-center gap-3 px-6 py-20">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.15)" }}>
+                <svg viewBox="0 0 24 24" fill="#7c3aed" className="w-5 h-5" style={{ opacity: 0.7 }}>
+                  <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
+                  <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
+                  <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
+                </svg>
+              </div>
+              <p className="text-[12.5px] text-gray-500 leading-relaxed max-w-[260px]">
+                Todavía no aprendí nada de vos. Chateá con tu API key y voy guardando tu stack, proyectos y preferencias automáticamente.
+              </p>
+            </div>
+          ) : (
+            memories.map((m) => {
+              const meta = CATEGORY_META[m.category ?? "other"] ?? CATEGORY_META.other
+              return (
+                <div key={m.id} className="group flex items-start gap-3 p-3 rounded-xl transition-all hover:shadow-sm"
+                  style={{ background: "#fafafa", border: "1px solid rgba(0,0,0,0.07)" }}>
+                  <span className="mt-1 w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] text-gray-800 leading-relaxed">{m.content}</p>
+                    <span className="inline-block mt-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: meta.color }}>{meta.label}</span>
+                  </div>
+                  <button onClick={() => onDelete(m.id)}
+                    className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer flex-shrink-0"
+                    title="Olvidar este hecho">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+                    </svg>
+                  </button>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 flex-shrink-0 text-[11px] text-gray-400 leading-snug" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          Se captura sola al chatear y viaja con vos entre modelos. Borrá lo que no quieras que recuerden.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Slash commands ───────────────────────────────────────────────────────────
 
 const SLASH_COMMANDS = [
@@ -1163,6 +1323,13 @@ export default function ChatPage() {
   const [inputFocused, setInputFocused] = useState(false)
   const [imageMode, setImageMode] = useState(false)
 
+  // Cross-conversation memory: facts the AI knows about the user everywhere.
+  const [memories, setMemories] = useState<Memory[]>([])
+  const memoriesRef = useRef<Memory[]>([])
+  useEffect(() => { memoriesRef.current = memories }, [memories])
+  const [memoryOpen, setMemoryOpen] = useState(false)
+  const extractedRef = useRef<Set<string>>(new Set())
+
   const [apiKeys, setApiKeysRaw] = useState<Record<Provider, string>>({
     openai: "", anthropic: "", google: "", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "",
   })
@@ -1170,12 +1337,12 @@ export default function ChatPage() {
     openai: true, anthropic: true, google: true, groq: true, openrouter: true, xai: true, mistral: true, deepseek: true,
   })
   const [selectedModels, setSelectedModelsRaw] = useState<Record<Provider, string>>({
-    openai: "gpt-4o",
-    anthropic: "claude-3-5-sonnet-20241022",
-    google: "gemini-2.0-flash",
+    openai: "gpt-5.5",
+    anthropic: "claude-sonnet-4-6",
+    google: "gemini-2.5-flash",
     groq: "llama-3.3-70b-versatile",
     openrouter: "nvidia/nemotron-3-super-120b-a12b:free",
-    xai: "grok-3",
+    xai: "grok-4.3",
     mistral: "mistral-large-latest",
     deepseek: "deepseek-chat",
   })
@@ -1189,11 +1356,23 @@ export default function ChatPage() {
   useEffect(() => { activeSessionIdRef.current = activeSessionId }, [activeSessionId])
   useEffect(() => { sessionsRef.current = sessions }, [sessions])
 
+  // Load the user's persistent memory once signed in. Available to every
+  // session immediately, so any chat starts already "knowing" the user.
+  useEffect(() => {
+    if (!session?.user?.id) return
+    fetch("/api/memory")
+      .then((r) => r.json())
+      .then((d: Memory[]) => { if (Array.isArray(d)) { setMemories(d); memoriesRef.current = d } })
+      .catch(() => {})
+  }, [session?.user?.id])
+
   const loadTurnsForSession = useCallback(async (sessionId: string) => {
     try {
       const dbTurns = await fetch(`/api/sessions/${sessionId}/turns`).then((r) => r.json())
       const mapped: ConversationTurn[] = dbTurns.map(fromDbTurn)
-      mapped.forEach((t) => persistingRef.current.add(t.id))
+      // Mark loaded turns as already persisted AND already extracted, so
+      // reopening an old conversation never re-saves or re-mines its turns.
+      mapped.forEach((t) => { persistingRef.current.add(t.id); extractedRef.current.add(t.id) })
       setTurnsState(mapped)
     } catch {
       setTurnsState([])
@@ -1211,9 +1390,14 @@ export default function ChatPage() {
       const m = localStorage.getItem("oc_models")
       if (m) {
         const parsed = JSON.parse(m)
-        if (parsed.google === "gemini-1.5-flash") parsed.google = "gemini-2.0-flash"
-        setSelectedModelsRaw({ openai: "gpt-4o", anthropic: "claude-3-5-sonnet-20241022", google: "gemini-2.0-flash", groq: "llama-3.3-70b-versatile", openrouter: "nvidia/nemotron-3-super-120b-a12b:free", xai: "grok-3", mistral: "mistral-large-latest", deepseek: "deepseek-chat", ...parsed })
-        localStorage.setItem("oc_models", JSON.stringify(parsed))
+        // Migrate any saved model id no longer offered (renamed/retired) to
+        // the provider's current default, so old prefs never send a dead id.
+        const migrated = { ...parsed } as Record<Provider, string>
+        for (const p of PROVIDERS) {
+          if (!CFG[p].models.some((mm) => mm.id === migrated[p])) migrated[p] = CFG[p].defaultModel
+        }
+        setSelectedModelsRaw(migrated)
+        localStorage.setItem("oc_models", JSON.stringify(migrated))
       }
     } catch {}
 
@@ -1389,11 +1573,11 @@ export default function ChatPage() {
     [apiKeys, selectedModels, setTurns]
   )
 
-  const collectFull = useCallback(async (provider: Provider, messages: { role: string; content: string }[]): Promise<string> => {
+  const collectFull = useCallback(async (provider: Provider, messages: { role: string; content: string }[], modelOverride?: string): Promise<string> => {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: selectedModels[provider] }),
+      body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: modelOverride ?? selectedModels[provider] }),
     })
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
     const reader = res.body.getReader()
@@ -1441,6 +1625,85 @@ export default function ChatPage() {
     setToast(msg); setToastHiding(false); setToastKey((k) => k + 1)
     setTimeout(() => setToastHiding(true), 1800)
     setTimeout(() => setToast(""), 2000)
+  }, [])
+
+  // Background memory capture: after a turn finishes, the cheapest active model
+  // distills durable facts about the user and stores them. Reuses /api/chat
+  // (BYOK) so there's no new provider code. Best-effort — never blocks chat.
+  const runExtraction = useCallback(
+    async (userMsg: string, assistantText: string, provider: Provider) => {
+      try {
+        const known = memoriesRef.current.slice(0, 60).map((m) => m.content)
+        const messages = [
+          { role: "system", content: buildExtractPrompt(known) },
+          { role: "user", content: `Usuario: ${userMsg}\n\nRespuesta(s) de IA:\n${assistantText.slice(0, 4000)}` },
+        ]
+        const raw = await collectFull(provider, messages, MEMORY_MODELS[provider])
+        const facts = parseFacts(raw)
+        if (facts.length === 0) {
+          console.debug("[memoria] sin hechos nuevos. Respuesta cruda del modelo:", raw.slice(0, 600))
+          return
+        }
+        const res = await fetch("/api/memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ facts }),
+        })
+        if (!res.ok) {
+          console.warn("[memoria] POST /api/memory falló:", res.status, await res.text().catch(() => ""))
+          return
+        }
+        const created: Memory[] = await res.json()
+        console.debug(`[memoria] extraídos ${facts.length}, guardados ${created.length}`, created)
+        if (Array.isArray(created) && created.length > 0) {
+          setMemories((prev) => {
+            const next = [...created, ...prev]
+            memoriesRef.current = next
+            return next
+          })
+          showToast(`Memoria actualizada · +${created.length}`)
+        }
+      } catch (e) {
+        console.warn("[memoria] extracción falló:", e)
+      }
+    },
+    [collectFull, showToast]
+  )
+
+  // Fire extraction once per completed, real turn (skip demo / commands / images).
+  useEffect(() => {
+    const realActive = PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim() && apiKeys[p] !== "demo")
+    if (realActive.length === 0) return
+    turns.forEach((turn) => {
+      if (extractedRef.current.has(turn.id)) return
+      if (turn.userMessage.startsWith("/")) { extractedRef.current.add(turn.id); return }
+      const allDone = turn.isFusion
+        ? turn.fusedResponse?.done === true
+        : Object.values(turn.responses).length > 0 && Object.values(turn.responses).every((r) => r?.done === true)
+      if (!allDone) return
+      extractedRef.current.add(turn.id)
+      let assistantText = ""
+      if (turn.isFusion && turn.fusedResponse?.content && !turn.fusedResponse.error) {
+        assistantText = turn.fusedResponse.content
+      } else {
+        assistantText = (Object.keys(turn.responses) as Provider[])
+          .map((p) => turn.responses[p])
+          .filter((r) => r?.done && r.content && !r.error && !isImageContent(r.content))
+          .map((r) => r!.content)
+          .join("\n\n")
+      }
+      if (!assistantText.trim()) return
+      void runExtraction(turn.userMessage, assistantText, realActive[0])
+    })
+  }, [turns, enabled, apiKeys, runExtraction])
+
+  const handleDeleteMemory = useCallback(async (id: string) => {
+    setMemories((prev) => {
+      const next = prev.filter((m) => m.id !== id)
+      memoriesRef.current = next
+      return next
+    })
+    await fetch(`/api/memory/${id}`, { method: "DELETE" }).catch(() => {})
   }, [])
 
   const execCommand = useCallback((id: string) => {
@@ -1533,7 +1796,7 @@ export default function ChatPage() {
         id: turnId, userMessage: msg, responses: {}, isFusion: true,
         fusedResponse: { content: "", loading: true, done: false, phase: "collecting" },
       }])
-      const results = await Promise.allSettled(activeProviders.map((p) => collectFull(p, buildSharedHistory(currentTurns, activeProviders, msg, p))))
+      const results = await Promise.allSettled(activeProviders.map((p) => collectFull(p, buildSharedHistory(currentTurns, activeProviders, msg, p, memoriesRef.current))))
       const parts = activeProviders
         .map((p, i) => {
           const r = results[i]
@@ -1564,7 +1827,7 @@ export default function ChatPage() {
       const initialResponses: Partial<Record<Provider, ModelResponseState>> = {}
       activeProviders.forEach((p) => { initialResponses[p] = { content: "", loading: true, done: false } })
       setTurns((prev) => [...prev, { id: turnId, userMessage: msg, responses: initialResponses }])
-      await Promise.all(activeProviders.map((p) => streamProvider(p, buildSharedHistory(currentTurns, activeProviders, msg, p), turnId)))
+      await Promise.all(activeProviders.map((p) => streamProvider(p, buildSharedHistory(currentTurns, activeProviders, msg, p, memoriesRef.current), turnId)))
     }
 
     setIsLoading(false)
@@ -1631,6 +1894,24 @@ export default function ChatPage() {
           </span>
         )}
 
+        <button onClick={() => setMemoryOpen(true)}
+          className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
+          style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}
+          title="Memoria — lo que las IAs recuerdan de vos">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
+            <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
+            <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
+            <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
+          </svg>
+          <span className="hidden sm:inline">Memoria</span>
+          {memories.length > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
+              style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>
+              {memories.length}
+            </span>
+          )}
+        </button>
+
         <button onClick={handleNewSession}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
           style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}>
@@ -1640,6 +1921,15 @@ export default function ChatPage() {
           Nuevo
         </button>
       </header>
+
+      {/* ── Memory drawer ─────────────────────────────────────────────── */}
+      {memoryOpen && (
+        <MemoryDrawer
+          memories={memories}
+          onClose={() => setMemoryOpen(false)}
+          onDelete={handleDeleteMemory}
+        />
+      )}
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">

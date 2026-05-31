@@ -290,7 +290,7 @@ function Navbar() {
         background: "transparent",
       }}
     >
-      <div className="w-full max-w-[1600px] mx-auto px-10 lg:px-16 h-[72px] flex items-center justify-between">
+      <div className="w-full max-w-[1600px] mx-auto px-6 md:px-10 lg:px-16 h-[72px] flex items-center justify-between">
         {/* Logo — far left */}
         <a href="#" className="flex items-center cursor-pointer group" aria-label="OneChat inicio">
           <div className="transition-all duration-300 group-hover:opacity-80 group-hover:scale-[1.02]">
@@ -333,9 +333,10 @@ function Navbar() {
 
         {/* Mobile burger */}
         <button
-          className="md:hidden p-2 text-gray-700 hover:text-gray-900 rounded-full hover:bg-black/[0.05] cursor-pointer transition-all"
+          className="md:hidden p-2.5 text-gray-700 hover:text-gray-900 rounded-full hover:bg-black/[0.05] cursor-pointer transition-all"
           onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Abrir menú"
+          aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={mobileOpen}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
             {mobileOpen ? (
@@ -391,7 +392,7 @@ function ChatPreview() {
             </div>
           </div>
           <div className="flex gap-1.5">
-            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gradient-to-br from-green-500/20 to-green-600/10 text-green-300 border border-green-500/30 shadow-sm">GPT-4o</span>
+            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gradient-to-br from-green-500/20 to-green-600/10 text-green-300 border border-green-500/30 shadow-sm">GPT-5</span>
             <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gradient-to-br from-orange-500/20 to-orange-600/10 text-orange-300 border border-orange-500/30 shadow-sm">Claude</span>
             <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gradient-to-br from-blue-500/20 to-blue-600/10 text-blue-300 border border-blue-500/30 shadow-sm">Gemini</span>
           </div>
@@ -403,7 +404,7 @@ function ChatPreview() {
           <div className="group flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gray-50 border border-black/10 shadow-sm w-fit hover:border-black/20 transition-all cursor-default">
             <span className="w-2 h-2 rounded-full bg-black animate-pulse" />
             <span className="text-xs text-gray-700 font-medium">Memoria activa:</span>
-            <span className="text-xs text-gray-500">Next.js Â· Cliente bancario Â· Respuestas cortas</span>
+            <span className="text-xs text-gray-500">Next.js · Cliente bancario · Respuestas cortas</span>
           </div>
 
           {/* User message */}
@@ -416,7 +417,7 @@ function ChatPreview() {
                   <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
                   Enviado a 3 modelos
                 </span>
-                <span className="opacity-50">Â·</span>
+                <span className="opacity-50">·</span>
                 <span>Hace un momento</span>
               </div>
             </div>
@@ -424,13 +425,13 @@ function ChatPreview() {
 
           {/* Three model responses */}
           <div className="grid grid-cols-3 gap-3">
-            {/* GPT-4o */}
+            {/* GPT-5 */}
             <div className="group rounded-xl p-4 space-y-3 border border-black/8 bg-white hover:border-black/20 hover:shadow-md transition-all">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-gray-100 border border-black/8 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
                   <OpenAILogo />
                 </div>
-                <span className="text-sm font-semibold text-gray-900">GPT-4o</span>
+                <span className="text-sm font-semibold text-gray-900">GPT-5</span>
                 <div className="ml-auto w-2 h-2 rounded-full bg-green-500" />
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
@@ -617,11 +618,11 @@ const TERMINAL_LINES = [
   { k: "stack",    v: "Supabase TypeScript Tailwind", kc: "text-purple-300", vc: "text-green-300" },
   { k: "tono",     v: "tecnico, sin rodeos, rioplatense", kc: "text-purple-300", vc: "text-green-300" },
   { k: "decision", v: "pgvector sobre Pinecone por costo", kc: "text-purple-300", vc: "text-green-300" },
-  { k: "modelos",  v: "gpt-4o claude-3.5-sonnet gemini-pro", kc: "text-blue-300", vc: "text-yellow-200" },
+  { k: "modelos",  v: "gpt-5.5 claude-sonnet-4-6 gemini-2.5-flash", kc: "text-blue-300", vc: "text-yellow-200" },
 ];
 
 const DASH_BARS = [
-  { name: "GPT-4o", amount: "$2.40", pct: 50, color: "#1f2937", delay: 100 },
+  { name: "GPT-5", amount: "$2.40", pct: 50, color: "#1f2937", delay: 100 },
   { name: "Claude", amount: "$1.80", pct: 38, color: "#f97316", delay: 200 },
   { name: "Gemini", amount: "$0.60", pct: 12, color: "#3b82f6", delay: 300 },
 ];
@@ -774,7 +775,7 @@ function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
         </div>
         <div className="grid grid-cols-3 divide-x divide-black/8 bg-white">
           {[
-            { name: "GPT-4o", dot: "bg-green-500", logo: <OpenAILogo />, text: "Agregá un índice compuesto en user_id, created_at y usá EXPLAIN ANALYZE para verificar." },
+            { name: "GPT-5", dot: "bg-green-500", logo: <OpenAILogo />, text: "Agregá un índice compuesto en user_id, created_at y usá EXPLAIN ANALYZE para verificar." },
             { name: "Claude", dot: "bg-orange-400", logo: <AnthropicLogo />, text: "Con pgvector en Supabase, usá índices HNSW para búsquedas más eficientes." },
             { name: "Gemini", dot: "bg-blue-400 animate-pulse", logo: <GoogleLogo />, text: null },
           ].map((m) => (
@@ -924,7 +925,7 @@ function FeatureRow({ f, reversed }: { f: FeatureDef; reversed: boolean }) {
   return (
     <div
       ref={rowRef}
-      className={`grid md:grid-cols-2 gap-10 md:gap-16 items-center card-item${inView ? " in-view" : ""}`}
+      className={`grid md:grid-cols-2 gap-10 md:gap-16 items-center feature-card-hover card-item${inView ? " in-view" : ""}`}
     >
       {/* Text */}
       <div className={`${textOrder} max-w-xl`}>
@@ -946,7 +947,7 @@ function FeatureRow({ f, reversed }: { f: FeatureDef; reversed: boolean }) {
         </div>
 
         <h3 className="display text-3xl md:text-[2.25rem] font-semibold text-gray-900 tracking-tight leading-[1.1]">{f.name}</h3>
-        <p className="mt-4 text-gray-500 text-[15.5px] leading-relaxed">{f.long}</p>
+        <p className="mt-4 text-gray-500 text-[15px] leading-relaxed text-pretty">{f.long}</p>
 
         {/* Capabilities */}
         <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
@@ -1000,9 +1001,9 @@ function FeaturesSection() {
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
-        <div className={`text-center mb-20 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Funcionalidades</span>
-          <h2 className="display mt-5 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05]">
+          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
             Nunca más empezar de cero
           </h2>
           <p className="mt-5 text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
@@ -1088,9 +1089,9 @@ function HowItWorksSection() {
       </div>
 
       <div className="max-w-7xl mx-auto relative">
-        <div className={`text-center mb-20 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Cómo funciona</span>
-          <h2 className="display mt-5 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05]">
+          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
             Funcionando en{" "}
             <span className="gradient-text">60 segundos</span>
           </h2>
@@ -1169,23 +1170,23 @@ type ModelCard = {
 };
 
 const supportedModels: ModelCard[] = [
-  { name: "GPT-4o",            provider: "OpenAI",    tag: "Flagship",   logo: <OpenAILogo />,    accent: "#10b981" },
-  { name: "GPT-4o mini",       provider: "OpenAI",    tag: "Rápido",     logo: <OpenAILogo />,    accent: "#10b981" },
-  { name: "Claude 3.5 Sonnet", provider: "Anthropic", tag: "Razonamiento", logo: <AnthropicLogo />, accent: "#f97316" },
-  { name: "Claude 3 Opus",     provider: "Anthropic", tag: "Profundo",   logo: <AnthropicLogo />, accent: "#f97316" },
-  { name: "Claude 3 Haiku",    provider: "Anthropic", tag: "Liviano",    logo: <AnthropicLogo />, accent: "#f97316" },
-  { name: "Gemini 2.0 Flash",  provider: "Google",    tag: "Multimodal", logo: <GoogleLogo />,    accent: "#3b82f6" },
-  { name: "Gemini 1.5 Pro",    provider: "Google",    tag: "Long context", logo: <GoogleLogo />,  accent: "#3b82f6" },
-  { name: "Grok 3",            provider: "xAI",       tag: "Realtime",   logo: <XAILogo />,       accent: "#111111" },
-  { name: "Grok 3 Mini",       provider: "xAI",       tag: "Eficiente",  logo: <XAILogo />,       accent: "#111111" },
+  { name: "GPT-5.5",           provider: "OpenAI",    tag: "Flagship",   logo: <OpenAILogo />,    accent: "#10b981" },
+  { name: "GPT-5.4 mini",      provider: "OpenAI",    tag: "Rápido",     logo: <OpenAILogo />,    accent: "#10b981" },
+  { name: "Claude Opus 4.8",   provider: "Anthropic", tag: "Profundo",   logo: <AnthropicLogo />, accent: "#f97316" },
+  { name: "Claude Sonnet 4.6", provider: "Anthropic", tag: "Razonamiento", logo: <AnthropicLogo />, accent: "#f97316" },
+  { name: "Claude Haiku 4.5",  provider: "Anthropic", tag: "Liviano",    logo: <AnthropicLogo />, accent: "#f97316" },
+  { name: "Gemini 3 Pro",      provider: "Google",    tag: "Avanzado",   logo: <GoogleLogo />,    accent: "#3b82f6" },
+  { name: "Gemini 2.5 Flash",  provider: "Google",    tag: "Multimodal", logo: <GoogleLogo />,    accent: "#3b82f6" },
+  { name: "Grok 4.3",          provider: "xAI",       tag: "Realtime",   logo: <XAILogo />,       accent: "#111111" },
+  { name: "Grok 4",            provider: "xAI",       tag: "Potente",    logo: <XAILogo />,       accent: "#111111" },
   { name: "Llama 3.3 70B",     provider: "Groq",      tag: "Ultra rápido", logo: <GroqLogo />,    accent: "#f55036" },
   { name: "Llama 3.1 8B",      provider: "Groq",      tag: "Instant",    logo: <GroqLogo />,      accent: "#f55036" },
-  { name: "Mixtral 8x7B",      provider: "Groq",      tag: "MoE",        logo: <GroqLogo />,      accent: "#f55036" },
-  { name: "Mistral Large",     provider: "Mistral",   tag: "Top tier",   logo: <MistralLogo />,   accent: "#ff7000" },
-  { name: "Mistral Small",     provider: "Mistral",   tag: "Económico",  logo: <MistralLogo />,   accent: "#ff7000" },
+  { name: "GPT-OSS 120B",      provider: "Groq",      tag: "Open",       logo: <GroqLogo />,      accent: "#f55036" },
+  { name: "Mistral Large 3",   provider: "Mistral",   tag: "Top tier",   logo: <MistralLogo />,   accent: "#ff7000" },
+  { name: "Mistral Medium 3.5", provider: "Mistral",  tag: "Equilibrado", logo: <MistralLogo />,  accent: "#ff7000" },
   { name: "Codestral",         provider: "Mistral",   tag: "Código",     logo: <MistralLogo />,   accent: "#ff7000" },
-  { name: "DeepSeek V3",       provider: "DeepSeek",  tag: "Open",       logo: <DeepSeekLogo />,  accent: "#4462F5" },
-  { name: "DeepSeek R1",       provider: "DeepSeek",  tag: "Reasoning",  logo: <DeepSeekLogo />,  accent: "#4462F5" },
+  { name: "DeepSeek V4",       provider: "DeepSeek",  tag: "Open",       logo: <DeepSeekLogo />,  accent: "#4462F5" },
+  { name: "DeepSeek V4 Reasoner", provider: "DeepSeek", tag: "Reasoning", logo: <DeepSeekLogo />, accent: "#4462F5" },
   { name: "OpenRouter",        provider: "Gateway",   tag: "300+ modelos", logo: <PerplexityLogo />, accent: "#8b5cf6" },
 ];
 
@@ -1203,7 +1204,7 @@ function ModelCardItem({ m }: { m: ModelCard }) {
       <div className="min-w-0 flex-1">
         <div className="text-[13.5px] font-semibold text-gray-900 truncate leading-tight">{m.name}</div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10.5px] text-gray-400 font-medium">{m.provider}</span>
+          <span className="text-[10px] text-gray-400 font-medium">{m.provider}</span>
           {m.tag && (
             <>
               <span className="w-0.5 h-0.5 rounded-full bg-gray-300" />
@@ -1242,9 +1243,9 @@ function ModelsSection() {
   return (
     <section ref={sectionRef} id="models" className="relative py-28 px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto relative">
-        <div className={`text-center mb-14 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Modelos soportados</span>
-          <h2 className="display mt-5 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05]">
+          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
             Todos los modelos que usás
           </h2>
           <p className="mt-5 text-gray-500 max-w-md mx-auto text-lg leading-relaxed">
@@ -1252,7 +1253,7 @@ function ModelsSection() {
           </p>
         </div>
 
-        <div className={`space-y-4 card-item${inView ? " in-view" : ""}`}>
+        <div className={`space-y-6 card-item${inView ? " in-view" : ""}`}>
           <div className="marquee-wrap marquee-mask overflow-hidden">
             <div className="marquee-track py-1">
               {[...rowA, ...rowA].map((m, i) => <ModelCardItem key={`a-${i}`} m={m} />)}
@@ -1460,9 +1461,9 @@ function TestimonialsSection() {
 
       <div className="max-w-7xl mx-auto relative">
         {/* Header */}
-        <div className={`text-center mb-14 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Testimonios</span>
-          <h2 className="display mt-5 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05]">
+          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
             Quienes ya no{" "}
             <span className="gradient-text">empiezan de cero</span>
           </h2>
@@ -1481,7 +1482,7 @@ function TestimonialsSection() {
               key={s.label}
               className={`flex flex-col items-center text-center px-5 py-7 ${i !== 0 ? "border-l border-black/8" : ""} ${i >= 2 ? "border-t md:border-t-0 border-black/8" : ""} ${i === 2 ? "border-l-0 md:border-l" : ""}`}
             >
-              <div className="display text-3xl md:text-4xl font-semibold text-gray-900 leading-none flex items-center gap-1.5 tabular-nums">
+              <div className="display text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-900 leading-none flex items-center gap-1.5 tabular-nums">
                 <CountUp
                   value={s.value}
                   decimals={s.decimals}
@@ -1515,7 +1516,7 @@ function TestimonialsSection() {
               </svg>
 
               {/* Stars */}
-              <div className="flex gap-0.5 mb-3">
+              <div className="flex gap-0.5 mb-3" role="img" aria-label="Calificación 5 de 5 estrellas">
                 {[...Array(5)].map((_, s) => (
                   <svg key={s} viewBox="0 0 24 24" fill="#FBBF24" className="w-3.5 h-3.5">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -1536,7 +1537,7 @@ function TestimonialsSection() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-semibold text-gray-900 leading-tight">{t.name}</div>
-                  <div className="text-[11.5px] text-gray-500 leading-tight mt-0.5 truncate">{t.role}</div>
+                  <div className="text-[11px] text-gray-500 leading-tight mt-0.5 truncate">{t.role}</div>
                   <div className="text-[11px] text-gray-400 leading-tight mt-0.5">{t.city}</div>
                 </div>
               </figcaption>
@@ -1572,7 +1573,7 @@ function PricingSection() {
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Precios</span>
-          <h2 className="display mt-5 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05]">
+          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
             Precios simples y{" "}
             <span className="gradient-text">transparentes</span>
           </h2>
@@ -1749,14 +1750,14 @@ function CTASection() {
             style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
           <div className="relative z-10">
-            <div className="flex justify-center gap-1 mb-6">
+            <div className="flex justify-center gap-1 mb-6" role="img" aria-label="Calificación 5 de 5 estrellas">
               {[...Array(5)].map((_, i) => (
                 <svg key={i} viewBox="0 0 24 24" fill="#FBBF24" className="w-4 h-4">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
               ))}
             </div>
-            <h2 className="display text-4xl md:text-[3.25rem] font-semibold text-white leading-[1.05] tracking-tight">
+            <h2 className="display text-4xl md:text-[3.25rem] font-semibold text-white leading-[1.05] tracking-tight text-balance">
               ¿Listo para unificar tu
               <br className="hidden sm:block" />
               <span
@@ -1817,7 +1818,7 @@ function Footer() {
   };
 
   return (
-    <footer className="border-t border-black/8 py-16 px-6">
+    <footer className="border-t border-black/8 py-20 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-12">
           <div className="col-span-2 md:col-span-1">
@@ -1825,7 +1826,7 @@ function Footer() {
               <OneChatLogoFull className="h-7 w-auto" />
             </div>
             <p className="text-sm text-gray-500 leading-relaxed max-w-xs">
-              Una memoria.Todas las IAs. Traé tus keys, controlá tus datos.
+              Una memoria. Todas las IAs. Traé tus keys, controlá tus datos.
             </p>
             <div className="mt-4 flex gap-3">
               <a href="https://github.com" target="_blank" rel="noopener noreferrer"
@@ -1858,14 +1859,14 @@ function Footer() {
 
         <div className="pt-8 border-t border-black/6 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-gray-400">
-            Â© {new Date().getFullYear()} OneChat. Código abierto bajo licencia MIT.
+            © {new Date().getFullYear()} OneChat. Código abierto bajo licencia MIT.
           </p>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 text-xs text-gray-400">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
               Todos los sistemas operativos
             </span>
-            <span className="text-gray-300">Â·</span>
+            <span className="text-gray-300">·</span>
             <a href="#" className="text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Privacidad</a>
             <a href="#" className="text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Términos</a>
           </div>
@@ -1920,7 +1921,7 @@ function HeroSection() {
         <h1 className="sr-only">Chat con IA: GPT, Claude y Gemini en un solo lugar con memoria persistente</h1>
 
         {/* Visual headline — decorative, aria-hidden */}
-        <div aria-hidden="true" className="animate-fade-up delay-200 relative display display-tight text-center text-[3.5rem] sm:text-6xl md:text-7xl lg:text-[5.75rem] leading-[1.02] max-w-5xl">
+        <div aria-hidden="true" className="animate-fade-up delay-200 relative display display-tight text-center text-[clamp(2.75rem,9vw,5.75rem)] leading-[1.02] max-w-5xl">
           {/* soft glow behind headline for depth */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[170%]"
             style={{ background: "radial-gradient(58% 48% at 50% 50%, rgba(99,102,241,0.12), rgba(139,92,246,0.06) 45%, transparent 72%)", filter: "blur(22px)" }} />

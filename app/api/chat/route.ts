@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         } else if (provider === "openrouter") {
           await streamOpenRouter(messages, apiKey, model, controller, encoder)
         } else if (provider === "xai") {
-          await streamOpenAICompat("https://api.x.ai/v1/chat/completions", "xAI", messages, apiKey, model || "grok-3", controller, encoder)
+          await streamOpenAICompat("https://api.x.ai/v1/chat/completions", "xAI", messages, apiKey, model || "grok-4.3", controller, encoder)
         } else if (provider === "mistral") {
           await streamOpenAICompat("https://api.mistral.ai/v1/chat/completions", "Mistral", messages, apiKey, model || "mistral-large-latest", controller, encoder)
         } else if (provider === "deepseek") {
@@ -66,7 +66,7 @@ async function streamOpenAI(
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ model: model || "gpt-4o", messages, stream: true }),
+    body: JSON.stringify({ model: model || "gpt-5.5", messages, stream: true }),
   })
 
   if (!res.ok) {
@@ -112,7 +112,7 @@ async function streamAnthropic(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: model || "claude-3-5-sonnet-20241022",
+      model: model || "claude-sonnet-4-6",
       max_tokens: 4096,
       messages,
       stream: true,
@@ -243,7 +243,7 @@ async function streamGoogle(
     return acc
   }, [])
 
-  const modelName = model || "gemini-2.0-flash"
+  const modelName = model || "gemini-2.5-flash"
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
     {
