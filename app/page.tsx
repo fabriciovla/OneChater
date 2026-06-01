@@ -18,14 +18,25 @@ function OneChatIsotipo({ className = "w-9 h-9" }: { className?: string }) {
 
 function OneChatLogoFull({ className = "h-8" }: { className?: string }) {
   return (
-    <Image
-      src="/OneChater-35-blobs/svg/horizontal-light.svg"
-      alt="OneChat"
-      height={44}
-      width={220}
-      className={className}
-      priority
-    />
+    <>
+      <Image
+        src="/OneChater-35-blobs/svg/horizontal-light.svg"
+        alt="OneChat"
+        height={44}
+        width={220}
+        className={`${className} logo-dark-hidden`}
+        priority
+      />
+      <Image
+        src="/OneChater-35-blobs/svg/horizontal-dark.svg"
+        alt="OneChat"
+        height={44}
+        width={220}
+        className={`${className} logo-dark-only`}
+        aria-hidden="true"
+        priority
+      />
+    </>
   );
 }
 
@@ -305,7 +316,7 @@ function Navbar() {
             <a
               key={item.label}
               href={item.href}
-              className="px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+              className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
               target={item.external ? "_blank" : undefined}
               rel={item.external ? "noopener noreferrer" : undefined}
             >
@@ -314,7 +325,7 @@ function Navbar() {
             </a>
           ))}
 
-          <span className="mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
+          <span className="nav-separator mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
 
           <ThemeToggle className="!w-8 !h-8" />
 
@@ -353,9 +364,9 @@ function Navbar() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-black/8 px-6 py-4 flex flex-col gap-1 bg-white/85 backdrop-blur-xl">
+        <div className="nav-mobile-menu md:hidden border-t border-black/8 px-6 py-4 flex flex-col gap-1 bg-white/85 backdrop-blur-xl">
           {navItems.map((item) => (
-            <a key={item.label} href={item.href} className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 rounded-xl hover:bg-black/[0.05] transition-all cursor-pointer flex items-center gap-2">
+            <a key={item.label} href={item.href} className="nav-mobile-link px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 rounded-xl hover:bg-black/[0.05] transition-all cursor-pointer flex items-center gap-2">
               {item.icon}
               {item.label}
             </a>
@@ -1876,10 +1887,10 @@ function Footer() {
             </p>
             <div className="mt-4 flex gap-3">
               <a href="https://github.com" target="_blank" rel="noopener noreferrer"
-                className="w-8 h-8 rounded-lg bg-black/[0.04] border border-black/10 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-black/[0.08] transition-all cursor-pointer">
+                className="footer-social-btn w-8 h-8 rounded-lg bg-black/[0.04] border border-black/10 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-black/[0.08] transition-all cursor-pointer">
                 <IconGithub />
               </a>
-              <a href="#" className="w-8 h-8 rounded-lg bg-black/[0.04] border border-black/10 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-black/[0.08] transition-all cursor-pointer">
+              <a href="#" className="footer-social-btn w-8 h-8 rounded-lg bg-black/[0.04] border border-black/10 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-black/[0.08] transition-all cursor-pointer">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
@@ -1893,7 +1904,7 @@ function Footer() {
               <ul className="space-y-2.5">
                 {items.map((item) => (
                   <li key={item}>
-                    <a href="#" className="text-sm text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
+                    <a href="#" className="footer-link text-sm text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
                       {item}
                     </a>
                   </li>
@@ -1913,8 +1924,8 @@ function Footer() {
               Todos los sistemas operativos
             </span>
             <span className="text-gray-300">·</span>
-            <a href="#" className="text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Privacidad</a>
-            <a href="#" className="text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Términos</a>
+            <a href="#" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Privacidad</a>
+            <a href="#" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Términos</a>
           </div>
         </div>
       </div>
@@ -1928,7 +1939,7 @@ function HeroSection() {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-32 pb-20 overflow-hidden">
       {/* Subtle dot grid */}
-      <div className="absolute inset-0 animate-fade-in opacity-[0.4] pointer-events-none"
+      <div className="hero-dot-grid absolute inset-0 animate-fade-in opacity-[0.4] pointer-events-none"
         style={{
           backgroundImage: "radial-gradient(rgba(14,15,18,0.07) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
@@ -1945,7 +1956,7 @@ function HeroSection() {
       <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col items-center">
         {/* Eyebrow badge */}
         <div className="animate-fade-up delay-100 mb-7">
-          <a href="#features" className="group inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-medium text-gray-700 transition-all cursor-pointer"
+          <a href="#features" className="hero-badge group inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-medium text-gray-700 transition-all cursor-pointer"
             style={{
               background: "linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,247,245,0.85))",
               border: "1px solid rgba(14,15,18,0.10)",
@@ -1956,7 +1967,7 @@ function HeroSection() {
               style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
               Nuevo
             </span>
-            <span className="text-gray-700">Memoria persistente entre modelos</span>
+            <span className="hero-badge-inner-text text-gray-700">Memoria persistente entre modelos</span>
             <span className="transition-transform group-hover:translate-x-0.5 text-gray-500">
               <IconArrowRight />
             </span>
@@ -2079,7 +2090,7 @@ function HeroSection() {
             />
             {/* Outer ring */}
             <div
-              className="relative w-full rounded-[20px] p-1.5"
+              className="hero-video-outer relative w-full rounded-[20px] p-1.5"
               style={{
                 background: "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(247,247,245,0.7))",
                 border: "1px solid rgba(14,15,18,0.08)",

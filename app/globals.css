@@ -759,6 +759,52 @@ html.dark ::-webkit-scrollbar-track { background: var(--surface-2); }
   to   { width: 100%; }
 }
 
+/* ── Theme-adaptive logo ────────────────────────────────────────────────── */
+.logo-dark-only { display: none; }
+html.dark .logo-dark-hidden { display: none; }
+html.dark .logo-dark-only { display: block; }
+
+/* ── Navbar dark hover / separator / mobile ──────────────────────────────── */
+html.dark .nav-item-link:hover {
+  background: rgba(255,255,255,0.07) !important;
+  color: var(--text-1) !important;
+}
+html.dark .nav-separator {
+  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent) !important;
+}
+html.dark .nav-mobile-menu {
+  background: var(--surface-blur) !important;
+  backdrop-filter: blur(20px);
+  border-color: var(--border) !important;
+}
+html.dark .nav-mobile-link:hover { background: rgba(255,255,255,0.06) !important; }
+
+/* ── Hero badge + video frame dark ─────────────────────────────────────── */
+html.dark .hero-badge {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 24px -10px rgba(99,102,241,0.20) !important;
+  color: var(--text-2) !important;
+}
+html.dark .hero-badge-inner-text { color: var(--text-3) !important; }
+html.dark .hero-dot-grid {
+  opacity: 0.06 !important;
+  background-image: radial-gradient(rgba(255,255,255,0.20) 1px, transparent 1px) !important;
+}
+html.dark .hero-video-outer {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 30px 80px -20px rgba(14,15,18,0.5), 0 12px 32px -8px rgba(99,102,241,0.08) !important;
+}
+
+/* ── Footer dark hover ───────────────────────────────────────────────────── */
+html.dark .footer-link:hover { color: var(--text-1) !important; }
+html.dark .footer-social-btn { background: rgba(255,255,255,0.04) !important; }
+html.dark .footer-social-btn:hover {
+  background: rgba(255,255,255,0.09) !important;
+  color: var(--text-1) !important;
+}
+
 /* ── Brand blob: subtle rotating glow ─────────────────────────
    9s cycle, glow softly travels blob1 → blob2 → blob3 → blob1.
    No movement, no fusion - just a gentle highlight passing through. */
