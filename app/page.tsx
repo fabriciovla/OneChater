@@ -1287,7 +1287,7 @@ const plans = [
     description: "Para empezar sin fricción. Sin tarjeta de crédito.",
     features: [
       "BYOK (tus propias API keys)",
-      "100 mensajes con memoria al mes",
+      "Memoria: hasta 50 hechos recordados",
       "1 proyecto",
       "Historial de conversaciones",
       "Soporte por comunidad",

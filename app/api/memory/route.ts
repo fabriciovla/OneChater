@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 
-// Per-plan ceiling on stored facts. Free gets a taste; paid tiers get the full
-// runaway guard. Lifting a user's `plan` (billing) raises the cap automatically.
-const PLAN_FACT_CAP: Record<string, number> = { free: 50, pro: 400, team: 400 }
+// Per-plan ceiling on stored facts. Free gets a taste (50); paid tiers are
+// effectively unlimited ("Memoria ilimitada" on pricing) behind a high runaway
+// guard. Lifting a user's `plan` (billing) raises the cap automatically.
+const PLAN_FACT_CAP: Record<string, number> = { free: 50, pro: 2000, team: 2000 }
 const DEFAULT_CAP = PLAN_FACT_CAP.free
 const MAX_CONTENT_LEN = 400    // a fact should be a sentence, not an essay
 
