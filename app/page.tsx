@@ -582,7 +582,7 @@ const FEATURES: FeatureDef[] = [
     n: "03",
     name: "Tus propias API keys",
     short: "0% fee, pagás directo",
-    long: "Pegá tus keys de OpenAI, Anthropic, Google. Encriptadas con AES-256, guardadas en tu cuenta. Sin markup, sin intermediarios.",
+    long: "Pegá tus keys de OpenAI, Anthropic, Google. Se guardan solo en tu navegador, nunca en nuestros servidores. Sin markup, sin intermediarios.",
     icon: <IconKey />,
     accent: {
       from: "from-violet-500",
@@ -664,7 +664,7 @@ const MULTI_BULLETS = [
 ];
 
 const BYOK_BULLETS = [
-  { icon: <IconShield />, label: "AES-256 encriptado", desc: "Keys cifradas en tu sesión." },
+  { icon: <IconShield />, label: "Solo en tu navegador", desc: "Keys guardadas localmente, nunca en el servidor." },
   { icon: <IconZap />, label: "Setup en 30s", desc: "Pegá y listo, sin OAuth." },
   { icon: <IconKey />, label: "Rotación fácil", desc: "Cambiá o borrá cuando quieras." },
   { icon: <IconShuffle />, label: "Multi-proveedor", desc: "OpenAI, Anthropic, Google y más." },
@@ -840,7 +840,7 @@ function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-violet-600 shrink-0">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
-          <span className="text-xs text-violet-700 font-semibold">AES-256 encriptado · Nunca salen del navegador sin cifrar</span>
+          <span className="text-xs text-violet-700 font-semibold">Solo en tu navegador · Nunca llegan a nuestros servidores</span>
         </div>
       </div>
     );
@@ -1044,8 +1044,8 @@ const steps = [
     n: "01",
     eyebrow: "Setup",
     title: "Conectá tus API keys",
-    description: "Pegá tus keys de OpenAI, Anthropic o Google. Se encriptan con AES-256 y se guardan en tu cuenta. Configuración única, para siempre.",
-    tags: ["OpenAI", "Anthropic", "Google", "AES-256"],
+    description: "Pegá tus keys de OpenAI, Anthropic o Google. Se guardan solo en tu navegador, nunca en nuestros servidores. Configuración única, para siempre.",
+    tags: ["OpenAI", "Anthropic", "Google", "Local only"],
     gradient: "from-violet-500 to-purple-600",
     iconBg: "bg-gradient-to-br from-violet-500 to-purple-600",
     shadow: "rgba(139,92,246,0.4)",

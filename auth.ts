@@ -1,4 +1,12 @@
 import NextAuth from "next-auth"
+
+// Fail fast if AUTH_SECRET was never replaced — forged JWTs become trivial otherwise.
+if (process.env.AUTH_SECRET === "REEMPLAZAR_CON_SECRET_SEGURO") {
+  throw new Error(
+    "[OneChat] AUTH_SECRET is still the placeholder value. " +
+    "Generate a real secret with: openssl rand -base64 32"
+  )
+}
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
