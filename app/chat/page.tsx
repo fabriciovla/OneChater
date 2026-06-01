@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo, KeyboardEvent } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import Image from "next/image"
 import ThemeToggle from "../components/ThemeToggle"
+import OneChatLogo from "../components/OneChatLogo"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2001,7 +2001,7 @@ export default function ChatPage() {
   }, [setApiKeys, setEnabled])
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-white">
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
 
       {/* ── Topbar ────────────────────────────────────────────────────── */}
       <header
@@ -2020,8 +2020,7 @@ export default function ChatPage() {
         </button>
 
         <Link href="/" className="flex items-center group cursor-pointer">
-          <Image src="/OneChater-35-blobs/svg/horizontal-light.svg" alt="OneChat" height={48} width={180}
-            className="h-9 w-auto opacity-90 group-hover:opacity-100 transition-opacity" priority />
+          <OneChatLogo className="h-9 w-auto opacity-90 group-hover:opacity-100 transition-opacity" />
         </Link>
 
         <div className="flex-1" />

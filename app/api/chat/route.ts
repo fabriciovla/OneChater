@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server"
+import { auth } from "@/auth"
 
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
+
   const { messages, provider, apiKey, model, mode } = await req.json()
 
   const encoder = new TextEncoder()

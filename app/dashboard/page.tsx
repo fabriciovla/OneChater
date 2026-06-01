@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo, ReactNode } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
 import ThemeToggle from "../components/ThemeToggle"
+import OneChatLogo from "../components/OneChatLogo"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -297,8 +297,7 @@ function Topbar() {
     <header className="flex items-center gap-3 px-4 md:px-6 h-14 flex-shrink-0 sticky top-0 z-20"
       style={{ background: "var(--surface-blur)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--border-soft)" }}>
       <Link href="/chat" className="flex items-center group cursor-pointer">
-        <Image src="/OneChater-35-blobs/svg/horizontal-light.svg" alt="OneChat" height={48} width={180}
-          className="h-9 w-auto opacity-90 group-hover:opacity-100 transition-opacity" priority />
+        <OneChatLogo className="h-9 w-auto opacity-90 group-hover:opacity-100 transition-opacity" />
       </Link>
       <div className="flex-1" />
       <ThemeToggle />
@@ -316,7 +315,7 @@ function Topbar() {
 
 function Skeleton() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <Topbar />
       <main className="max-w-6xl mx-auto px-6 py-10">
         <div className="h-8 w-48 rounded-lg bg-black/5 animate-pulse mb-8" />
@@ -405,7 +404,7 @@ export default function DashboardPage() {
   if (status === "loading" || (status === "authenticated" && !data && !err)) return <Skeleton />
   if (err) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
         <Topbar />
         <main className="max-w-6xl mx-auto px-6 py-20 text-center text-gray-500">No se pudo cargar el dashboard. Recargá la página.</main>
       </div>
@@ -415,7 +414,7 @@ export default function DashboardPage() {
 
   if (data.locked) {
     return (
-      <div className="min-h-screen bg-white chat-backdrop">
+      <div className="min-h-screen chat-backdrop" style={{ background: "var(--bg-primary)" }}>
         <Topbar />
         <main className="max-w-6xl mx-auto px-6 py-10">
           <LockedUpsell />
@@ -429,7 +428,7 @@ export default function DashboardPage() {
   const memTotal = memoryByCategory.reduce((s, c) => s + c.n, 0)
 
   return (
-    <div className="min-h-screen bg-white chat-backdrop">
+    <div className="min-h-screen chat-backdrop" style={{ background: "var(--bg-primary)" }}>
       <Topbar />
       <main className="max-w-6xl mx-auto px-6 py-10">
         <Reveal>

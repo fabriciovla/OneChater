@@ -46,7 +46,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${sora.variable} ${lora.variable}`} suppressHydrationWarning>
+    <html lang="es" className={`${inter.variable} ${sora.variable} ${lora.variable}`} suppressHydrationWarning>
       <body className="noise">
         <script
           dangerouslySetInnerHTML={{
