@@ -1278,7 +1278,14 @@ function ModelsSection() {
 
 // ━━━ Pricing ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const plans = [
+type Plan = {
+  name: string; tagline: string; price: string; period: string; description: string;
+  features: string[]; cta: string; highlighted: boolean;
+  gradient: string; accentBar: string; iconBg: string; icon: React.ReactNode;
+  annual?: { price: string; period: string; note: string }; comingSoon?: boolean;
+};
+
+const plans: Plan[] = [
   {
     name: "Free",
     tagline: "Para arrancar",
@@ -1307,8 +1314,9 @@ const plans = [
   {
     name: "Pro",
     tagline: "Para profesionales",
-    price: "$7",
+    price: "$15",
     period: "/ mes",
+    annual: { price: "$12", period: "/ mes", note: "facturado $144/año · 20% off" },
     description: "Para profesionales que viven en la IA todos los días.",
     features: [
       "API keys ilimitadas",
@@ -1347,7 +1355,8 @@ const plans = [
       "SSO / SAML",
       "Soporte dedicado por Slack",
     ],
-    cta: "Contactarnos",
+    cta: "Próximamente",
+    comingSoon: true,
     highlighted: false,
     gradient: "from-blue-500 to-cyan-500",
     accentBar: "from-blue-500 to-cyan-400",
@@ -1552,6 +1561,7 @@ function TestimonialsSection() {
 function PricingSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -1580,6 +1590,23 @@ function PricingSection() {
           <p className="mt-5 text-gray-500 max-w-md mx-auto text-lg leading-relaxed">
             Ya pagás tus API keys. OneChat tiene que ser accesible también.
           </p>
+        </div>
+
+        {/* Billing toggle */}
+        <div className={`flex justify-center mb-10 card-item${inView ? " in-view" : ""}`} style={inView ? { animationDelay: "60ms" } : {}}>
+          <div className="inline-flex items-center p-1 rounded-full" style={{ background: "rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.08)" }}>
+            <button onClick={() => setBilling("monthly")}
+              className="px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer"
+              style={billing === "monthly" ? { background: "white", color: "#111827", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" } : { color: "#6b7280" }}>
+              Mensual
+            </button>
+            <button onClick={() => setBilling("annual")}
+              className="px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer inline-flex items-center gap-2"
+              style={billing === "annual" ? { background: "white", color: "#111827", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" } : { color: "#6b7280" }}>
+              Anual
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.14)", color: "#059669" }}>−20%</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
@@ -1637,13 +1664,22 @@ function PricingSection() {
                 </div>
 
                 {/* Price block */}
-                <div className="relative">
-                  <div className="flex items-end gap-1.5">
-                    <span className={`display text-[3.5rem] font-semibold tracking-tight leading-none ${plan.highlighted ? "text-white" : "text-gray-900"}`}>{plan.price}</span>
-                    <span className={`mb-2 text-sm ${plan.highlighted ? "text-white/50" : "text-gray-400"}`}>{plan.period}</span>
-                  </div>
-                  <p className={`mt-3 text-sm leading-relaxed ${plan.highlighted ? "text-white/65" : "text-gray-500"}`}>{plan.description}</p>
-                </div>
+                {(() => {
+                  const showAnnual = billing === "annual" && !!plan.annual && !plan.comingSoon;
+                  const price = plan.comingSoon ? "Pronto" : showAnnual ? plan.annual!.price : plan.price;
+                  const period = plan.comingSoon ? "" : showAnnual ? plan.annual!.period : plan.period;
+                  const note = showAnnual ? plan.annual!.note : null;
+                  return (
+                    <div className="relative">
+                      <div className="flex items-end gap-1.5">
+                        <span className={`display ${plan.comingSoon ? "text-[2.5rem]" : "text-[3.5rem]"} font-semibold tracking-tight leading-none ${plan.highlighted ? "text-white" : "text-gray-900"}`}>{price}</span>
+                        {period && <span className={`mb-2 text-sm ${plan.highlighted ? "text-white/50" : "text-gray-400"}`}>{period}</span>}
+                      </div>
+                      {note && <p className={`mt-1.5 text-xs font-semibold ${plan.highlighted ? "text-indigo-300" : "text-emerald-600"}`}>{note}</p>}
+                      <p className={`mt-3 text-sm leading-relaxed ${plan.highlighted ? "text-white/65" : "text-gray-500"}`}>{plan.description}</p>
+                    </div>
+                  );
+                })()}
 
                 {/* Divider */}
                 <div className={`h-px ${plan.highlighted ? "bg-gradient-to-r from-transparent via-white/15 to-transparent" : "bg-gradient-to-r from-transparent via-black/10 to-transparent"}`} />
@@ -1671,22 +1707,27 @@ function PricingSection() {
                 </ul>
 
                 <button
-                  className={`relative w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 ${
-                    plan.highlighted
-                      ? "text-gray-900 hover:-translate-y-0.5"
-                      : "btn-primary"
+                  disabled={plan.comingSoon}
+                  className={`relative w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+                    plan.comingSoon
+                      ? "cursor-not-allowed text-gray-400"
+                      : plan.highlighted
+                        ? "cursor-pointer text-gray-900 hover:-translate-y-0.5"
+                        : "cursor-pointer btn-primary"
                   }`}
                   style={
-                    plan.highlighted
-                      ? {
-                          background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
-                          boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px rgba(0,0,0,0.08), 0 10px 28px -8px rgba(255,255,255,0.4)",
-                        }
-                      : undefined
+                    plan.comingSoon
+                      ? { background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)" }
+                      : plan.highlighted
+                        ? {
+                            background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px rgba(0,0,0,0.08), 0 10px 28px -8px rgba(255,255,255,0.4)",
+                          }
+                        : undefined
                   }
                 >
                   {plan.cta}
-                  <IconArrowRight />
+                  {!plan.comingSoon && <IconArrowRight />}
                 </button>
 
                 {/* Bottom accent bar */}
