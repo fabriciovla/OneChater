@@ -2036,6 +2036,16 @@ export default function ChatPage() {
           </span>
         )}
 
+        <Link href="/dashboard"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
+          style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}
+          title="Dashboard — tu uso y gasto estimado">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
+            <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
+          </svg>
+          <span className="hidden sm:inline">Dashboard</span>
+        </Link>
+
         <button onClick={() => setMemoryOpen(true)}
           className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
           style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}
