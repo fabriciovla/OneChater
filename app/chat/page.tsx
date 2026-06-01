@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, KeyboardEvent } from
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
+import ThemeToggle from "../components/ThemeToggle"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -461,7 +462,7 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
 
   return (
     <div className={`group response-card rounded-2xl flex flex-col overflow-hidden bg-white${animate ? " card-enter" : ""}`}
-      style={{ border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", ...(animate && { animationDelay: `${index * 0.1}s` }) }}>
+      style={{ border: "1px solid var(--border)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", ...(animate && { animationDelay: `${index * 0.1}s` }) }}>
 
       {/* Header */}
       <div className="card-header-sheen flex items-center gap-2.5 px-4 py-3"
@@ -470,7 +471,7 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
           borderBottom: `1px solid ${c.colorBorder}`,
         }}>
         <div className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3${animate ? " pop-in" : ""}`}
-          style={{ background: "white", border: `1px solid ${c.colorBorder}`, color: c.color, boxShadow: `0 1px 3px ${c.color}20`, ...(animate && { animationDelay: `${index * 0.1 + 0.18}s` }) }}>
+          style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: c.color, boxShadow: `0 1px 3px ${c.color}20`, ...(animate && { animationDelay: `${index * 0.1 + 0.18}s` }) }}>
           <c.Logo size={14} />
         </div>
         <div className="flex-1 min-w-0">
@@ -490,7 +491,7 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
           {state.done && !state.error && state.content && isImg && (
             <a href={state.content} download={`onechat-${provider}.png`}
               className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
-              style={{ background: "white", border: `1px solid ${c.colorBorder}`, color: "#6b7280" }}>
+              style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: "var(--text-3)" }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
               Descargar
             </a>
@@ -498,7 +499,7 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
           {state.done && !state.error && state.content && !isImg && (
             <button onClick={handleCopy}
               className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
-              style={{ background: "white", border: `1px solid ${c.colorBorder}`, color: copied ? c.color : "#6b7280" }}>
+              style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: copied ? c.color : "#6b7280" }}>
               {copied ? (
                 <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
               ) : (
@@ -517,7 +518,7 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
           ? <a href={state.content} target="_blank" rel="noopener noreferrer" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={state.content} alt="Imagen generada" className="rounded-xl w-full h-auto transition-transform duration-200 hover:scale-[1.01]"
-                style={{ border: "1px solid rgba(0,0,0,0.06)" }} />
+                style={{ border: "1px solid var(--border-soft)" }} />
             </a>
           : state.content
           ? <>
@@ -610,7 +611,7 @@ function FusionCard({ state, providers, animate = false }: { state: ModelRespons
           {state.done && !state.error && state.content && (
             <button onClick={handleCopy}
               className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
-              style={{ background: "white", border: "1px solid rgba(249,115,22,0.25)", color: copied ? "#f97316" : "#6b7280" }}>
+              style={{ background: "var(--surface)", border: "1px solid rgba(249,115,22,0.25)", color: copied ? "#f97316" : "#6b7280" }}>
               {copied ? (
                 <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
               ) : (
@@ -745,7 +746,7 @@ function EmptyState({ hasActive, onActivateDemo, onPromptClick }: {
           {SUGGESTED_PROMPTS.map((p, i) => (
             <button key={i} onClick={() => onPromptClick(`${p.title}: `)}
               className="group prompt-card flex items-center gap-3 px-4 py-3 rounded-2xl text-left cursor-pointer bg-white prompt-enter active:scale-[0.98]"
-              style={{ border: "1px solid rgba(0,0,0,0.08)", animationDelay: `${0.15 + i * 0.07}s` }}>
+              style={{ border: "1px solid var(--border)", animationDelay: `${0.15 + i * 0.07}s` }}>
               <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${p.from} ${p.to} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-105`}
                 style={{ boxShadow: "0 4px 12px -2px rgba(14,15,18,0.18), inset 0 1px 0 rgba(255,255,255,0.25)" }}>
                 {p.icon}
@@ -821,7 +822,7 @@ function ModelDropdown({ provider, selectedModel, onSelect }: {
           className="absolute right-0 bottom-full mb-1.5 z-50 rounded-xl overflow-hidden dropdown-enter"
           style={{
             minWidth: "160px",
-            background: "white",
+            background: "var(--surface)",
             border: "1px solid rgba(0,0,0,0.1)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)",
           }}
@@ -959,7 +960,7 @@ function AIChipSelector({
       {/* Panel */}
       {panelOpen && (
         <div className="absolute left-0 bottom-full mb-2 z-50 rounded-2xl overflow-hidden panel-enter"
-          style={{ width: "320px", background: "white", border: "1px solid rgba(0,0,0,0.1)", boxShadow: "0 -4px 6px -1px rgba(0,0,0,0.05), 0 -10px 32px rgba(0,0,0,0.12)" }}>
+          style={{ width: "320px", background: "var(--surface)", border: "1px solid rgba(0,0,0,0.1)", boxShadow: "0 -4px 6px -1px rgba(0,0,0,0.05), 0 -10px 32px rgba(0,0,0,0.12)" }}>
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
@@ -1019,7 +1020,7 @@ function AIChipSelector({
                         </button>
                       )}
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                        style={{ width: 12, height: 12, color: "#9ca3af", transition: "transform 0.15s", transform: isExp ? "rotate(180deg)" : "none" }}>
+                        style={{ width: 12, height: 12, color: "var(--text-4)", transition: "transform 0.15s", transform: isExp ? "rotate(180deg)" : "none" }}>
                         <path d="M6 9l6 6 6-6" />
                       </svg>
                     </div>
@@ -1049,7 +1050,7 @@ function AIChipSelector({
                         {hasKey && (
                           <button onClick={() => handleRemoveKey(p)}
                             className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-red-50 flex-shrink-0 bg-white"
-                            style={{ border: "1px solid rgba(0,0,0,0.09)" }} title="Eliminar key">
+                            style={{ border: "1px solid var(--border)" }} title="Eliminar key">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, color: "#ef4444" }}>
                               <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
                             </svg>
@@ -1082,9 +1083,9 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
     <div
       className="group flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all duration-150 relative history-item-enter"
       style={{
-        background: active ? "#ffffff" : "transparent",
+        background: active ? "var(--surface)" : "transparent",
         boxShadow: active ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-        border: active ? "1px solid rgba(0,0,0,0.06)" : "1px solid transparent",
+        border: active ? "1px solid var(--border-soft)" : "1px solid transparent",
         animationDelay: `${delay}ms`,
       }}
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "rgba(0,0,0,0.03)" }}
@@ -1104,7 +1105,7 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
       <button
         onClick={(e) => { e.stopPropagation(); onDelete() }}
         className="hidden group-hover:flex w-5 h-5 flex-shrink-0 items-center justify-center rounded-md transition-colors hover:bg-red-50 cursor-pointer"
-        style={{ color: "#9ca3af" }}
+        style={{ color: "var(--text-4)" }}
         title="Eliminar"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 hover:text-red-500">
@@ -1133,7 +1134,7 @@ function Sidebar({
       style={{
         width: open ? "240px" : "0",
         opacity: open ? 1 : 0,
-        background: "#f5f5f4",
+        background: "var(--surface-2)",
         borderRight: "1px solid rgba(0,0,0,0.07)",
       }}
     >
@@ -1144,7 +1145,7 @@ function Sidebar({
           <button
             onClick={onNewSession}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer transition-all hover:shadow-sm"
-            style={{ background: "#ffffff", color: "#374151", border: "1px solid rgba(0,0,0,0.09)" }}
+            style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
               <path d="M12 5v14M5 12h14" />
@@ -1158,7 +1159,7 @@ function Sidebar({
           {sessions.length === 0 && (
             <div className="px-3 py-10 text-center flex flex-col items-center gap-2">
               <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}>
+                style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--border-soft)" }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-400">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
@@ -1201,7 +1202,7 @@ const CATEGORY_META: Record<string, { label: string; color: string }> = {
   preference: { label: "Preferencia", color: "#f97316" },
   decision:   { label: "Decisión",    color: "#8b5cf6" },
   tone:       { label: "Tono",        color: "#ec4899" },
-  other:      { label: "Otro",        color: "#6b7280" },
+  other:      { label: "Otro",        color: "var(--text-3)" },
 }
 
 function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
@@ -1233,7 +1234,7 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} style={{ animation: "memFadeIn 0.2s ease both" }} />
       <div className="relative h-full w-full max-w-[420px] flex flex-col bg-white shadow-2xl"
-        style={{ borderLeft: "1px solid rgba(0,0,0,0.08)", animation: "memDrawerIn 0.32s cubic-bezier(0.22,1,0.36,1) both" }}>
+        style={{ borderLeft: "1px solid var(--border)", animation: "memDrawerIn 0.32s cubic-bezier(0.22,1,0.36,1) both" }}>
 
         {/* Header */}
         <div className="flex items-start gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
@@ -1261,7 +1262,7 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
         {/* Add a fact by hand */}
         <div className="px-4 pt-3 flex-shrink-0">
           {adding ? (
-            <div className="rounded-xl p-3" style={{ background: "#faf9ff", border: "1px solid rgba(124,58,237,0.18)" }}>
+            <div className="rounded-xl p-3" style={{ background: "var(--surface-2)", border: "1px solid rgba(124,58,237,0.18)" }}>
               <textarea
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
@@ -1292,7 +1293,7 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
           ) : (
             <button onClick={() => setAdding(true)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12.5px] font-medium text-gray-600 transition-all hover:text-gray-900 hover:border-violet-300 cursor-pointer"
-              style={{ background: "#fafafa", border: "1px dashed rgba(0,0,0,0.15)" }}>
+              style={{ background: "var(--surface-2)", border: "1px dashed rgba(0,0,0,0.15)" }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M12 5v14M5 12h14" /></svg>
               Agregar un hecho manualmente
             </button>
@@ -1320,7 +1321,7 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
               const isEditing = editingId === m.id
               return (
                 <div key={m.id} className="group flex items-start gap-3 p-3 rounded-xl transition-all hover:shadow-sm"
-                  style={{ background: "#fafafa", border: "1px solid rgba(0,0,0,0.07)" }}>
+                  style={{ background: "var(--surface-2)", border: "1px solid rgba(0,0,0,0.07)" }}>
                   <span className="mt-1 w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
                   <div className="flex-1 min-w-0">
                     {isEditing ? (
@@ -1377,7 +1378,7 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 flex-shrink-0 text-[11px] text-gray-400 leading-snug" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+        <div className="px-5 py-3 flex-shrink-0 text-[11px] text-gray-400 leading-snug" style={{ borderTop: "1px solid var(--border-soft)" }}>
           Se captura sola al chatear y viaja con vos entre modelos. Borrá lo que no quieras que recuerden.
         </div>
       </div>
@@ -2005,12 +2006,12 @@ export default function ChatPage() {
       {/* ── Topbar ────────────────────────────────────────────────────── */}
       <header
         className="flex items-center gap-3 px-4 h-14 flex-shrink-0 z-20"
-        style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}
+        style={{ background: "var(--surface-blur)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--border-soft)" }}
       >
         <button
           onClick={() => setSidebarOpen((v) => !v)}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:bg-black/[0.05] active:scale-95"
-          style={{ color: "#6b7280" }}
+          style={{ color: "var(--text-3)" }}
           title="Panel lateral"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
@@ -2036,9 +2037,11 @@ export default function ChatPage() {
           </span>
         )}
 
+        <ThemeToggle />
+
         <Link href="/dashboard"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
-          style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}
+          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
           title="Dashboard — tu uso y gasto estimado">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
             <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
@@ -2048,7 +2051,7 @@ export default function ChatPage() {
 
         <button onClick={() => setMemoryOpen(true)}
           className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
-          style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}
+          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
           title="Memoria — lo que las IAs recuerdan de vos">
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
             <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
@@ -2066,7 +2069,7 @@ export default function ChatPage() {
 
         <button onClick={handleNewSession}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
-          style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}>
+          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
             <path d="M12 5v14M5 12h14" />
           </svg>
@@ -2118,7 +2121,7 @@ export default function ChatPage() {
           </div>
 
           {/* ── Input area ────────────────────────────────────────────── */}
-          <div className="flex-shrink-0 px-4 md:px-8 py-4 bg-white" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <div className="flex-shrink-0 px-4 md:px-8 py-4 bg-white" style={{ borderTop: "1px solid var(--border-soft)" }}>
 
             {toast && (
               <div key={toastKey} className="max-w-3xl mx-auto mb-2 flex justify-center">

@@ -46,8 +46,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${sora.variable} ${lora.variable}`}>
-      <body className="noise"><SessionProvider>{children}</SessionProvider></body>
+    <html lang="en" className={`${inter.variable} ${sora.variable} ${lora.variable}`} suppressHydrationWarning>
+      <body className="noise">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
+        <SessionProvider>{children}</SessionProvider>
+      </body>
     </html>
   );
 }

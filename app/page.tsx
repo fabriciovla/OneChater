@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import ThemeToggle from "./components/ThemeToggle";
 
 // â"€â"€â"€ OneChat Logo Components â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
@@ -315,6 +316,8 @@ function Navbar() {
 
           <span className="mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
 
+          <ThemeToggle className="!w-8 !h-8" />
+
           <a href="/login" className="px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all cursor-pointer">
             Iniciar sesión
           </a>
@@ -374,9 +377,9 @@ function ChatPreview() {
       <div
         className="rounded-2xl overflow-hidden border border-black/10"
         style={{
-          background: "rgba(255,255,255,0.98)",
+          background: "var(--surface)",
           backdropFilter: "blur(20px)",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.08)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px var(--border)",
         }}
       >
         {/* Titlebar */}
@@ -499,7 +502,7 @@ function ChatPreview() {
 
       <div
         className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-16 rounded-full blur-3xl opacity-40"
-        style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0.02))" }}
+        style={{ background: "linear-gradient(90deg, var(--border-soft), rgba(0,0,0,0.02))" }}
       />
     </div>
   );
@@ -1594,17 +1597,19 @@ function PricingSection() {
 
         {/* Billing toggle */}
         <div className={`flex justify-center mb-10 card-item${inView ? " in-view" : ""}`} style={inView ? { animationDelay: "60ms" } : {}}>
-          <div className="inline-flex items-center p-1 rounded-full" style={{ background: "rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.08)" }}>
+          <div className="relative inline-grid grid-cols-2 p-1 rounded-full select-none" style={{ background: "var(--toggle-track)", border: "1px solid var(--border)" }}>
+            <span aria-hidden className="absolute top-1 bottom-1 rounded-full"
+              style={{ width: "calc(50% - 4px)", left: billing === "monthly" ? "4px" : "50%", background: "var(--surface)", boxShadow: "0 2px 10px rgba(0,0,0,0.12)", transition: "left 0.32s cubic-bezier(0.22,1,0.36,1)" }} />
             <button onClick={() => setBilling("monthly")}
-              className="px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer"
-              style={billing === "monthly" ? { background: "white", color: "#111827", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" } : { color: "#6b7280" }}>
+              className="relative z-10 px-6 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer text-center"
+              style={{ color: billing === "monthly" ? "var(--text-1)" : "var(--text-3)" }}>
               Mensual
             </button>
             <button onClick={() => setBilling("annual")}
-              className="px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer inline-flex items-center gap-2"
-              style={billing === "annual" ? { background: "white", color: "#111827", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" } : { color: "#6b7280" }}>
+              className="relative z-10 px-6 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-2"
+              style={{ color: billing === "annual" ? "var(--text-1)" : "var(--text-3)" }}>
               Anual
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.14)", color: "#059669" }}>−20%</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.16)", color: "#10b981" }}>−20%</span>
             </button>
           </div>
         </div>
@@ -1672,7 +1677,7 @@ function PricingSection() {
                   return (
                     <div className="relative">
                       <div className="flex items-end gap-1.5">
-                        <span className={`display ${plan.comingSoon ? "text-[2.5rem]" : "text-[3.5rem]"} font-semibold tracking-tight leading-none ${plan.highlighted ? "text-white" : "text-gray-900"}`}>{price}</span>
+                        <span key={price} className={`price-swap display ${plan.comingSoon ? "text-[2.5rem]" : "text-[3.5rem]"} font-semibold tracking-tight leading-none ${plan.highlighted ? "text-white" : "text-gray-900"}`}>{price}</span>
                         {period && <span className={`mb-2 text-sm ${plan.highlighted ? "text-white/50" : "text-gray-400"}`}>{period}</span>}
                       </div>
                       {note && <p className={`mt-1.5 text-xs font-semibold ${plan.highlighted ? "text-indigo-300" : "text-emerald-600"}`}>{note}</p>}
@@ -1717,11 +1722,11 @@ function PricingSection() {
                   }`}
                   style={
                     plan.comingSoon
-                      ? { background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)" }
+                      ? { background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)" }
                       : plan.highlighted
                         ? {
                             background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
-                            boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px rgba(0,0,0,0.08), 0 10px 28px -8px rgba(255,255,255,0.4)",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 28px -8px rgba(255,255,255,0.4)",
                           }
                         : undefined
                   }
@@ -1819,7 +1824,7 @@ function CTASection() {
               <a href="/chat" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-gray-900 transition-all cursor-pointer hover:-translate-y-0.5"
                 style={{
                   background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px rgba(0,0,0,0.08), 0 10px 30px -10px rgba(255,255,255,0.4)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 30px -10px rgba(255,255,255,0.4)",
                 }}
               >
                 Empezar gratis <IconArrowRight />

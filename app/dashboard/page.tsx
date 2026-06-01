@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
+import ThemeToggle from "../components/ThemeToggle"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ function Card({ title, hint, children, className = "" }: { title?: string; hint?
   return (
     <div
       className={`rounded-2xl bg-white p-5 ${className}`}
-      style={{ border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 2px 14px rgba(0,0,0,0.04)" }}
+      style={{ border: "1px solid var(--border)", boxShadow: "0 2px 14px rgba(0,0,0,0.04)" }}
     >
       {title && (
         <div className="flex items-baseline justify-between mb-4">
@@ -122,7 +123,7 @@ function StatCard({ icon, value, label, color, sub, delay }: {
 }) {
   return (
     <Reveal delay={delay}>
-      <div className="rounded-2xl bg-white p-5 h-full" style={{ border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 2px 14px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-2xl bg-white p-5 h-full" style={{ border: "1px solid var(--border)", boxShadow: "0 2px 14px rgba(0,0,0,0.04)" }}>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
           style={{ background: `${color}14`, color }}>
           {icon}
@@ -167,7 +168,7 @@ function ActivityChart({ daily }: { daily: DayPoint[] }) {
           </linearGradient>
         </defs>
         {[0.25, 0.5, 0.75].map((g) => (
-          <line key={g} x1={pad} x2={W - pad} y1={pad + g * (H - 2 * pad)} y2={pad + g * (H - 2 * pad)} stroke="rgba(0,0,0,0.05)" strokeWidth="1" />
+          <line key={g} x1={pad} x2={W - pad} y1={pad + g * (H - 2 * pad)} y2={pad + g * (H - 2 * pad)} stroke="var(--border-soft)" strokeWidth="1" />
         ))}
         <path d={area} fill="url(#actFill)" />
         <path d={line} fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
@@ -203,7 +204,7 @@ function SpendBars({ providers, total }: { providers: ProviderStat[]; total: num
                 </div>
                 <span className="text-[12px] font-semibold text-gray-900 tabular-nums">{fmtUSD(p.cost)}</span>
               </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.05)" }}>
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border-soft)" }}>
                 <div className="h-full rounded-full" style={{ width: `${Math.max(4, (p.cost / max) * 100)}%`, background: m.color, transition: "width .7s cubic-bezier(0.22,1,0.36,1)" }} />
               </div>
             </div>
@@ -229,7 +230,7 @@ function UsageDonut({ providers, responses, fusionPct }: { providers: ProviderSt
     <div className="flex items-center gap-5">
       <div className="relative flex-shrink-0" style={{ width: 132, height: 132 }}>
         <svg viewBox="0 0 132 132" className="w-full h-full -rotate-90">
-          <circle cx="66" cy="66" r={R} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="14" />
+          <circle cx="66" cy="66" r={R} fill="none" stroke="var(--border-soft)" strokeWidth="14" />
           {segs.map((s) => {
             const m = pmeta(s.provider)
             return (
@@ -258,7 +259,7 @@ function UsageDonut({ providers, responses, fusionPct }: { providers: ProviderSt
           )
         })}
         {responses > 0 && (
-          <div className="pt-1.5 mt-1.5 text-[11px] text-gray-400" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <div className="pt-1.5 mt-1.5 text-[11px] text-gray-400" style={{ borderTop: "1px solid var(--border-soft)" }}>
             {fusionPct}% en modo fusión
           </div>
         )}
@@ -278,7 +279,7 @@ function MemoryBars({ cats, total }: { cats: CatPoint[]; total: number }) {
         return (
           <div key={c.category} className="flex items-center gap-3">
             <span className="text-[12px] text-gray-600 w-20 flex-shrink-0">{meta.label}</span>
-            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.05)" }}>
+            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--border-soft)" }}>
               <div className="h-full rounded-full" style={{ width: `${Math.max(6, (c.n / max) * 100)}%`, background: meta.color, transition: "width .7s ease" }} />
             </div>
             <span className="text-[12px] font-semibold text-gray-900 w-6 text-right tabular-nums">{c.n}</span>
@@ -294,15 +295,16 @@ function MemoryBars({ cats, total }: { cats: CatPoint[]; total: number }) {
 function Topbar() {
   return (
     <header className="flex items-center gap-3 px-4 md:px-6 h-14 flex-shrink-0 sticky top-0 z-20"
-      style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+      style={{ background: "var(--surface-blur)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--border-soft)" }}>
       <Link href="/chat" className="flex items-center group cursor-pointer">
         <Image src="/OneChater-35-blobs/svg/horizontal-light.svg" alt="OneChat" height={48} width={180}
           className="h-9 w-auto opacity-90 group-hover:opacity-100 transition-opacity" priority />
       </Link>
       <div className="flex-1" />
+      <ThemeToggle />
       <Link href="/chat"
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
-        style={{ color: "#374151", background: "white", border: "1px solid rgba(0,0,0,0.09)" }}>
+        style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
           <path d="M15 18l-6-6 6-6" />
         </svg>
@@ -340,7 +342,7 @@ function LockedUpsell() {
   return (
     <Reveal>
       <div className="max-w-lg mx-auto mt-10 rounded-3xl bg-white p-8 text-center relative overflow-hidden"
-        style={{ border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 12px 40px rgba(0,0,0,0.08)" }}>
+        style={{ border: "1px solid var(--border)", boxShadow: "0 12px 40px var(--border)" }}>
         <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.18), transparent 70%)" }} />
         <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full" style={{ background: "radial-gradient(circle, rgba(249,115,22,0.14), transparent 70%)" }} />
         <div className="relative">

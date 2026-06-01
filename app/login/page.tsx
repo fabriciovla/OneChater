@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react"
 import { signIn } from "next-auth/react"
+import ThemeToggle from "../components/ThemeToggle"
 
 type Step = "email" | "otp"
 
@@ -236,8 +237,10 @@ export default function LoginPage() {
       {/* ─── RIGHT: Form panel ───────────────────────────────── */}
       <div
         className="relative flex flex-col items-center justify-center px-6 py-12 lg:px-12"
-        style={{ background: "linear-gradient(145deg, #f8f8f7 0%, #eeede9 100%)" }}
+        style={{ background: "var(--bg-secondary)" }}
       >
+        <ThemeToggle className="absolute top-5 right-5 z-20" />
+
         {/* Mobile logo (visible only when left panel hidden) */}
         <div className="lg:hidden flex justify-center mb-8">
           <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl" style={{ background: "#0E0F12" }}>
@@ -267,7 +270,7 @@ export default function LoginPage() {
           <div
             className="bg-white rounded-2xl p-7"
             style={{
-              border: "1px solid rgba(14,15,18,0.07)",
+              border: "1px solid var(--border-soft)",
               boxShadow: "0 1px 0 rgba(255,255,255,0.8) inset, 0 4px 24px rgba(14,15,18,0.06), 0 1px 2px rgba(14,15,18,0.04)",
             }}
           >
@@ -283,7 +286,7 @@ export default function LoginPage() {
                   disabled={loading}
                   autoComplete="email"
                   className="w-full px-4 py-3 rounded-xl text-[14px] text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-900 transition-all disabled:opacity-50"
-                  style={{ background: "#f9fafb", border: "1.5px solid rgba(14,15,18,0.09)" }}
+                  style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)" }}
                 />
 
                 {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
@@ -317,8 +320,8 @@ export default function LoginPage() {
                       disabled={loading}
                       className="w-11 h-14 text-center text-[22px] font-bold text-gray-900 rounded-xl focus:outline-none transition-all disabled:opacity-40"
                       style={{
-                        background: "#f9fafb",
-                        border: digit ? "2px solid #0E0F12" : "2px solid #e5e7eb",
+                        background: "var(--surface-2)",
+                        border: digit ? "2px solid var(--text-1)" : "2px solid var(--border-strong)",
                         fontFamily: "monospace",
                       }}
                     />
