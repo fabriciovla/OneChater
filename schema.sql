@@ -137,6 +137,26 @@ CREATE INDEX IF NOT EXISTS idx_settings_user_id  ON user_provider_settings(user_
 CREATE INDEX IF NOT EXISTS idx_settings_anon_key ON user_provider_settings(anon_key);
 
 -- ============================================================
+--  MEMORIES  (cross-conversation user memory — the core feature)
+-- ============================================================
+-- Durable facts about the user, shared across every session AND every
+-- model. Injected into each provider's system prompt so the AIs "remember"
+-- the user between conversations. id/user_id are TEXT to match the
+-- Prisma-managed schema actually deployed (cuid()), not UUID.
+CREATE TABLE IF NOT EXISTS memories (
+  id           TEXT        PRIMARY KEY,
+  user_id      TEXT        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content      TEXT        NOT NULL,
+  -- stack | project | preference | decision | tone | other
+  category     TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_memories_user_id      ON memories(user_id);
+CREATE INDEX IF NOT EXISTS idx_memories_user_created ON memories(user_id, created_at DESC);
+
+-- ============================================================
 --  VIEWS
 -- ============================================================
 

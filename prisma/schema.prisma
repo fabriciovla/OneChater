@@ -33,6 +33,7 @@ model User {
   accounts         Account[]
   chatSessions     ChatSession[]
   providerSettings UserProviderSetting[]
+  memories         Memory[]
 
   @@map("users")
 }
@@ -146,6 +147,24 @@ model UserProviderSetting {
   @@unique([userId, provider])
   @@index([userId])
   @@map("user_provider_settings")
+}
+
+// Cross-conversation memory: durable facts about the user, shared across
+// every chat session AND every model. This is the product's core promise —
+// "una memoria que viaja con vos". Injected into each provider's system prompt.
+model Memory {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  content   String
+  category  String?  // stack | project | preference | decision | tone | other
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("memories")
 }
 
 model ProviderDefault {

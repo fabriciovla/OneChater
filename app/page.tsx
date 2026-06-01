@@ -637,7 +637,7 @@ const FOLDERS = [
 
 const MEMORY_BULLETS = [
   { icon: <IconZap />, label: "Captura automática", desc: "Stack y decisiones, sin esfuerzo." },
-  { icon: <IconPencil />, label: "Perfil editable", desc: "Ves y borrás qué sabe de vos." },
+  { icon: <IconPencil />, label: "Perfil editable", desc: "Agregás, editás y borrás qué sabe de vos." },
   { icon: <IconSearch />, label: "Búsqueda semántica", desc: "Respuesta exacta en segundos." },
   { icon: <IconShuffle />, label: "Portable", desc: "Todos los modelos te conocen igual." },
 ];

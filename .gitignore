@@ -14,3 +14,9 @@ node_modules/
 
 # Archivo basura (nombre corrupto)
 *Temponechat.css
+
+.vercel
+
+# Config local de agentes / scripts de diagnóstico — no van al repo
+.claude/
+_diag.mjs

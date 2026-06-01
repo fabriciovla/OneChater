@@ -1204,11 +1204,31 @@ const CATEGORY_META: Record<string, { label: string; color: string }> = {
   other:      { label: "Otro",        color: "#6b7280" },
 }
 
-function MemoryDrawer({ memories, onClose, onDelete }: {
+function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
   memories: Memory[]
   onClose: () => void
   onDelete: (id: string) => void
+  onEdit: (id: string, content: string) => void
+  onAdd: (content: string, category: string) => void
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState("")
+  const [adding, setAdding] = useState(false)
+  const [newText, setNewText] = useState("")
+  const [newCategory, setNewCategory] = useState("other")
+
+  const startEdit = (m: Memory) => { setEditingId(m.id); setEditText(m.content) }
+  const cancelEdit = () => { setEditingId(null); setEditText("") }
+  const commitEdit = () => {
+    if (editingId && editText.trim().length >= 3) onEdit(editingId, editText)
+    cancelEdit()
+  }
+  const cancelAdd = () => { setAdding(false); setNewText(""); setNewCategory("other") }
+  const commitAdd = () => {
+    if (newText.trim().length >= 3) onAdd(newText, newCategory)
+    cancelAdd()
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} style={{ animation: "memFadeIn 0.2s ease both" }} />
@@ -1238,6 +1258,47 @@ function MemoryDrawer({ memories, onClose, onDelete }: {
           </button>
         </div>
 
+        {/* Add a fact by hand */}
+        <div className="px-4 pt-3 flex-shrink-0">
+          {adding ? (
+            <div className="rounded-xl p-3" style={{ background: "#faf9ff", border: "1px solid rgba(124,58,237,0.18)" }}>
+              <textarea
+                value={newText}
+                onChange={(e) => setNewText(e.target.value)}
+                autoFocus
+                rows={2}
+                placeholder="Ej: Trabajo con Next.js y Postgres en Neon…"
+                className="w-full resize-none bg-transparent text-[13px] text-gray-800 outline-none placeholder:text-gray-400 leading-relaxed"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitAdd()
+                  if (e.key === "Escape") cancelAdd()
+                }}
+              />
+              <div className="flex items-center justify-between mt-2 gap-2">
+                <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
+                  className="text-[11px] font-medium text-gray-600 bg-white rounded-lg px-2 py-1 cursor-pointer outline-none"
+                  style={{ border: "1px solid rgba(0,0,0,0.1)" }}>
+                  {Object.entries(CATEGORY_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={cancelAdd}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-gray-500 hover:bg-black/[0.04] transition-colors cursor-pointer">Cancelar</button>
+                  <button onClick={commitAdd} disabled={newText.trim().length < 3}
+                    className="px-3 py-1 rounded-lg text-[11px] font-semibold text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>Guardar</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setAdding(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12.5px] font-medium text-gray-600 transition-all hover:text-gray-900 hover:border-violet-300 cursor-pointer"
+              style={{ background: "#fafafa", border: "1px dashed rgba(0,0,0,0.15)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M12 5v14M5 12h14" /></svg>
+              Agregar un hecho manualmente
+            </button>
+          )}
+        </div>
+
         {/* List */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
           {memories.length === 0 ? (
@@ -1256,21 +1317,59 @@ function MemoryDrawer({ memories, onClose, onDelete }: {
           ) : (
             memories.map((m) => {
               const meta = CATEGORY_META[m.category ?? "other"] ?? CATEGORY_META.other
+              const isEditing = editingId === m.id
               return (
                 <div key={m.id} className="group flex items-start gap-3 p-3 rounded-xl transition-all hover:shadow-sm"
                   style={{ background: "#fafafa", border: "1px solid rgba(0,0,0,0.07)" }}>
                   <span className="mt-1 w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-gray-800 leading-relaxed">{m.content}</p>
-                    <span className="inline-block mt-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: meta.color }}>{meta.label}</span>
+                    {isEditing ? (
+                      <>
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          autoFocus
+                          rows={2}
+                          className="w-full resize-none rounded-lg px-2 py-1.5 text-[13px] text-gray-800 leading-relaxed outline-none bg-white"
+                          style={{ border: "1px solid rgba(124,58,237,0.35)" }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitEdit()
+                            if (e.key === "Escape") cancelEdit()
+                          }}
+                        />
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <button onClick={commitEdit} disabled={editText.trim().length < 3}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>Guardar</button>
+                          <button onClick={cancelEdit}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-gray-500 hover:bg-black/[0.04] transition-colors cursor-pointer">Cancelar</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[13px] text-gray-800 leading-relaxed">{m.content}</p>
+                        <span className="inline-block mt-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: meta.color }}>{meta.label}</span>
+                      </>
+                    )}
                   </div>
-                  <button onClick={() => onDelete(m.id)}
-                    className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer flex-shrink-0"
-                    title="Olvidar este hecho">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-                      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
-                    </svg>
-                  </button>
+                  {!isEditing && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={() => startEdit(m)}
+                        className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-all cursor-pointer"
+                        title="Editar este hecho">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                          <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
+                      </button>
+                      <button onClick={() => onDelete(m.id)}
+                        className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        title="Olvidar este hecho">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })
@@ -1706,6 +1805,49 @@ export default function ChatPage() {
     await fetch(`/api/memory/${id}`, { method: "DELETE" }).catch(() => {})
   }, [])
 
+  // Edit a fact's text — the "perfil editable" promise. Optimistic; PATCH is
+  // scoped to the owner server-side.
+  const handleEditMemory = useCallback(async (id: string, content: string) => {
+    const clean = content.trim().slice(0, 400)
+    if (clean.length < 3) return
+    setMemories((prev) => {
+      const next = prev.map((m) => (m.id === id ? { ...m, content: clean } : m))
+      memoriesRef.current = next
+      return next
+    })
+    await fetch(`/api/memory/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: clean }),
+    }).catch(() => {})
+  }, [])
+
+  // Add a fact by hand. Server dedupes (case-insensitive); an empty array back
+  // means it was already known.
+  const handleAddMemory = useCallback(async (content: string, category: string) => {
+    const clean = content.trim().slice(0, 400)
+    if (clean.length < 3) return
+    try {
+      const res = await fetch("/api/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: clean, category }),
+      })
+      if (!res.ok) return
+      const created: Memory[] = await res.json()
+      if (Array.isArray(created) && created.length > 0) {
+        setMemories((prev) => {
+          const next = [...created, ...prev]
+          memoriesRef.current = next
+          return next
+        })
+        showToast(`Memoria actualizada · +${created.length}`)
+      } else {
+        showToast("Ya lo recordaba")
+      }
+    } catch {}
+  }, [showToast])
+
   const execCommand = useCallback((id: string) => {
     setInput("")
     if (id === "clear") {
@@ -1928,6 +2070,8 @@ export default function ChatPage() {
           memories={memories}
           onClose={() => setMemoryOpen(false)}
           onDelete={handleDeleteMemory}
+          onEdit={handleEditMemory}
+          onAdd={handleAddMemory}
         />
       )}
 
