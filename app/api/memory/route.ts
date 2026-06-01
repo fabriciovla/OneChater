@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 
-const MAX_FACTS = 400          // hard ceiling per user (runaway guard)
+// Per-plan ceiling on stored facts. Free gets a taste; paid tiers get the full
+// runaway guard. Lifting a user's `plan` (billing) raises the cap automatically.
+const PLAN_FACT_CAP: Record<string, number> = { free: 50, pro: 400, team: 400 }
+const DEFAULT_CAP = PLAN_FACT_CAP.free
 const MAX_CONTENT_LEN = 400    // a fact should be a sentence, not an essay
 
 function norm(s: string) {
@@ -52,8 +55,13 @@ export async function POST(req: NextRequest) {
 
   if (cleaned.length === 0) return NextResponse.json([])
 
-  // Dedupe vs existing + within batch
-  const existing = await prisma.memory.findMany({ where: { userId }, select: { content: true } })
+  // Dedupe vs existing + within batch. Fetch the plan alongside so the cap
+  // reflects the user's tier.
+  const [user, existing] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { plan: true } }),
+    prisma.memory.findMany({ where: { userId }, select: { content: true } }),
+  ])
+  const cap = PLAN_FACT_CAP[user?.plan ?? "free"] ?? DEFAULT_CAP
   const seen = new Set(existing.map((m) => norm(m.content)))
   const total = existing.length
 
@@ -64,8 +72,8 @@ export async function POST(req: NextRequest) {
     seen.add(key)
     toCreate.push(f)
   }
-  if (total + toCreate.length > MAX_FACTS) {
-    toCreate.length = Math.max(0, MAX_FACTS - total)
+  if (total + toCreate.length > cap) {
+    toCreate.length = Math.max(0, cap - total)
   }
 
   const created = []

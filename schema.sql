@@ -23,9 +23,14 @@ CREATE TABLE IF NOT EXISTS users (
   email        TEXT        UNIQUE,
   name         TEXT,
   avatar_url   TEXT,
+  -- Billing tier: free | pro | team. Gates the per-user memory cap.
+  plan         TEXT        NOT NULL DEFAULT 'free',
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- For DBs created before `plan` existed (additive, idempotent).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
 
 CREATE TRIGGER trg_users_updated_at
   BEFORE UPDATE ON users
