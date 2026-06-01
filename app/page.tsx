@@ -1599,7 +1599,7 @@ function PricingSection() {
         <div className={`flex justify-center mb-10 card-item${inView ? " in-view" : ""}`} style={inView ? { animationDelay: "60ms" } : {}}>
           <div className="relative inline-grid grid-cols-2 p-1 rounded-full select-none" style={{ background: "var(--toggle-track)", border: "1px solid var(--border)" }}>
             <span aria-hidden className="absolute top-1 bottom-1 rounded-full"
-              style={{ width: "calc(50% - 4px)", left: billing === "monthly" ? "4px" : "50%", background: "var(--surface)", boxShadow: "0 2px 10px rgba(0,0,0,0.12)", transition: "left 0.32s cubic-bezier(0.22,1,0.36,1)" }} />
+              style={{ width: "calc(50% - 4px)", left: "4px", background: "var(--surface)", boxShadow: "0 2px 10px rgba(0,0,0,0.12)", transform: billing === "annual" ? "translateX(100%)" : "translateX(0px)", transition: "transform 0.32s cubic-bezier(0.22,1,0.36,1)", willChange: "transform" }} />
             <button onClick={() => setBilling("monthly")}
               className="relative z-10 px-6 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer text-center"
               style={{ color: billing === "monthly" ? "var(--text-1)" : "var(--text-3)" }}>

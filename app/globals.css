@@ -645,6 +645,41 @@ html.dark body {
     0 12px 28px -12px rgba(14,15,18,0.10);
 }
 
+/* ── Dark mode: gradient-text uses #0E0F12 endpoints → invisible on dark bg ── */
+html.dark .gradient-text {
+  background: linear-gradient(120deg, #a5b4fc 0%, #818cf8 25%, #c084fc 50%, #a78bfa 65%, #a5b4fc 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmerGradient 7s ease-in-out infinite;
+}
+html.dark .gradient-text-premium {
+  background: linear-gradient(100deg, #e0e7ff 0%, #c7d2fe 35%, #818cf8 50%, #c7d2fe 65%, #e0e7ff 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Dark mode: flip Tailwind gradient from/to neutral vars ──────────────
+   from-gray-50 / to-white are used in FeatureVisual inner mocks and
+   ChatPreview — these background-image gradients override bg-color,
+   so bg-white override alone is not enough.                               */
+html.dark .from-gray-50 { --tw-gradient-from: var(--surface-2) !important; }
+html.dark .to-white     { --tw-gradient-to:   var(--surface)   !important; }
+html.dark .from-white   { --tw-gradient-from: var(--surface)   !important; }
+html.dark .to-gray-50   { --tw-gradient-to:   var(--surface-2) !important; }
+
+/* bg-* opacity variants not caught by single-class selector */
+html.dark .bg-gray-50\/80  { background-color: rgba(31,32,36,0.80) !important; }
+html.dark .bg-gray-200\/60 { background-color: rgba(55,65,81,0.40) !important; }
+
+/* ── Instant theme switch — no lag from cascading transitions ────────────
+   Suppress all transitions for exactly two rAF frames when toggling.      */
+html.theme-switching,
+html.theme-switching * { transition: none !important; }
+
 /* ── Dark-mode variants for classes with baked-in light surfaces ── */
 html.dark .surface-light,
 html.dark .premium-card,

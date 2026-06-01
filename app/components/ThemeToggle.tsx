@@ -15,11 +15,16 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
 
   const toggle = () => {
     const next = !dark
-    setDark(next)
+    // Suppress all CSS transitions for 2 rAF frames → instant, no lag
+    document.documentElement.classList.add("theme-switching")
     document.documentElement.classList.toggle("dark", next)
-    try {
-      localStorage.setItem("theme", next ? "dark" : "light")
-    } catch {}
+    setDark(next)
+    try { localStorage.setItem("theme", next ? "dark" : "light") } catch {}
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.documentElement.classList.remove("theme-switching")
+      })
+    })
   }
 
   return (
