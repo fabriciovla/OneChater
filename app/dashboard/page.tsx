@@ -480,7 +480,7 @@ export default function DashboardPage() {
         </div>
 
         <p className="text-[11px] text-gray-400 mt-5 leading-relaxed max-w-2xl">
-          El gasto es una <strong className="font-semibold text-gray-500">estimación</strong> calculada a partir del tamaño de los mensajes y un precio promedio por modelo. No refleja la facturación real de tu proveedor — con BYOK, ese cobro lo hace cada proveedor directamente sobre tu API key.
+          El gasto es una <strong className="font-semibold text-gray-500">estimación</strong> calculada a partir del tamaño de los mensajes y un precio promedio por modelo. No refleja la facturación real de tu proveedor: con BYOK, ese cobro lo hace cada proveedor directamente sobre tu API key.
         </p>
       </main>
     </div>

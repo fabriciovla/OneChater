@@ -165,7 +165,7 @@ export default function LoginPage() {
                   </feMerge>
                 </filter>
               </defs>
-              <g filter="url(#blobGlow)">
+              <g>
                 <path className="blob blob-1" d="M 32 22 Q 18 26 18 40 Q 20 54 34 54 Q 48 52 46 38 Q 44 24 32 22 Z" fill="url(#blobGrad1)" />
                 <path className="blob blob-2" d="M 68 26 Q 56 28 54 40 Q 56 54 70 54 Q 84 52 82 38 Q 80 26 68 26 Z" fill="url(#blobGrad2)" />
                 <path className="blob blob-3" d="M 50 56 Q 36 58 36 72 Q 38 86 52 84 Q 66 82 64 68 Q 62 56 50 56 Z" fill="url(#blobGrad3)" />
@@ -189,7 +189,7 @@ export default function LoginPage() {
               </span>
             </h2>
             <p className="mt-5 text-white/60 text-lg leading-relaxed">
-              GPT, Claude, Gemini — chateá con todos sin perder el contexto.
+              GPT, Claude, Gemini. Chateá con todos sin perder el contexto.
             </p>
           </div>
         </div>

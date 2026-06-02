@@ -189,11 +189,11 @@ function buildDemoResponse(provider: string, messages: { role: string; content: 
 
   const topic = lastUser.slice(0, 60) + (lastUser.length > 60 ? "…" : "")
 
-  let response = `**${persona.intro}** — Modo demo\n\n`
+  let response = `**${persona.intro}** · Modo demo\n\n`
 
   if (isFollowUp && hasPreviousContext) {
     response += `Retomando el contexto compartido de esta conversación, respondo a "${topic}".\n\n`
-    response += `${persona.style} Esta es la respuesta ${userMessages.length} de nuestra sesión — podés ver que mantengo contexto de lo que dijeron los otros modelos anteriormente.\n\n`
+    response += `${persona.style} Esta es la respuesta ${userMessages.length} de nuestra sesión, podés ver que mantengo contexto de lo que dijeron los otros modelos anteriormente.\n\n`
     response += `En producción con tu API key real, aquí aparecería mi análisis completo sobre tu consulta, basado en todo lo que se ha discutido en este chat (incluyendo las respuestas de los demás modelos).\n\n`
     response += `✓ Contexto compartido activo\n✓ Streaming en tiempo real\n✓ Respuestas simultáneas de todos los modelos`
   } else {

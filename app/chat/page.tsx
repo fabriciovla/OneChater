@@ -440,7 +440,97 @@ function TypingDots({ color }: { color: string }) {
   )
 }
 
-// ─── Response card ────────────────────────────────────────────────────────────
+// ─── Lightweight markdown renderer (no deps) ────────────────────────────────────
+// Renders the formatting models actually emit: bold, italic, inline code,
+// fenced code, headings, lists, links. Streaming-safe (an unclosed fence just
+// renders as a code block until the closing ``` arrives).
+
+function renderInline(text: string, kp: string): React.ReactNode[] {
+  const out: React.ReactNode[] = []
+  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\s][^*]*\*)|(_[^_\s][^_]*_)|(\[[^\]]+\]\([^)\s]+\))/g
+  let last = 0
+  let m: RegExpExecArray | null
+  let i = 0
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index))
+    const t = m[0]
+    if (t.startsWith("`")) out.push(<code key={`${kp}-${i}`} className="md-code">{t.slice(1, -1)}</code>)
+    else if (t.startsWith("**") || t.startsWith("__")) out.push(<strong key={`${kp}-${i}`}>{t.slice(2, -2)}</strong>)
+    else if (t.startsWith("[")) {
+      const mm = t.match(/^\[([^\]]+)\]\(([^)\s]+)\)$/)
+      if (mm) out.push(<a key={`${kp}-${i}`} href={mm[2]} target="_blank" rel="noopener noreferrer">{mm[1]}</a>)
+      else out.push(t)
+    } else out.push(<em key={`${kp}-${i}`}>{t.slice(1, -1)}</em>)
+    last = re.lastIndex
+    i++
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
+function Markdown({ text }: { text: string }) {
+  const lines = text.split("\n")
+  const blocks: React.ReactNode[] = []
+  let i = 0
+  let k = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    // Fenced code block
+    if (line.trim().startsWith("```")) {
+      const buf: string[] = []
+      i++
+      while (i < lines.length && !lines[i].trim().startsWith("```")) { buf.push(lines[i]); i++ }
+      i++ // skip closing fence
+      blocks.push(<pre key={k++} className="md-pre"><code>{buf.join("\n")}</code></pre>)
+      continue
+    }
+    // Heading
+    const h = line.match(/^(#{1,4})\s+(.*)$/)
+    if (h) {
+      const lvl = h[1].length
+      blocks.push(<div key={k} className={`md-h md-h${lvl}`}>{renderInline(h[2], `h${k}`)}</div>)
+      k++; i++; continue
+    }
+    // Blockquote
+    if (/^\s*>\s?/.test(line)) {
+      const buf: string[] = []
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) { buf.push(lines[i].replace(/^\s*>\s?/, "")); i++ }
+      blocks.push(<blockquote key={k}>{buf.map((b, j) => <span key={j}>{j > 0 && <br />}{renderInline(b, `bq${k}-${j}`)}</span>)}</blockquote>)
+      k++; continue
+    }
+    // Unordered list
+    if (/^\s*[-*]\s+/.test(line)) {
+      const items: string[] = []
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*[-*]\s+/, "")); i++ }
+      blocks.push(<ul key={k} className="md-ul">{items.map((it, j) => <li key={j}>{renderInline(it, `ul${k}-${j}`)}</li>)}</ul>)
+      k++; continue
+    }
+    // Ordered list
+    if (/^\s*\d+\.\s+/.test(line)) {
+      const items: string[] = []
+      while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*\d+\.\s+/, "")); i++ }
+      blocks.push(<ol key={k} className="md-ol">{items.map((it, j) => <li key={j}>{renderInline(it, `ol${k}-${j}`)}</li>)}</ol>)
+      k++; continue
+    }
+    // Blank line
+    if (line.trim() === "") { i++; continue }
+    // Paragraph
+    const para: string[] = []
+    while (
+      i < lines.length && lines[i].trim() !== "" &&
+      !lines[i].trim().startsWith("```") &&
+      !/^(#{1,4})\s+/.test(lines[i]) &&
+      !/^\s*>\s?/.test(lines[i]) &&
+      !/^\s*[-*]\s+/.test(lines[i]) &&
+      !/^\s*\d+\.\s+/.test(lines[i])
+    ) { para.push(lines[i]); i++ }
+    blocks.push(<p key={k} className="md-p">{para.map((ln, j) => <span key={j}>{j > 0 && <br />}{renderInline(ln, `p${k}-${j}`)}</span>)}</p>)
+    k++
+  }
+  return <div className="md-content">{blocks}</div>
+}
+
+// ─── Response block ───────────────────────────────────────────────────────────
 
 function ResponseCard({ provider, state, selectedModel, index = 0, animate = false }: {
   provider: Provider; state: ModelResponseState; selectedModel: string; index?: number; animate?: boolean
@@ -461,59 +551,53 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
   }
 
   return (
-    <div className={`group response-card rounded-2xl flex flex-col overflow-hidden bg-white${animate ? " card-enter" : ""}`}
-      style={{ border: "1px solid var(--border)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", ...(animate && { animationDelay: `${index * 0.1}s` }) }}>
+    <div className={`group flex flex-col${animate ? " resp-in" : ""}`}
+      style={{ ...(animate && { animationDelay: `${index * 0.08}s` }) }}>
 
-      {/* Header */}
-      <div className="card-header-sheen flex items-center gap-2.5 px-4 py-3"
-        style={{
-          background: `linear-gradient(135deg, ${c.colorLight}, ${c.colorLight.replace(/[\d.]+\)$/, "0.04)")})`,
-          borderBottom: `1px solid ${c.colorBorder}`,
-        }}>
-        <div className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3${animate ? " pop-in" : ""}`}
-          style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: c.color, boxShadow: `0 1px 3px ${c.color}20`, ...(animate && { animationDelay: `${index * 0.1 + 0.18}s` }) }}>
-          <c.Logo size={14} />
+      {/* Attribution row — which model answered */}
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0${animate ? " pop-in" : ""}`}
+          style={{ background: c.colorLight, border: `1px solid ${c.colorBorder}`, color: c.color, ...(animate && { animationDelay: `${index * 0.08 + 0.1}s` }) }}>
+          <c.Logo size={13} />
         </div>
-        <div className="flex-1 min-w-0">
-          <span className="text-[13px] font-bold" style={{ color: c.color }}>{c.name}</span>
-          <span className="text-[11px] text-gray-500 ml-1.5">{modelLabel}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {state.loading && (
-            <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: c.color }}>
-              <span className="relative flex items-center justify-center">
-                <span className="absolute w-2 h-2 rounded-full animate-ping opacity-50" style={{ background: c.color }} />
-                <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
-              </span>
-              Generando
+        <span className="text-[13px] font-bold" style={{ color: c.color }}>{c.name}</span>
+        <span className="text-[11px]" style={{ color: "var(--text-4)" }}>{modelLabel}</span>
+        {state.loading && (
+          <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: c.color }}>
+            <span className="relative flex items-center justify-center ml-0.5">
+              <span className="absolute w-2 h-2 rounded-full animate-ping opacity-50" style={{ background: c.color }} />
+              <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
             </span>
-          )}
-          {state.done && !state.error && state.content && isImg && (
-            <a href={state.content} download={`onechat-${provider}.png`}
-              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
-              style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: "var(--text-3)" }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-              Descargar
-            </a>
-          )}
-          {state.done && !state.error && state.content && !isImg && (
-            <button onClick={handleCopy}
-              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
-              style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: copied ? c.color : "#6b7280" }}>
-              {copied ? (
-                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
-              ) : (
-                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copiar</>
-              )}
-            </button>
-          )}
-        </div>
+            Generando
+          </span>
+        )}
+        <div className="flex-1" />
+        {state.done && !state.error && state.content && isImg && (
+          <a href={state.content} download={`onechat-${provider}.png`}
+            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
+            style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: "var(--text-3)" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+            Descargar
+          </a>
+        )}
+        {state.done && !state.error && state.content && !isImg && (
+          <button onClick={handleCopy}
+            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
+            style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: copied ? c.color : "var(--text-3)" }}>
+            {copied ? (
+              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
+            ) : (
+              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copiar</>
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-4 text-[16px] text-gray-900 leading-[1.75] whitespace-pre-wrap break-words min-h-[48px]" style={{ fontFamily: "var(--font-lora), Georgia, serif", fontWeight: 400 }}>
+      {/* Content — flat, with a thin model-coloured accent rail */}
+      <div className="text-[15px] leading-[1.7] break-words min-h-[24px] pl-3.5"
+        style={{ borderLeft: `2px solid ${c.colorBorder}`, color: "var(--text-1)" }}>
         {state.error
-          ? <span className="text-red-500 text-sm" style={{ fontFamily: "var(--font-inter), sans-serif" }}>{state.error}</span>
+          ? <span className="text-red-500 text-sm">{state.error}</span>
           : isImg
           ? <a href={state.content} target="_blank" rel="noopener noreferrer" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -522,11 +606,11 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
             </a>
           : state.content
           ? <>
-              {state.content}
+              <Markdown text={state.content} />
               {state.loading && <span className="stream-caret" style={{ background: c.color }} />}
             </>
           : state.loading
-          ? <div className="pt-1"><TypingDots color={c.color} /></div>
+          ? <div className="pt-0.5"><TypingDots color={c.color} /></div>
           : null}
       </div>
     </div>
@@ -551,32 +635,21 @@ function FusionCard({ state, providers, animate = false }: { state: ModelRespons
   const isLoading = state.loading
 
   return (
-    <div className={`group response-card rounded-2xl flex flex-col overflow-hidden bg-white relative${animate ? " card-enter" : ""}`}
-      style={{ border: "1px solid rgba(249,115,22,0.2)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+    <div className={`group flex flex-col relative${animate ? " resp-in" : ""}`}>
 
-      {/* Progress bar on top while loading */}
-      {isLoading && (
-        <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden z-10">
-          <div className="fusion-progress-bar h-full" />
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="card-header-sheen flex items-center gap-3 px-4 py-3"
-        style={{
-          background: "linear-gradient(135deg, rgba(249,115,22,0.08), rgba(249,115,22,0.03))",
-          borderBottom: "1px solid rgba(249,115,22,0.15)",
-        }}>
+      {/* Attribution row — fused output + which models contributed */}
+      <div className="flex items-center gap-2.5 mb-2">
         <div className="flex -space-x-1.5 flex-shrink-0">
           {providers.map((p, i) => {
             const Logo = CFG[p].Logo
             return (
               <div key={p}
-                className={`w-6 h-6 rounded-lg flex items-center justify-center ring-2 ring-white transition-transform duration-300 group-hover:scale-110${isLoading ? " fusion-logo-pulse" : ""}`}
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110${isLoading ? " fusion-logo-pulse" : ""}`}
                 style={{
                   background: CFG[p].colorLight,
                   color: CFG[p].color,
                   border: `1px solid ${CFG[p].colorBorder}`,
+                  boxShadow: "0 0 0 2px var(--surface)",
                   transitionDelay: `${i * 40}ms`,
                   animationDelay: `${i * 0.15}s`,
                 }}>
@@ -585,63 +658,61 @@ function FusionCard({ state, providers, animate = false }: { state: ModelRespons
             )
           })}
         </div>
-        <div className="flex-1 min-w-0">
-          <span className="text-[13px] font-bold text-orange-600">Fusión</span>
-          <span className="text-[11px] ml-1.5 text-gray-500">{providers.map((p) => CFG[p].name).join(" · ")}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {isCollecting && (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-orange-500">
-              <span className="relative flex items-center justify-center">
-                <span className="absolute w-2 h-2 rounded-full bg-orange-400/60 animate-ping" />
-                <span className="relative w-1.5 h-1.5 rounded-full bg-orange-500" />
-              </span>
-              Consultando {providers.length}…
+        <span className="text-[13px] font-bold text-orange-600">Fusión</span>
+        <span className="text-[11px]" style={{ color: "var(--text-4)" }}>{providers.map((p) => CFG[p].name).join(" · ")}</span>
+        {isCollecting && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-orange-500">
+            <span className="relative flex items-center justify-center ml-0.5">
+              <span className="absolute w-2 h-2 rounded-full bg-orange-400/60 animate-ping" />
+              <span className="relative w-1.5 h-1.5 rounded-full bg-orange-500" />
             </span>
-          )}
-          {isSynthesizing && (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-orange-500">
-              <span className="relative flex items-center justify-center">
-                <span className="absolute w-2 h-2 rounded-full bg-orange-400/60 animate-ping" />
-                <span className="relative w-1.5 h-1.5 rounded-full bg-orange-500" />
-              </span>
-              Sintetizando…
+            Consultando {providers.length}…
+          </span>
+        )}
+        {isSynthesizing && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-orange-500">
+            <span className="relative flex items-center justify-center ml-0.5">
+              <span className="absolute w-2 h-2 rounded-full bg-orange-400/60 animate-ping" />
+              <span className="relative w-1.5 h-1.5 rounded-full bg-orange-500" />
             </span>
-          )}
-          {state.done && !state.error && state.content && (
-            <button onClick={handleCopy}
-              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
-              style={{ background: "var(--surface)", border: "1px solid rgba(249,115,22,0.25)", color: copied ? "#f97316" : "#6b7280" }}>
-              {copied ? (
-                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
-              ) : (
-                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copiar</>
-              )}
-            </button>
-          )}
-        </div>
+            Sintetizando…
+          </span>
+        )}
+        <div className="flex-1" />
+        {state.done && !state.error && state.content && (
+          <button onClick={handleCopy}
+            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
+            style={{ background: "var(--surface)", border: "1px solid rgba(249,115,22,0.25)", color: copied ? "#f97316" : "var(--text-3)" }}>
+            {copied ? (
+              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
+            ) : (
+              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copiar</>
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-4 text-[16px] text-gray-900 leading-[1.75] whitespace-pre-wrap break-words min-h-[48px]" style={{ fontFamily: "var(--font-lora), Georgia, serif", fontWeight: 400 }}>
+      {/* Content — flat, orange accent rail */}
+      <div className="text-[15px] leading-[1.7] break-words min-h-[24px] pl-3.5"
+        style={{ borderLeft: "2px solid rgba(249,115,22,0.25)", color: "var(--text-1)" }}>
         {state.error
-          ? <span className="text-red-500 text-sm" style={{ fontFamily: "var(--font-inter), sans-serif" }}>{state.error}</span>
+          ? <span className="text-red-500 text-sm">{state.error}</span>
           : state.content
           ? <>
-              {state.content}
+              <Markdown text={state.content} />
               {isSynthesizing && <span className="stream-caret" style={{ background: "#f97316" }} />}
             </>
           : isCollecting
-          ? <div className="flex items-center gap-2 pt-1">
+          ? <div className="flex items-center gap-2 pt-0.5">
               <div className="flex gap-1">
                 {providers.map((p, i) => (
                   <span key={p} className="w-2 h-2 rounded-full typing-dot-glow"
                     style={{ background: CFG[p].color, color: CFG[p].color, animationDelay: `${i * 0.12}s` }} />
                 ))}
               </div>
-              <span className="text-gray-400 text-[13px] italic">Recogiendo {providers.length} respuestas…</span>
+              <span className="text-[13px] italic" style={{ color: "var(--text-4)" }}>Recogiendo {providers.length} respuestas…</span>
             </div>
-          : <div className="pt-1"><TypingDots color="#f97316" /></div>}
+          : <div className="pt-0.5"><TypingDots color="#f97316" /></div>}
       </div>
     </div>
   )
@@ -686,7 +757,7 @@ function TurnBlock({ turn, activeProviders, selectedModels }: {
       {/* Responses */}
       {turn.isFusion && turn.fusedResponse && <FusionCard state={turn.fusedResponse} providers={activeProviders} animate={isNewTurn} />}
       {!turn.isFusion && activeProviders.length > 0 && (
-        <div className={`grid gap-3 ${grid}`}>
+        <div className={`grid gap-x-6 gap-y-7 ${grid}`}>
           {activeProviders.map((p, idx) => {
             const state = turn.responses[p]
             if (!state) return null
@@ -846,11 +917,11 @@ function AIChipSelector({
       >
         {activeProviders.length > 0 ? (
           <div className="flex -space-x-1">
-            {activeProviders.slice(0, 4).map((p) => {
+            {activeProviders.slice(0, 4).map((p, i) => {
               const Logo = CFG[p].Logo
               return (
-                <div key={p} className="w-4 h-4 rounded-full flex items-center justify-center ring-1 ring-white"
-                  style={{ background: CFG[p].colorLight, color: CFG[p].color }}>
+                <div key={p} className="ai-trigger-pop w-4 h-4 rounded-full flex items-center justify-center ring-1 ring-white"
+                  style={{ background: CFG[p].colorLight, color: CFG[p].color, animationDelay: `${i * 0.05}s` }}>
                   <Logo size={9} />
                 </div>
               )
@@ -918,7 +989,7 @@ function AIChipSelector({
 
           {/* List */}
           <div className="overflow-y-auto flex-1">
-            {PROVIDERS.map((p) => {
+            {PROVIDERS.map((p, ri) => {
               const c = CFG[p]
               const hasKey = !!apiKeys[p].trim() && apiKeys[p] !== "demo"
               const isDemoKey = apiKeys[p] === "demo"
@@ -927,11 +998,11 @@ function AIChipSelector({
               const currentModel = c.models.find(m => m.id === selectedModels[p])?.label ?? selectedModels[p]
 
               return (
-                <div key={p} style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                <div key={p} className="ai-row-enter" style={{ borderBottom: "1px solid var(--border-soft)", animationDelay: `${0.04 + ri * 0.035}s` }}>
                   {/* Row */}
                   <div className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-black/[0.03]"
                     onClick={() => handleRowClick(p)}>
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105"
                       style={{ background: active ? c.colorLight : "var(--overlay)", border: `1px solid ${active ? c.colorBorder : "var(--border)"}`, color: active ? c.color : "var(--text-4)" }}>
                       <c.Logo size={17} />
                     </div>
@@ -957,9 +1028,9 @@ function AIChipSelector({
                     </div>
                   </div>
 
-                  {/* Expanded config — inline, no nested dropdown */}
+                  {/* Expanded config: inline, no nested dropdown */}
                   {isExp && (
-                    <div className="px-4 pb-3.5 pt-1.5 flex flex-col gap-3" style={{ background: c.colorLight }}>
+                    <div className="ai-expand px-4 pb-3.5 pt-1.5 flex flex-col gap-3" style={{ background: c.colorLight }}>
                       {/* API key */}
                       <div className="flex items-center gap-2">
                         <input
@@ -1031,30 +1102,42 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
 }) {
   return (
     <div
-      className="group flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all duration-150 relative history-item-enter"
+      className="group flex items-center gap-2.5 pl-2.5 pr-2 py-2 rounded-xl cursor-pointer transition-all duration-150 relative history-item-enter"
       style={{
         background: active ? "var(--surface)" : "transparent",
-        boxShadow: active ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+        boxShadow: active ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
         border: active ? "1px solid var(--border-soft)" : "1px solid transparent",
         animationDelay: `${delay}ms`,
       }}
-      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "rgba(0,0,0,0.03)" }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--overlay)" }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent" }}
       onClick={onSelect}
     >
       {/* Active indicator bar */}
       {active && <span className="history-active-bar absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full" />}
 
+      {/* Chat bubble glyph */}
+      <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+        style={{
+          background: active ? "var(--overlay)" : "transparent",
+          border: `1px solid ${active ? "var(--border-soft)" : "transparent"}`,
+          color: active ? "var(--text-2)" : "var(--text-4)",
+        }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+        </svg>
+      </span>
+
       <span className="flex-1 text-[12.5px] truncate min-w-0 font-medium"
         style={{ color: active ? "var(--text-1)" : "var(--text-2)" }}>
         {session.title}
       </span>
-      <span className="text-[10px] flex-shrink-0 group-hover:hidden tabular-nums" style={{ color: active ? "#9ca3af" : "#b8b8b8" }}>
+      <span className="text-[10px] flex-shrink-0 group-hover:hidden tabular-nums" style={{ color: "var(--text-4)" }}>
         {formatRelativeTime(session.updatedAt)}
       </span>
       <button
         onClick={(e) => { e.stopPropagation(); onDelete() }}
-        className="hidden group-hover:flex w-5 h-5 flex-shrink-0 items-center justify-center rounded-md transition-colors hover:bg-red-50 cursor-pointer"
+        className="hidden group-hover:flex w-6 h-6 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-red-50 cursor-pointer"
         style={{ color: "var(--text-4)" }}
         title="Eliminar"
       >
@@ -1070,6 +1153,7 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
 
 function Sidebar({
   open, onClose, sessions, activeSessionId, onSelectSession, onDeleteSession, onNewSession,
+  onOpenMemory, memoryCount,
 }: {
   open: boolean
   onClose: () => void
@@ -1078,11 +1162,14 @@ function Sidebar({
   onSelectSession: (id: string) => void
   onDeleteSession: (id: string) => void
   onNewSession: () => void
+  onOpenMemory: () => void
+  memoryCount: number
 }) {
   // Close the drawer after an action only on mobile (overlay); desktop keeps it pinned.
   const closeIfMobile = () => { if (typeof window !== "undefined" && window.innerWidth < 768) onClose() }
   const selectSession = (id: string) => { onSelectSession(id); closeIfMobile() }
   const newSession = () => { onNewSession(); closeIfMobile() }
+  const openMemory = () => { onOpenMemory(); closeIfMobile() }
 
   return (
     <>
@@ -1109,16 +1196,33 @@ function Sidebar({
       >
       <div className="flex flex-col h-full w-full md:w-[240px]">
 
-        {/* New chat button */}
-        <div className="p-3 flex-shrink-0">
+        {/* Header + new chat button */}
+        <div className="px-3 pt-3 pb-2 flex-shrink-0">
+          <div className="flex items-center justify-between px-1 mb-2.5">
+            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
+              Conversaciones
+            </span>
+            {sessions.length > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold tabular-nums"
+                style={{ background: "var(--overlay)", color: "var(--text-3)", border: "1px solid var(--border-soft)" }}>
+                {sessions.length}
+              </span>
+            )}
+          </div>
           <button
             onClick={newSession}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer transition-all hover:shadow-sm"
-            style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}
+            className="group/new w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-white cursor-pointer transition-all duration-150 hover:opacity-95 active:scale-[0.98]"
+            style={{
+              background: "linear-gradient(135deg, #2a2b30, #0e0f12)",
+              boxShadow: "0 4px 14px -6px rgba(14,15,18,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+            <span className="w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover/new:rotate-90"
+              style={{ background: "rgba(255,255,255,0.14)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </span>
             Nueva conversación
           </button>
         </div>
@@ -1128,18 +1232,18 @@ function Sidebar({
           {sessions.length === 0 && (
             <div className="px-3 py-10 text-center flex flex-col items-center gap-2">
               <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--border-soft)" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-400">
+                style={{ background: "var(--overlay)", border: "1px solid var(--border-soft)" }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" style={{ color: "var(--text-4)" }}>
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </div>
-              <p className="text-[11px] text-gray-500 leading-relaxed">Sin conversaciones aún.<br />Empezá a chatear para verlas acá.</p>
+              <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-4)" }}>Sin conversaciones aún.<br />Empezá a chatear para verlas acá.</p>
             </div>
           )}
           {groupSessionsByDate(sessions).map((group) => (
-            <div key={group.label} className="mt-2 first:mt-1">
-              <div className="px-2 pb-1 pt-1.5">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">
+            <div key={group.label} className="mt-3 first:mt-1">
+              <div className="px-2 pb-1.5 pt-0.5">
+                <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
                   {group.label}
                 </span>
               </div>
@@ -1157,6 +1261,34 @@ function Sidebar({
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Mobile-only nav: Dashboard + Memoria (topbar hides these < md) */}
+        <div className="md:hidden flex-shrink-0 p-2.5 flex flex-col gap-1.5" style={{ borderTop: "1px solid var(--border-soft)" }}>
+          <Link href="/dashboard" onClick={closeIfMobile}
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-all active:scale-[0.98]"
+            style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" style={{ color: "#7c3aed" }}>
+              <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
+            </svg>
+            Dashboard
+          </Link>
+          <button onClick={openMemory}
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-all active:scale-[0.98]"
+            style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" style={{ color: "#7c3aed" }}>
+              <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
+              <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
+              <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
+            </svg>
+            Memoria
+            {memoryCount > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
+                style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>
+                {memoryCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
     </aside>
@@ -1220,7 +1352,7 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
             <div className="text-[15px] font-semibold text-gray-900 leading-tight">Memoria</div>
             <div className="text-[12px] text-gray-500 mt-0.5 leading-snug">
               {memories.length > 0
-                ? `${memories.length} ${memories.length === 1 ? "hecho que las IAs recuerdan" : "hechos que las IAs recuerdan"} de vos — en todos tus chats y modelos.`
+                ? `${memories.length} ${memories.length === 1 ? "hecho que las IAs recuerdan" : "hechos que las IAs recuerdan"} de vos, en todos tus chats y modelos.`
                 : "Lo que las IAs aprendan de vos aparecerá acá y te acompaña en cada chat y modelo."}
             </div>
           </div>
@@ -1874,7 +2006,7 @@ export default function ChatPage() {
       const msg = active.length > 0 ? `Modelos activos: ${active.map((p) => CFG[p].name).join(", ")}` : "No hay modelos activos."
       setTurns((prev) => [...prev, { id: crypto.randomUUID(), userMessage: "/models", responses: { openai: { content: msg, loading: false, done: true } } }])
     } else if (id === "help") {
-      const msg = SLASH_COMMANDS.map((c) => `${c.label} — ${c.desc}`).join("\n")
+      const msg = SLASH_COMMANDS.map((c) => `${c.label} · ${c.desc}`).join("\n")
       setTurns((prev) => [...prev, { id: crypto.randomUUID(), userMessage: "/help", responses: { openai: { content: msg, loading: false, done: true } } }])
     }
   }, [setApiKeys, setEnabled, enabled, apiKeys, turns, handleNewSession, showToast, setTurns])
@@ -2015,7 +2147,7 @@ export default function ChatPage() {
         <Link href="/dashboard"
           className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
           style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
-          title="Dashboard — tu uso y gasto estimado">
+          title="Dashboard · tu uso y gasto estimado">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
             <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
           </svg>
@@ -2025,7 +2157,7 @@ export default function ChatPage() {
         <button onClick={() => setMemoryOpen(true)}
           className="hidden md:inline-flex relative items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
           style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
-          title="Memoria — lo que las IAs recuerdan de vos">
+          title="Memoria · lo que las IAs recuerdan de vos">
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
             <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
             <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
@@ -2073,6 +2205,8 @@ export default function ChatPage() {
           onSelectSession={handleSelectSession}
           onDeleteSession={handleDeleteSession}
           onNewSession={handleNewSession}
+          onOpenMemory={() => setMemoryOpen(true)}
+          memoryCount={memories.length}
         />
 
         <div className="flex flex-col flex-1 overflow-hidden">
