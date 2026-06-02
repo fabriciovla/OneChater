@@ -288,10 +288,14 @@ function PerplexityLogo() {
 function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = [
-    { label: "Funcionalidades", href: "#features" },
-    { label: "Cómo funciona", href: "#how-it-works" },
-    { label: "Precios", href: "#pricing" },
+  type NavSection = { label: string; sectionId: string };
+  type NavLink    = { label: string; href: string; external?: boolean; icon?: React.ReactNode };
+  type NavItem    = NavSection | NavLink;
+
+  const navItems: NavItem[] = [
+    { label: "Funcionalidades", sectionId: "features" },
+    { label: "Cómo funciona",   sectionId: "how-it-works" },
+    { label: "Precios",          sectionId: "pricing" },
     { label: "GitHub", href: "https://github.com/fabriciovla", external: true, icon: <IconGithub /> },
   ];
 
@@ -301,6 +305,11 @@ function Navbar() {
   }, [mobileOpen]);
 
   const close = () => setMobileOpen(false);
+
+  const scrollTo = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <>
@@ -316,16 +325,26 @@ function Navbar() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
-                target={item.external ? "_blank" : undefined}
-                rel={item.external ? "noopener noreferrer" : undefined}
-              >
-                {"icon" in item && item.icon}
-                {item.label}
-              </a>
+              "sectionId" in item ? (
+                <button
+                  key={item.label}
+                  onClick={() => scrollTo(item.sectionId)}
+                  className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+                >
+                  {item.label}
+                </button>
+              ) : (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+                  target={item.external ? "_blank" : undefined}
+                  rel={item.external ? "noopener noreferrer" : undefined}
+                >
+                  {"icon" in item && item.icon}
+                  {item.label}
+                </a>
+              )
             ))}
             <span className="nav-separator mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
             <ThemeToggle className="!w-8 !h-8" />
@@ -384,19 +403,32 @@ function Navbar() {
         {/* Nav links */}
         <nav className="px-5 mt-2">
           {navItems.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              onClick={close}
-              className="nav-overlay-link"
-              target={item.external ? "_blank" : undefined}
-              rel={item.external ? "noopener noreferrer" : undefined}
-            >
-              <span className="inline-flex items-center gap-2">{"icon" in item && item.icon}{item.label}</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </a>
+            "sectionId" in item ? (
+              <button
+                key={item.label}
+                onClick={() => { scrollTo(item.sectionId); close(); }}
+                className="nav-overlay-link w-full text-left"
+              >
+                <span className="inline-flex items-center gap-2">{item.label}</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
+            ) : (
+              <a
+                key={item.label}
+                href={item.href}
+                onClick={close}
+                className="nav-overlay-link"
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noopener noreferrer" : undefined}
+              >
+                <span className="inline-flex items-center gap-2">{"icon" in item && item.icon}{item.label}</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </a>
+            )
           ))}
         </nav>
 
@@ -1641,11 +1673,30 @@ function CTASection() {
 // â"€â"€â"€ Footer â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function Footer() {
-  const links = {
-    Producto:     ["Funcionalidades", "Cómo funciona", "Precios", "Novedades"],
-    Developers:   ["Documentación", "Referencia API", "Self-hosting", "GitHub"],
-    Empresa:      ["Acerca de", "Blog", "Política de privacidad", "Términos de uso"],
-    Comunidad:    ["Discord", "Twitter / X", "Reddit", "Newsletter"],
+  const links: Record<string, { label: string; href: string }[]> = {
+    Producto: [
+      { label: "Funcionalidades",     href: "#" },
+      { label: "Cómo funciona",       href: "#" },
+      { label: "Precios",             href: "#" },
+      { label: "Novedades",           href: "#" },
+    ],
+    Developers: [
+      { label: "Documentación",       href: "#" },
+      { label: "Referencia API",      href: "#" },
+      { label: "Self-hosting",        href: "#" },
+      { label: "GitHub",              href: "https://github.com/fabriciovla" },
+    ],
+    Legal: [
+      { label: "Política de privacidad", href: "/privacy" },
+      { label: "Términos de uso",         href: "/terms" },
+      { label: "Política de reembolsos",  href: "/refunds" },
+    ],
+    Comunidad: [
+      { label: "Discord",    href: "#" },
+      { label: "Twitter / X", href: "#" },
+      { label: "Reddit",     href: "#" },
+      { label: "Newsletter", href: "#" },
+    ],
   };
 
   return (
@@ -1677,9 +1728,14 @@ function Footer() {
               <h4 className="eyebrow text-gray-500 mb-4">{section}</h4>
               <ul className="space-y-2.5">
                 {items.map((item) => (
-                  <li key={item}>
-                    <a href="#" className="footer-link text-sm text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">
-                      {item}
+                  <li key={item.label}>
+                    <a
+                      href={item.href}
+                      className="footer-link text-sm text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+                      target={item.href.startsWith("http") ? "_blank" : undefined}
+                      rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                    >
+                      {item.label}
                     </a>
                   </li>
                 ))}
@@ -1698,8 +1754,9 @@ function Footer() {
               Todos los sistemas operativos
             </span>
             <span className="text-gray-300">·</span>
-            <a href="#" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Privacidad</a>
-            <a href="#" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Términos</a>
+            <a href="/privacy" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Privacidad</a>
+            <a href="/terms" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Términos</a>
+            <a href="/refunds" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Reembolsos</a>
           </div>
         </div>
       </div>
@@ -1730,7 +1787,7 @@ function HeroSection() {
       <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col items-center">
         {/* Eyebrow badge */}
         <div className="animate-fade-up delay-100 mb-7">
-          <a href="#features" className="hero-badge group inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-medium text-gray-700 transition-all cursor-pointer"
+          <button onClick={() => { const el = document.getElementById("features"); if(el) el.scrollIntoView({behavior:"smooth"}); }} className="hero-badge group inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-medium text-gray-700 transition-all cursor-pointer"
             style={{
               background: "linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,247,245,0.85))",
               border: "1px solid rgba(14,15,18,0.10)",
@@ -1745,7 +1802,7 @@ function HeroSection() {
             <span className="transition-transform group-hover:translate-x-0.5 text-gray-500">
               <IconArrowRight />
             </span>
-          </a>
+          </button>
         </div>
 
         {/* SEO H1 — hidden visually, indexed by search engines */}
