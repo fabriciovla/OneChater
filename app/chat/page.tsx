@@ -813,7 +813,7 @@ function EmptyState({ hasActive, onActivateDemo, onPromptClick }: {
 
       {/* Suggested prompts grid */}
       {hasActive && (
-        <div className="grid grid-cols-2 gap-2.5 w-full max-w-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-2xl">
           {SUGGESTED_PROMPTS.map((p, i) => (
             <button key={i} onClick={() => onPromptClick(`${p.title}: `)}
               className="group prompt-card flex items-center gap-3 px-4 py-3 rounded-2xl text-left cursor-pointer bg-white prompt-enter active:scale-[0.98]"
@@ -1102,34 +1102,24 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
 }) {
   return (
     <div
-      className="group flex items-center gap-2.5 pl-2.5 pr-2 py-2 rounded-xl cursor-pointer transition-all duration-150 relative history-item-enter"
+      className="group flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg cursor-pointer transition-all duration-150 relative history-item-enter"
       style={{
-        background: active ? "var(--surface)" : "transparent",
-        boxShadow: active ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
-        border: active ? "1px solid var(--border-soft)" : "1px solid transparent",
+        background: active ? "var(--overlay)" : "transparent",
         animationDelay: `${delay}ms`,
       }}
-      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--overlay)" }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--border-soft)" }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent" }}
       onClick={onSelect}
     >
-      {/* Active indicator bar */}
-      {active && <span className="history-active-bar absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full" />}
+      {/* Active indicator: clean solid orange rail */}
+      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full" style={{ background: "#f97316" }} />}
 
-      {/* Chat bubble glyph */}
-      <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
-        style={{
-          background: active ? "var(--overlay)" : "transparent",
-          border: `1px solid ${active ? "var(--border-soft)" : "transparent"}`,
-          color: active ? "var(--text-2)" : "var(--text-4)",
-        }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-        </svg>
-      </span>
+      {/* Status dot */}
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors"
+        style={{ background: active ? "#f97316" : "var(--border-strong)" }} />
 
-      <span className="flex-1 text-[12.5px] truncate min-w-0 font-medium"
-        style={{ color: active ? "var(--text-1)" : "var(--text-2)" }}>
+      <span className="flex-1 text-[12.5px] truncate min-w-0"
+        style={{ color: active ? "var(--text-1)" : "var(--text-2)", fontWeight: active ? 600 : 500 }}>
         {session.title}
       </span>
       <span className="text-[10px] flex-shrink-0 group-hover:hidden tabular-nums" style={{ color: "var(--text-4)" }}>
@@ -1137,11 +1127,13 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
       </span>
       <button
         onClick={(e) => { e.stopPropagation(); onDelete() }}
-        className="hidden group-hover:flex w-6 h-6 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-red-50 cursor-pointer"
+        className="hidden group-hover:flex w-6 h-6 flex-shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer"
         style={{ color: "var(--text-4)" }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)" }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-4)"; e.currentTarget.style.background = "transparent" }}
         title="Eliminar"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 hover:text-red-500">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
           <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
         </svg>
       </button>
@@ -1197,8 +1189,8 @@ function Sidebar({
       <div className="flex flex-col h-full w-full md:w-[240px]">
 
         {/* Header + new chat button */}
-        <div className="px-3 pt-3 pb-2 flex-shrink-0">
-          <div className="flex items-center justify-between px-1 mb-2.5">
+        <div className="px-3 pt-4 pb-2 flex-shrink-0">
+          <div className="flex items-center justify-between px-1 mb-3">
             <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
               Conversaciones
             </span>
@@ -1421,57 +1413,62 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
             memories.map((m) => {
               const meta = CATEGORY_META[m.category ?? "other"] ?? CATEGORY_META.other
               const isEditing = editingId === m.id
+              const tint = (pct: number) => `color-mix(in srgb, ${meta.color} ${pct}%, transparent)`
               return (
-                <div key={m.id} className="group flex items-start gap-3 p-3 rounded-xl transition-all hover:shadow-sm"
-                  style={{ background: "var(--surface-2)", border: "1px solid rgba(0,0,0,0.07)" }}>
-                  <span className="mt-1 w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
-                  <div className="flex-1 min-w-0">
-                    {isEditing ? (
-                      <>
-                        <textarea
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          autoFocus
-                          rows={2}
-                          className="w-full resize-none rounded-lg px-2 py-1.5 text-[13px] text-gray-800 leading-relaxed outline-none bg-white"
-                          style={{ border: "1px solid rgba(124,58,237,0.35)" }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitEdit()
-                            if (e.key === "Escape") cancelEdit()
-                          }}
-                        />
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          <button onClick={commitEdit} disabled={editText.trim().length < 3}
-                            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>Guardar</button>
-                          <button onClick={cancelEdit}
-                            className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-gray-500 hover:bg-black/[0.04] transition-colors cursor-pointer">Cancelar</button>
+                <div key={m.id} className="group relative rounded-xl p-3 transition-all duration-200 hover:-translate-y-px"
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--border-soft)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = tint(35); e.currentTarget.style.boxShadow = "0 4px 14px -8px rgba(0,0,0,0.25)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-soft)"; e.currentTarget.style.boxShadow = "none" }}>
+                  {isEditing ? (
+                    <>
+                      <textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        autoFocus
+                        rows={2}
+                        className="w-full resize-none rounded-lg px-2.5 py-2 text-[13px] leading-relaxed outline-none"
+                        style={{ border: "1px solid rgba(124,58,237,0.35)", background: "var(--surface)", color: "var(--text-1)" }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitEdit()
+                          if (e.key === "Escape") cancelEdit()
+                        }}
+                      />
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <button onClick={commitEdit} disabled={editText.trim().length < 3}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>Guardar</button>
+                        <button onClick={cancelEdit}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium hover:bg-black/[0.04] transition-colors cursor-pointer" style={{ color: "var(--text-3)" }}>Cancelar</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Top row: category chip + hover actions */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
+                          style={{ background: tint(12), color: meta.color, border: `1px solid ${tint(28)}` }}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />
+                          {meta.label}
+                        </span>
+                        <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEdit(m)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer hover:text-violet-600 hover:bg-violet-500/10"
+                            style={{ color: "var(--text-4)" }} title="Editar este hecho">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                              <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                            </svg>
+                          </button>
+                          <button onClick={() => onDelete(m.id)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer hover:text-red-500 hover:bg-red-500/10"
+                            style={{ color: "var(--text-4)" }} title="Olvidar este hecho">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+                            </svg>
+                          </button>
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-[13px] text-gray-800 leading-relaxed">{m.content}</p>
-                        <span className="inline-block mt-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: meta.color }}>{meta.label}</span>
-                      </>
-                    )}
-                  </div>
-                  {!isEditing && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => startEdit(m)}
-                        className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-all cursor-pointer"
-                        title="Editar este hecho">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-                          <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                        </svg>
-                      </button>
-                      <button onClick={() => onDelete(m.id)}
-                        className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
-                        title="Olvidar este hecho">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-                          <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
-                        </svg>
-                      </button>
-                    </div>
+                      </div>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-1)" }}>{m.content}</p>
+                    </>
                   )}
                 </div>
               )
@@ -2236,7 +2233,7 @@ export default function ChatPage() {
           <div className="flex-shrink-0 px-3 md:px-8 pb-3 md:pb-4 pt-1" style={{ background: "transparent" }}>
 
             {toast && (
-              <div key={toastKey} className="max-w-3xl mx-auto mb-2 flex justify-center">
+              <div key={toastKey} className="max-w-4xl mx-auto mb-2 flex justify-center">
                 <div className="toast-animated flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white"
                   style={{
                     background: "#1e1f24", boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
@@ -2251,7 +2248,7 @@ export default function ChatPage() {
             )}
 
             {showCmdPalette && (
-              <div className="max-w-3xl mx-auto mb-2 rounded-xl overflow-hidden border border-black/10 bg-white shadow-lg">
+              <div className="max-w-4xl mx-auto mb-2 rounded-xl overflow-hidden border border-black/10 bg-white shadow-lg">
                 {filteredCmds.map((cmd, i) => (
                   <button key={cmd.id}
                     onMouseDown={(e) => { e.preventDefault(); execCommand(cmd.id) }}
@@ -2266,7 +2263,7 @@ export default function ChatPage() {
             )}
 
             {/* Input card */}
-            <div className="input-card-lift max-w-3xl mx-auto rounded-2xl overflow-visible"
+            <div className="input-card-lift max-w-4xl mx-auto rounded-2xl overflow-visible"
               style={{
                 background: "var(--surface)",
                 border: inputFocused ? "1px solid var(--border-strong)" : "1px solid var(--border)",
