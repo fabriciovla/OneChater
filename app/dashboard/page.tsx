@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, ReactNode } from "react"
+import { useState, useEffect, useMemo, useRef, ReactNode } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -150,32 +150,69 @@ function ActivityChart({ daily }: { daily: DayPoint[] }) {
   const area = `${line} L ${x(n - 1).toFixed(1)} ${H - pad} L ${x(0).toFixed(1)} ${H - pad} Z`
   const ticks = [0, 9, 19, 29]
   const fmtTick = (ts: number) => new Date(ts).toLocaleDateString("es-AR", { day: "numeric", month: "short" })
+  const fmtFull = (ts: number) => new Date(ts).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
+
+  // Hover interaction: map the cursor's horizontal position to the nearest day.
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [hover, setHover] = useState<number | null>(null)
+  const onMove = (e: React.MouseEvent) => {
+    const rect = wrapRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const frac = (e.clientX - rect.left) / rect.width
+    const i = Math.round(frac * (n - 1))
+    setHover(Math.max(0, Math.min(n - 1, i)))
+  }
+  const lp = (i: number) => `${(x(i) / W) * 100}%`
 
   if (total === 0) {
     return <div className="flex items-center justify-center h-[200px] text-[13px] text-gray-400">Sin actividad en los últimos 30 días.</div>
   }
+  const hd = hover != null ? days[hover] : null
   return (
     <div>
       <div className="flex items-baseline gap-2 mb-2">
         <span className="display text-[22px] font-semibold text-gray-900">{fmtNum(total)}</span>
         <span className="text-[12px] text-gray-500">mensajes en 30 días</span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 200 }} preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="actFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#f97316" stopOpacity="0.28" />
-            <stop offset="1" stopColor="#f97316" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[0.25, 0.5, 0.75].map((g) => (
-          <line key={g} x1={pad} x2={W - pad} y1={pad + g * (H - 2 * pad)} y2={pad + g * (H - 2 * pad)} stroke="var(--border-soft)" strokeWidth="1" />
-        ))}
-        <path d={area} fill="url(#actFill)" />
-        <path d={line} fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-        {days.map((d, i) => d.turns === max && max > 0 ? (
-          <circle key={i} cx={x(i)} cy={y(d.turns)} r="3.5" fill="#f97316" stroke="white" strokeWidth="2" />
-        ) : null)}
-      </svg>
+      <div ref={wrapRef} className="relative" style={{ height: 200 }}
+        onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 200 }} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="actFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#f97316" stopOpacity="0.28" />
+              <stop offset="1" stopColor="#f97316" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {[0.25, 0.5, 0.75].map((g) => (
+            <line key={g} x1={pad} x2={W - pad} y1={pad + g * (H - 2 * pad)} y2={pad + g * (H - 2 * pad)} stroke="var(--border-soft)" strokeWidth="1" />
+          ))}
+          <path d={area} fill="url(#actFill)" />
+          <path d={line} fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+          {days.map((d, i) => d.turns === max && max > 0 ? (
+            <circle key={i} cx={x(i)} cy={y(d.turns)} r="3.5" fill="#f97316" stroke="white" strokeWidth="2" />
+          ) : null)}
+        </svg>
+
+        {/* Hover guide line + marker dot (HTML overlay → crisp, no SVG stretch) */}
+        {hd && (
+          <>
+            <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: lp(hover!), width: 1, background: "var(--border-strong)" }} />
+            <div className="absolute pointer-events-none rounded-full"
+              style={{ left: lp(hover!), top: y(hd.turns), width: 10, height: 10, transform: "translate(-50%, -50%)", background: "#f97316", boxShadow: "0 0 0 3px var(--surface), 0 0 0 4px rgba(249,115,22,0.35)" }} />
+            {/* Tooltip */}
+            <div className="absolute pointer-events-none px-2.5 py-1.5 rounded-lg text-center whitespace-nowrap"
+              style={{
+                left: lp(hover!),
+                top: Math.max(0, y(hd.turns) - 52),
+                transform: `translateX(${hover! < n / 2 ? "8px" : "calc(-100% - 8px)"})`,
+                background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 6px 20px -6px rgba(0,0,0,0.25)",
+              }}>
+              <div className="text-[11px] font-semibold" style={{ color: "var(--text-1)" }}>{fmtNum(hd.turns)} {hd.turns === 1 ? "mensaje" : "mensajes"}</div>
+              <div className="text-[10px] capitalize" style={{ color: "var(--text-4)" }}>{fmtFull(hd.ts)}</div>
+            </div>
+          </>
+        )}
+      </div>
       <div className="flex justify-between mt-1 px-1">
         {ticks.map((t) => <span key={t} className="text-[10px] text-gray-400">{days[t] ? fmtTick(days[t].ts) : ""}</span>)}
       </div>

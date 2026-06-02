@@ -1123,10 +1123,11 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0, folders, 
     <div
       draggable
       onDragStart={(e) => { e.dataTransfer.setData("text/chat-id", session.id); e.dataTransfer.effectAllowed = "move" }}
-      className="group flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg cursor-pointer transition-all duration-150 relative history-item-enter"
+      className="group flex items-center gap-2.5 pl-3 pr-2 py-1.5 min-h-[36px] rounded-lg cursor-pointer transition-colors duration-150 relative history-item-enter"
       style={{
         background: active ? "var(--overlay)" : "transparent",
         animationDelay: `${delay}ms`,
+        zIndex: menuOpen ? 50 : undefined,
       }}
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--border-soft)" }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent" }}
@@ -1257,7 +1258,8 @@ function FolderSection({
       style={{ background: dragOver ? `color-mix(in srgb, ${accent} 12%, transparent)` : "transparent", outline: dragOver ? `1px dashed ${accent}` : "none" }}
     >
       {/* Folder header row */}
-      <div className="group/folder flex items-center gap-1.5 pl-1.5 pr-1 py-1.5 rounded-lg cursor-pointer transition-colors"
+      <div className="group/folder flex items-center gap-1.5 pl-1.5 pr-1 py-1.5 min-h-[36px] rounded-lg cursor-pointer transition-colors relative"
+        style={{ zIndex: menuOpen ? 50 : undefined }}
         onClick={onToggle}
         onMouseEnter={(e) => { e.currentTarget.style.background = "var(--border-soft)" }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}>
