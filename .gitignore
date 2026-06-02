@@ -20,3 +20,5 @@ node_modules/
 # Config local de agentes / scripts de diagnóstico — no van al repo
 .claude/
 _diag.mjs
+
+.vercel

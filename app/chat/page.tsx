@@ -2654,31 +2654,6 @@ export default function ChatPage() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
 
-      {/* Mobile-only: open the conversations drawer (always mounted so it
-          animates in/out; slides + fades away as the drawer opens). */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        aria-label="Ver conversaciones"
-        title="Ver conversaciones"
-        className="md:hidden fixed top-3 left-3 z-30 h-10 pl-2.5 pr-3 rounded-xl flex items-center gap-2 cursor-pointer active:scale-95"
-        style={{
-          color: "var(--text-1)",
-          background: "var(--surface-blur)",
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          border: "1px solid var(--border)",
-          boxShadow: "0 4px 14px -6px rgba(0,0,0,0.3)",
-          opacity: sidebarOpen ? 0 : 1,
-          transform: sidebarOpen ? "translateX(-14px) scale(0.92)" : "none",
-          pointerEvents: sidebarOpen ? "none" : "auto",
-          transition: "opacity 0.22s ease, transform 0.32s cubic-bezier(0.22,1,0.36,1)",
-        }}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]" style={{ color: "var(--text-2)" }}>
-          <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" /><path d="M13.5 9l2.5 3-2.5 3" />
-        </svg>
-        <span className="text-[12px] font-semibold">Chats</span>
-      </button>
-
       {/* Edge hint: a thin tappable strip so a swipe/tap on the far-left
           screen edge also opens the drawer on mobile. */}
       <button
@@ -2725,6 +2700,51 @@ export default function ChatPage() {
         />
 
         <div className="flex flex-col flex-1 overflow-hidden">
+
+          {/* ── Mobile top bar (md:hidden) ───────────────────────────────────
+              Sits in normal flow so content never hides under the iOS notch.
+              padding-top reads the safe-area inset so it clears the notch. */}
+          <div
+            className="md:hidden flex-shrink-0 flex items-center gap-1.5 px-2"
+            style={{
+              paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
+              paddingBottom: "8px",
+              background: "var(--surface-blur)",
+              backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            {/* Left — open conversations drawer */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Ver conversaciones"
+              className="h-9 w-9 rounded-lg flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
+              style={{ color: "var(--text-2)" }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="w-[19px] h-[19px]">
+                <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" /><path d="M13.5 9l2.5 3-2.5 3" />
+              </svg>
+            </button>
+
+            {/* Center — active models (or app name) */}
+            <div className="flex-1 flex items-center justify-center min-w-0 px-1">
+              <span className="text-[14px] font-semibold truncate" style={{ color: "var(--text-1)" }}>
+                {activeCount > 0 ? activeProviders.map((p) => CFG[p].name).join(" · ") : "OneChater"}
+              </span>
+            </div>
+
+            {/* Right — new chat */}
+            <button
+              onClick={handleNewSession}
+              aria-label="Nuevo chat"
+              className="h-9 w-9 rounded-lg flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
+              style={{ color: "var(--text-2)" }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="w-[19px] h-[19px]">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
+          </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto chat-scroll chat-backdrop px-3 md:px-8 py-6 md:py-10 space-y-8 md:space-y-10">
