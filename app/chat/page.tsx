@@ -775,9 +775,9 @@ function EmptyState({ hasActive, onActivateDemo, onPromptClick }: {
   hasActive: boolean; onActivateDemo: () => void; onPromptClick: (prompt: string) => void
 }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-12 text-center">
+    <div className="flex-1 flex flex-col items-center justify-center gap-5 md:gap-7 px-6 py-6 md:py-12 text-center">
       {/* Animated logo orb */}
-      <div className="relative orb-float">
+      <div className="relative orb-float mb-3 md:mb-5">
         {/* Orbital ring */}
         <div className="absolute -inset-8 orb-ring pointer-events-none" aria-hidden>
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_10px_3px_rgba(249,115,22,0.5)]" />
@@ -813,7 +813,7 @@ function EmptyState({ hasActive, onActivateDemo, onPromptClick }: {
 
       {/* Suggested prompts grid */}
       {hasActive && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-2xl mt-2">
+        <div className="grid grid-cols-2 gap-2.5 w-full max-w-2xl">
           {SUGGESTED_PROMPTS.map((p, i) => (
             <button key={i} onClick={() => onPromptClick(`${p.title}: `)}
               className="group prompt-card flex items-center gap-3 px-4 py-3 rounded-2xl text-left cursor-pointer bg-white prompt-enter active:scale-[0.98]"
@@ -1264,26 +1264,26 @@ function Sidebar({
         </div>
 
         {/* Mobile-only nav: Dashboard + Memoria (topbar hides these < md) */}
-        <div className="md:hidden flex-shrink-0 p-2.5 flex flex-col gap-1.5" style={{ borderTop: "1px solid var(--border-soft)" }}>
+        <div className="md:hidden flex-shrink-0 p-2 grid grid-cols-2 gap-1.5" style={{ borderTop: "1px solid var(--border-soft)" }}>
           <Link href="/dashboard" onClick={closeIfMobile}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-all active:scale-[0.98]"
+            className="flex items-center justify-center gap-2 px-2 py-2 rounded-xl text-[12.5px] font-medium cursor-pointer transition-all active:scale-[0.98]"
             style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" style={{ color: "#7c3aed" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 flex-shrink-0" style={{ color: "#7c3aed" }}>
               <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
             </svg>
             Dashboard
           </Link>
           <button onClick={openMemory}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-all active:scale-[0.98]"
+            className="relative flex items-center justify-center gap-2 px-2 py-2 rounded-xl text-[12.5px] font-medium cursor-pointer transition-all active:scale-[0.98]"
             style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" style={{ color: "#7c3aed" }}>
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0" style={{ color: "#7c3aed" }}>
               <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
               <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
               <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
             </svg>
             Memoria
             {memoryCount > 0 && (
-              <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
+              <span className="inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-bold text-white"
                 style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>
                 {memoryCount}
               </span>
@@ -2111,25 +2111,28 @@ export default function ChatPage() {
 
       {/* ── Topbar ────────────────────────────────────────────────────── */}
       <header
-        className="flex items-center gap-3 px-4 h-14 flex-shrink-0 z-20"
+        className="flex items-center gap-2 md:gap-2.5 px-3 md:px-4 h-14 flex-shrink-0 z-20"
         style={{ background: "var(--surface-blur)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--border-soft)" }}
       >
         <button
           onClick={() => setSidebarOpen((v) => !v)}
-          className="flex w-9 h-9 rounded-xl items-center justify-center transition-all cursor-pointer hover:bg-black/[0.05] active:scale-95"
-          style={{ color: "var(--text-3)" }}
-          title="Conversaciones"
+          className="flex w-9 h-9 rounded-xl items-center justify-center transition-all cursor-pointer active:scale-95"
+          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
+          title={sidebarOpen ? "Ocultar conversaciones" : "Ver conversaciones"}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
             <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" />
           </svg>
         </button>
 
-        <Link href="/" className="flex items-center group cursor-pointer">
+        <Link href="/" className="flex items-center group cursor-pointer ml-0.5">
           <OneChatLogo className="h-9 w-auto opacity-90 group-hover:opacity-100 transition-opacity" />
         </Link>
 
         <div className="flex-1" />
+
+        {/* Divider before the action cluster */}
+        <span className="hidden sm:block w-px h-6 mr-0.5" style={{ background: "var(--border)" }} aria-hidden />
 
         {activeCount > 1 && (
           <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide"
