@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import ThemeToggle from "./components/ThemeToggle";
 
@@ -288,14 +289,14 @@ function PerplexityLogo() {
 function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  type NavSection = { label: string; sectionId: string };
+  type NavSection = { label: string; sectionId: string; slug: string };
   type NavLink    = { label: string; href: string; external?: boolean; icon?: React.ReactNode };
   type NavItem    = NavSection | NavLink;
 
   const navItems: NavItem[] = [
-    { label: "Funcionalidades", sectionId: "features" },
-    { label: "Cómo funciona",   sectionId: "how-it-works" },
-    { label: "Precios",          sectionId: "pricing" },
+    { label: "Funcionalidades", sectionId: "features",    slug: "funcionalidades" },
+    { label: "Cómo funciona",   sectionId: "how-it-works", slug: "como-funciona" },
+    { label: "Precios",         sectionId: "pricing",      slug: "precios" },
     { label: "GitHub", href: "https://github.com/fabriciovla", external: true, icon: <IconGithub /> },
   ];
 
@@ -306,9 +307,12 @@ function Navbar() {
 
   const close = () => setMobileOpen(false);
 
-  const scrollTo = (sectionId: string) => {
+  const scrollTo = (sectionId: string, slug: string) => {
     const el = document.getElementById(sectionId);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.history.pushState(null, "", `/${slug}`);
+    }
   };
 
   return (
@@ -328,7 +332,7 @@ function Navbar() {
               "sectionId" in item ? (
                 <button
                   key={item.label}
-                  onClick={() => scrollTo(item.sectionId)}
+                  onClick={() => scrollTo(item.sectionId, item.slug)}
                   className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
                 >
                   {item.label}
@@ -406,7 +410,7 @@ function Navbar() {
             "sectionId" in item ? (
               <button
                 key={item.label}
-                onClick={() => { scrollTo(item.sectionId); close(); }}
+                onClick={() => { scrollTo(item.sectionId, item.slug); close(); }}
                 className="nav-overlay-link w-full text-left"
               >
                 <span className="inline-flex items-center gap-2">{item.label}</span>
@@ -1946,6 +1950,29 @@ function HeroSection() {
 
 // â"€â"€â"€ Page â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
+// Reads ?to= param and scrolls to the matching section, then cleans the URL.
+// Must be its own component so it can be wrapped in <Suspense>.
+function SectionScrollHandler() {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const to = searchParams.get("to");
+    if (!to) return;
+    const map: Record<string, string> = {
+      precios: "pricing",
+      funcionalidades: "features",
+      "como-funciona": "how-it-works",
+    };
+    const id = map[to];
+    if (!id) return;
+    const timer = setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.history.replaceState(null, "", `/${to}`);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchParams]);
+  return null;
+}
+
 export default function Home() {
   useEffect(() => {
     const iframe = document.getElementById("demo-video") as HTMLIFrameElement;
@@ -1976,6 +2003,9 @@ export default function Home() {
 
   return (
     <main>
+      <Suspense fallback={null}>
+        <SectionScrollHandler />
+      </Suspense>
       <Navbar />
       <HeroSection />
       <FeaturesSection />
