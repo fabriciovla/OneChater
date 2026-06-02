@@ -1215,11 +1215,7 @@ html.dark .step-card-premium::before { background-image: radial-gradient(rgba(25
 }
 
 html.dark .chat-backdrop {
-  background:
-    radial-gradient(1100px 620px at 50% -260px, rgba(249,115,22,0.045), transparent 70%),
-    radial-gradient(900px 520px at 100% 8%, rgba(139,92,246,0.035), transparent 72%),
-    radial-gradient(900px 520px at 0% 92%, rgba(59,130,246,0.03), transparent 72%),
-    var(--bg-primary);
+  background: var(--bg-primary);
 }
 
 /* Flip Tailwind black borders/dividers in dark (catch-all). */
