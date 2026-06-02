@@ -1532,35 +1532,30 @@ function PricingSection() {
                   ))}
                 </ul>
 
-                {plan.comingSoon ? (
-                  <button
-                    disabled
-                    className="relative w-full py-3 rounded-xl font-semibold text-sm cursor-not-allowed text-gray-400"
-                    style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)" }}
-                  >
-                    {plan.cta}
-                  </button>
-                ) : plan.highlighted ? (
-                  <a
-                    href="/checkout/pro"
-                    className="relative w-full py-3 rounded-xl font-semibold text-sm cursor-pointer text-[#0E0F12] hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2"
-                    style={{
-                      background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 28px -8px rgba(255,255,255,0.4)",
-                    }}
-                  >
-                    {plan.cta}
-                    <IconArrowRight />
-                  </a>
-                ) : (
-                  <a
-                    href="/chat"
-                    className="relative w-full py-3 rounded-xl font-semibold text-sm cursor-pointer btn-primary transition-all duration-300 flex items-center justify-center gap-2"
-                  >
-                    {plan.cta}
-                    <IconArrowRight />
-                  </a>
-                )}
+                <button
+                  disabled={plan.comingSoon || plan.highlighted}
+                  onClick={!plan.comingSoon && !plan.highlighted ? () => window.location.href = "/chat" : undefined}
+                  className={`relative w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+                    plan.comingSoon || plan.highlighted
+                      ? "cursor-not-allowed"
+                      : "cursor-pointer btn-primary"
+                  }`}
+                  style={
+                    plan.comingSoon
+                      ? { background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)", color: "var(--text-4)" }
+                      : plan.highlighted
+                        ? {
+                            background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 28px -8px rgba(255,255,255,0.4)",
+                            color: "#0E0F12",
+                            opacity: 0.5,
+                          }
+                        : undefined
+                  }
+                >
+                  {plan.highlighted ? "Próximamente" : plan.cta}
+                  {!plan.comingSoon && !plan.highlighted && <IconArrowRight />}
+                </button>
 
                 {/* Bottom accent bar */}
                 {!plan.highlighted && (
@@ -1580,7 +1575,7 @@ function PricingSection() {
             <span>Pago seguro con encriptación</span>
           </div>
           <span className="hidden sm:block text-gray-300">·</span>
-          <span className="text-sm text-gray-400">Powered by Paddle · Tarjeta de crédito · ARS · MXN · BRL y más</span>
+          <span className="text-sm text-gray-400">ARS · MXN · PEN · BRL y más monedas locales próximamente</span>
         </div>
       </div>
     </section>
