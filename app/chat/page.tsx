@@ -542,8 +542,9 @@ function Markdown({ text }: { text: string }) {
 
 // ─── Response block ───────────────────────────────────────────────────────────
 
-function ResponseCard({ provider, state, selectedModel, index = 0, animate = false }: {
+function ResponseCard({ provider, state, selectedModel, index = 0, animate = false, onRegenerate }: {
   provider: Provider; state: ModelResponseState; selectedModel: string; index?: number; animate?: boolean
+  onRegenerate?: () => void
 }) {
   const c = CFG[provider]
   const isImg = !state.error && isImageContent(state.content)
@@ -551,6 +552,7 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
     ? (IMAGE_MODELS[provider]?.find((m) => m.id === DEFAULT_IMAGE_MODELS[provider])?.label ?? "Imagen")
     : (c.models.find((m) => m.id === selectedModel)?.label ?? selectedModel)
   const [copied, setCopied] = useState(false)
+  const [vote, setVote] = useState<"up" | "down" | null>(null)
 
   const handleCopy = () => {
     if (!state.content) return
@@ -559,6 +561,17 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
       setTimeout(() => setCopied(false), 1500)
     })
   }
+
+  // Compact icon button for the action bar under a response.
+  const ActBtn = ({ onClick, title, active, children }: { onClick: () => void; title: string; active?: boolean; children: React.ReactNode }) => (
+    <button onClick={onClick} title={title}
+      className="w-7 h-7 rounded-md flex items-center justify-center cursor-pointer transition-colors"
+      style={{ color: active ? c.color : "var(--text-4)" }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; if (!active) e.currentTarget.style.color = "var(--text-2)" }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; if (!active) e.currentTarget.style.color = "var(--text-4)" }}>
+      {children}
+    </button>
+  )
 
   return (
     <div className={`group flex flex-col${animate ? " resp-in" : ""}`}
@@ -590,17 +603,6 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
             Descargar
           </a>
         )}
-        {state.done && !state.error && state.content && !isImg && (
-          <button onClick={handleCopy}
-            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
-            style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: copied ? c.color : "var(--text-3)" }}>
-            {copied ? (
-              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
-            ) : (
-              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copiar</>
-            )}
-          </button>
-        )}
       </div>
 
       {/* Content — flat, with a thin model-coloured accent rail */}
@@ -623,6 +625,28 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
           ? <div className="pt-0.5"><TypingDots color={c.color} /></div>
           : null}
       </div>
+
+      {/* Action bar — ChatGPT-style: copy, like, dislike, regenerate */}
+      {state.done && !state.error && state.content && !isImg && (
+        <div className="flex items-center gap-0.5 mt-1.5 ml-3 opacity-60 group-hover:opacity-100 transition-opacity">
+          <ActBtn onClick={handleCopy} title={copied ? "Copiado" : "Copiar"} active={copied}>
+            {copied
+              ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12" /></svg>
+              : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>}
+          </ActBtn>
+          <ActBtn onClick={() => setVote((v) => (v === "up" ? null : "up"))} title="Buena respuesta" active={vote === "up"}>
+            <svg viewBox="0 0 24 24" fill={vote === "up" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" /></svg>
+          </ActBtn>
+          <ActBtn onClick={() => setVote((v) => (v === "down" ? null : "down"))} title="Mala respuesta" active={vote === "down"}>
+            <svg viewBox="0 0 24 24" fill={vote === "down" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M17 14V2" /><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z" /></svg>
+          </ActBtn>
+          {onRegenerate && (
+            <ActBtn onClick={onRegenerate} title="Regenerar respuesta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 21v-5h5" /></svg>
+            </ActBtn>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -730,8 +754,9 @@ function FusionCard({ state, providers, animate = false }: { state: ModelRespons
 
 // ─── Turn block ───────────────────────────────────────────────────────────────
 
-function TurnBlock({ turn, activeProviders, selectedModels }: {
+function TurnBlock({ turn, activeProviders, selectedModels, onRegenerate }: {
   turn: ConversationTurn; activeProviders: Provider[]; selectedModels: Record<Provider, string>
+  onRegenerate?: (turnId: string, provider: Provider) => void
 }) {
   const cols = activeProviders.length
   const grid = cols === 1 ? "grid-cols-1 max-w-2xl" : cols === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
@@ -771,7 +796,8 @@ function TurnBlock({ turn, activeProviders, selectedModels }: {
           {activeProviders.map((p, idx) => {
             const state = turn.responses[p]
             if (!state) return null
-            return <ResponseCard key={p} provider={p} state={state} selectedModel={selectedModels[p]} index={idx} animate={isNewTurn} />
+            return <ResponseCard key={p} provider={p} state={state} selectedModel={selectedModels[p]} index={idx} animate={isNewTurn}
+              onRegenerate={onRegenerate && !turn.userMessage.startsWith("/") ? () => onRegenerate(turn.id, p) : undefined} />
           })}
         </div>
       )}
@@ -1341,12 +1367,13 @@ function FolderSection({
 // ─── Sidebar (history only, light theme) ─────────────────────────────────────
 
 function Sidebar({
-  open, onClose, sessions, activeSessionId, onSelectSession, onDeleteSession, onNewSession,
-  onOpenMemory, memoryCount,
+  open, onClose, onExpand, sessions, activeSessionId, onSelectSession, onDeleteSession, onNewSession,
+  onOpenMemory, memoryCount, userName, userEmail,
   folders, collapsedFolders, onToggleFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onMoveChat,
 }: {
   open: boolean
   onClose: () => void
+  onExpand: () => void
   sessions: ChatSession[]
   activeSessionId: string | null
   onSelectSession: (id: string) => void
@@ -1354,6 +1381,8 @@ function Sidebar({
   onNewSession: () => void
   onOpenMemory: () => void
   memoryCount: number
+  userName?: string | null
+  userEmail?: string | null
   folders: Folder[]
   collapsedFolders: Record<string, boolean>
   onToggleFolder: (id: string) => void
@@ -1368,11 +1397,84 @@ function Sidebar({
   const newSession = () => { onNewSession(); closeIfMobile() }
   const openMemory = () => { onOpenMemory(); closeIfMobile() }
 
+  const [search, setSearch] = useState("")
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
+
   // Partition: chats inside a (still-existing) folder vs unfiled chats.
   const folderIds = new Set(folders.map((f) => f.id))
   const sessionsByFolder = (fid: string) => sessions.filter((s) => s.folderId === fid)
   const unfiled = sessions.filter((s) => !s.folderId || !folderIds.has(s.folderId))
   const [rootDragOver, setRootDragOver] = useState(false)
+
+  const q = search.trim().toLowerCase()
+  const searchResults = q ? sessions.filter((s) => s.title.toLowerCase().includes(q)) : null
+
+  const initials = (((userName || userEmail || "U").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("")) || "U").toUpperCase()
+
+  // From the rail, "Buscar" expands then focuses the input.
+  const openSearch = () => { if (!open) onExpand(); setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 80) }
+
+  const Avatar = ({ size = 32 }: { size?: number }) => (
+    <span className="rounded-full flex items-center justify-center font-bold text-white flex-shrink-0"
+      style={{ width: size, height: size, fontSize: size * 0.36, background: "linear-gradient(135deg,#10b981,#059669)" }}>
+      {initials}
+    </span>
+  )
+
+  // ── Collapsed icon rail (desktop only — mobile uses the full drawer) ──────────
+  const railBtnBase = "w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-colors"
+  const rail = (
+    <div className="hidden md:flex flex-col items-center h-full w-[72px] py-3">
+      <div className="flex flex-col items-center gap-1">
+        <button onClick={() => onNewSession()} title="Nuevo chat" className={railBtnBase}
+          style={{ color: "#fff", background: "linear-gradient(135deg,#2a2b30,#0e0f12)" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 5v14M5 12h14" /></svg>
+        </button>
+        {[
+          { t: "Buscar chats", on: openSearch, ic: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></> },
+          { t: "Nueva carpeta", on: onCreateFolder, ic: <><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><path d="M12 11v6M9 14h6" /></> },
+        ].map((b) => (
+          <button key={b.t} onClick={b.on} title={b.t} className={railBtnBase} style={{ color: "var(--text-3)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; e.currentTarget.style.color = "var(--text-1)" }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-3)" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">{b.ic}</svg>
+          </button>
+        ))}
+        <Link href="/dashboard" title="Dashboard" className={railBtnBase} style={{ color: "var(--text-3)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; e.currentTarget.style.color = "#7c3aed" }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-3)" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>
+        </Link>
+        <button onClick={openMemory} title="Memoria" className={`relative ${railBtnBase}`} style={{ color: "var(--text-3)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; e.currentTarget.style.color = "#7c3aed" }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-3)" }}>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]"><path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" /><path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" /><path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" /></svg>
+          {memoryCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ background: "#7c3aed" }} />}
+        </button>
+      </div>
+      <div className="flex-1" />
+      <button onClick={onExpand} title="Expandir barra" className="mt-2"><Avatar /></button>
+    </div>
+  )
+
+  // ── Reusable expanded nav row ────────────────────────────────────────────────
+  const NavRow = ({ icon, label, onClick, accent, badge, active }: {
+    icon: React.ReactNode; label: string; onClick: () => void; accent?: string; badge?: number; active?: boolean
+  }) => (
+    <button onClick={onClick}
+      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium cursor-pointer transition-colors"
+      style={{ color: "var(--text-2)", background: active ? "var(--overlay)" : "transparent" }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--border-soft)" }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = active ? "var(--overlay)" : "transparent" }}>
+      <span className="flex-shrink-0" style={{ color: accent ?? "var(--text-3)" }}>{icon}</span>
+      <span className="flex-1 text-left">{label}</span>
+      {badge != null && badge > 0 && (
+        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
+          style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>{badge}</span>
+      )}
+    </button>
+  )
 
   return (
     <>
@@ -1385,11 +1487,11 @@ function Sidebar({
         className={[
           "z-40 overflow-hidden",
           // mobile: fixed slide-in drawer under the topbar
-          "fixed top-14 bottom-0 left-0 w-[268px] transition-transform duration-300",
+          "fixed top-14 bottom-0 left-0 w-[280px] transition-transform duration-300",
           open ? "translate-x-0" : "-translate-x-full",
-          // desktop: in-flow, width-animated
+          // desktop: in-flow, width-animated (rail when collapsed)
           "md:static md:top-auto md:bottom-auto md:z-auto md:translate-x-0 md:transition-[width] md:duration-300 md:flex-shrink-0",
-          open ? "md:w-[240px]" : "md:w-0",
+          open ? "md:w-[260px]" : "md:w-[72px]",
         ].join(" ")}
         style={{
           background: "var(--surface-2)",
@@ -1397,148 +1499,143 @@ function Sidebar({
           boxShadow: open ? "4px 0 24px -16px rgba(0,0,0,0.25)" : "none",
         }}
       >
-      <div className="flex flex-col h-full w-full md:w-[240px]">
+      {!open ? rail : (
+      <div className="flex flex-col h-full w-full md:w-[260px]">
 
-        {/* Header + new chat button */}
-        <div className="px-3 pt-4 pb-2 flex-shrink-0">
-          <div className="flex items-center justify-between px-1 mb-3">
-            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
-              Conversaciones
-            </span>
-            <div className="flex items-center gap-1.5">
-              {sessions.length > 0 && (
-                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold tabular-nums"
-                  style={{ background: "var(--overlay)", color: "var(--text-3)", border: "1px solid var(--border-soft)" }}>
-                  {sessions.length}
-                </span>
-              )}
-              <button onClick={onCreateFolder} title="Nueva carpeta"
-                className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer transition-colors"
-                style={{ color: "var(--text-3)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; e.currentTarget.style.color = "#f97316" }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-3)" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><path d="M12 11v6M9 14h6" />
-                </svg>
-              </button>
+        {/* Nav block */}
+        <div className="px-2 pt-3 pb-1 flex-shrink-0 space-y-0.5">
+          <NavRow label="Nuevo chat" onClick={newSession} accent="var(--text-1)"
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>} />
+          <NavRow label="Buscar chats" onClick={() => { setSearchOpen((v) => !v); setTimeout(() => searchRef.current?.focus(), 60) }}
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>} />
+          <NavRow label="Nueva carpeta" onClick={onCreateFolder}
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><path d="M12 11v6M9 14h6" /></svg>} />
+
+          {/* Search input (revealed) */}
+          {searchOpen && (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 mt-1 rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-4)" }}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+              <input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar conversaciones…"
+                className="flex-1 min-w-0 bg-transparent text-[12.5px] outline-none" style={{ color: "var(--text-1)" }}
+                onKeyDown={(e) => { if (e.key === "Escape") { setSearch(""); setSearchOpen(false) } }} />
+              {search && <button onClick={() => setSearch("")} className="flex-shrink-0 cursor-pointer" style={{ color: "var(--text-4)" }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M18 6L6 18M6 6l12 12" /></svg></button>}
             </div>
-          </div>
-          <button
-            onClick={newSession}
-            className="group/new w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-white cursor-pointer transition-all duration-150 hover:opacity-95 active:scale-[0.98]"
-            style={{
-              background: "linear-gradient(135deg, #2a2b30, #0e0f12)",
-              boxShadow: "0 4px 14px -6px rgba(14,15,18,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
-            }}
-          >
-            <span className="w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover/new:rotate-90"
-              style={{ background: "rgba(255,255,255,0.14)" }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </span>
-            Nueva conversación
-          </button>
+          )}
         </div>
 
-        {/* Folders + history grouped by date */}
+        <div className="mx-3 my-1 h-px flex-shrink-0" style={{ background: "var(--border-soft)" }} />
+
+        {/* Folders + history grouped by date (or flat search results) */}
         <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-3">
-          {sessions.length === 0 && folders.length === 0 && (
-            <div className="px-3 py-10 text-center flex flex-col items-center gap-2">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                style={{ background: "var(--overlay)", border: "1px solid var(--border-soft)" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" style={{ color: "var(--text-4)" }}>
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
+          <div className="px-2 pb-1 pt-1">
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
+              {searchResults ? `Resultados (${searchResults.length})` : "Recientes"}
+            </span>
+          </div>
+
+          {searchResults ? (
+            searchResults.length === 0 ? (
+              <div className="px-3 py-6 text-center text-[12px]" style={{ color: "var(--text-4)" }}>Sin coincidencias para “{search}”.</div>
+            ) : (
+              <div className="space-y-0.5">
+                {searchResults.map((s) => (
+                  <HistoryItem key={s.id} session={s} active={s.id === activeSessionId}
+                    onSelect={() => selectSession(s.id)} onDelete={() => onDeleteSession(s.id)}
+                    folders={folders} onMove={(fid) => onMoveChat(s.id, fid)} />
+                ))}
               </div>
-              <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-4)" }}>Sin conversaciones aún.<br />Empezá a chatear para verlas acá.</p>
-            </div>
-          )}
-
-          {/* Folders */}
-          {folders.length > 0 && (
-            <div className="space-y-0.5 mb-1">
-              {folders.map((f) => (
-                <FolderSection
-                  key={f.id}
-                  folder={f}
-                  sessions={sessionsByFolder(f.id)}
-                  collapsed={collapsedFolders[f.id] ?? false}
-                  onToggle={() => onToggleFolder(f.id)}
-                  activeSessionId={activeSessionId}
-                  onSelectSession={selectSession}
-                  onDeleteSession={onDeleteSession}
-                  onRenameFolder={onRenameFolder}
-                  onDeleteFolder={onDeleteFolder}
-                  onMoveChat={onMoveChat}
-                  allFolders={folders}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Unfiled chats grouped by date — also a drop zone to unfile a chat */}
-          <div
-            onDragOver={(e) => { if (e.dataTransfer.types.includes("text/chat-id")) { e.preventDefault(); setRootDragOver(true) } }}
-            onDragLeave={() => setRootDragOver(false)}
-            onDrop={(e) => { const id = e.dataTransfer.getData("text/chat-id"); setRootDragOver(false); if (id) onMoveChat(id, null) }}
-            className="rounded-lg transition-colors"
-            style={{ outline: rootDragOver ? "1px dashed var(--border-strong)" : "none" }}
-          >
-            {groupSessionsByDate(unfiled).map((group) => (
-              <div key={group.label} className="mt-3 first:mt-1">
-                <div className="px-2 pb-1.5 pt-0.5">
-                  <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
-                    {group.label}
-                  </span>
+            )
+          ) : (
+            <>
+              {sessions.length === 0 && folders.length === 0 && (
+                <div className="px-3 py-10 text-center flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
+                    style={{ background: "var(--overlay)", border: "1px solid var(--border-soft)" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" style={{ color: "var(--text-4)" }}>
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-4)" }}>Sin conversaciones aún.<br />Empezá a chatear para verlas acá.</p>
                 </div>
-                <div className="space-y-0.5">
-                  {group.sessions.map((s) => (
-                    <HistoryItem
-                      key={s.id}
-                      session={s}
-                      active={s.id === activeSessionId}
-                      onSelect={() => selectSession(s.id)}
-                      onDelete={() => onDeleteSession(s.id)}
-                      delay={unfiled.indexOf(s) * 35}
-                      folders={folders}
-                      onMove={(fid) => onMoveChat(s.id, fid)}
+              )}
+
+              {folders.length > 0 && (
+                <div className="space-y-0.5 mb-1">
+                  {folders.map((f) => (
+                    <FolderSection
+                      key={f.id}
+                      folder={f}
+                      sessions={sessionsByFolder(f.id)}
+                      collapsed={collapsedFolders[f.id] ?? false}
+                      onToggle={() => onToggleFolder(f.id)}
+                      activeSessionId={activeSessionId}
+                      onSelectSession={selectSession}
+                      onDeleteSession={onDeleteSession}
+                      onRenameFolder={onRenameFolder}
+                      onDeleteFolder={onDeleteFolder}
+                      onMoveChat={onMoveChat}
+                      allFolders={folders}
                     />
                   ))}
                 </div>
+              )}
+
+              {/* Unfiled chats grouped by date — also a drop zone to unfile a chat */}
+              <div
+                onDragOver={(e) => { if (e.dataTransfer.types.includes("text/chat-id")) { e.preventDefault(); setRootDragOver(true) } }}
+                onDragLeave={() => setRootDragOver(false)}
+                onDrop={(e) => { const id = e.dataTransfer.getData("text/chat-id"); setRootDragOver(false); if (id) onMoveChat(id, null) }}
+                className="rounded-lg transition-colors"
+                style={{ outline: rootDragOver ? "1px dashed var(--border-strong)" : "none" }}
+              >
+                {groupSessionsByDate(unfiled).map((group) => (
+                  <div key={group.label} className="mt-3 first:mt-1">
+                    <div className="px-2 pb-1.5 pt-0.5">
+                      <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
+                        {group.label}
+                      </span>
+                    </div>
+                    <div className="space-y-0.5">
+                      {group.sessions.map((s) => (
+                        <HistoryItem
+                          key={s.id}
+                          session={s}
+                          active={s.id === activeSessionId}
+                          onSelect={() => selectSession(s.id)}
+                          onDelete={() => onDeleteSession(s.id)}
+                          delay={unfiled.indexOf(s) * 35}
+                          folders={folders}
+                          onMove={(fid) => onMoveChat(s.id, fid)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
 
-        {/* Mobile-only nav: Dashboard + Memoria (topbar hides these < md) */}
-        <div className="md:hidden flex-shrink-0 p-2 grid grid-cols-2 gap-1.5" style={{ borderTop: "1px solid var(--border-soft)" }}>
-          <Link href="/dashboard" onClick={closeIfMobile}
-            className="flex items-center justify-center gap-2 px-2 py-2 rounded-xl text-[12.5px] font-medium cursor-pointer transition-all active:scale-[0.98]"
-            style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 flex-shrink-0" style={{ color: "#7c3aed" }}>
-              <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
-            </svg>
-            Dashboard
-          </Link>
-          <button onClick={openMemory}
-            className="relative flex items-center justify-center gap-2 px-2 py-2 rounded-xl text-[12.5px] font-medium cursor-pointer transition-all active:scale-[0.98]"
-            style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0" style={{ color: "#7c3aed" }}>
-              <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
-              <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
-              <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
-            </svg>
-            Memoria
-            {memoryCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-bold text-white"
-                style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>
-                {memoryCount}
-              </span>
-            )}
-          </button>
+        {/* User footer */}
+        <div className="flex-shrink-0 p-2" style={{ borderTop: "1px solid var(--border-soft)" }}>
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border-soft)" }}>
+            <Avatar size={32} />
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>{userName || "Usuario"}</div>
+              <div className="text-[11px] truncate" style={{ color: "var(--text-4)" }}>{userEmail || "Gratis"}</div>
+            </div>
+            {/* Mobile-only quick links (desktop has them in topbar) */}
+            <button onClick={openMemory} className="md:hidden relative w-7 h-7 rounded-md flex items-center justify-center cursor-pointer" style={{ color: "#7c3aed" }} title="Memoria">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" /><path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" /><path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" /></svg>
+              {memoryCount > 0 && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full" style={{ background: "#7c3aed" }} />}
+            </button>
+            <Link href="/dashboard" onClick={closeIfMobile} className="md:hidden w-7 h-7 rounded-md flex items-center justify-center cursor-pointer" style={{ color: "#7c3aed" }} title="Dashboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>
+            </Link>
+          </div>
         </div>
       </div>
+      )}
     </aside>
     </>
   )
@@ -2100,6 +2197,23 @@ export default function ChatPage() {
     [apiKeys, selectedModels, setTurns]
   )
 
+  // Re-run a single provider's answer for an existing turn, using the same
+  // shared history it originally had. Re-persists the new content.
+  const handleRegenerate = useCallback(async (turnId: string, provider: Provider) => {
+    const all = turns
+    const idx = all.findIndex((t) => t.id === turnId)
+    if (idx < 0) return
+    const turn = all[idx]
+    if (turn.isFusion || !apiKeys[provider]?.trim()) return
+    const prevTurns = all.slice(0, idx)
+    const providersInTurn = Object.keys(turn.responses) as Provider[]
+    persistingRef.current.delete(turnId) // allow the refreshed answer to save
+    setTurns((prev) => prev.map((t) =>
+      t.id === turnId ? { ...t, responses: { ...t.responses, [provider]: { content: "", loading: true, done: false } } } : t
+    ))
+    await streamProvider(provider, buildSharedHistory(prevTurns, providersInTurn, turn.userMessage, provider, memoriesRef.current), turnId)
+  }, [turns, apiKeys, streamProvider, setTurns])
+
   const collectFull = useCallback(async (provider: Provider, messages: { role: string; content: string }[], modelOverride?: string): Promise<string> => {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -2466,11 +2580,11 @@ export default function ChatPage() {
           </span>
         )}
 
-        <ThemeToggle />
+        <ThemeToggle className="topbar-float" />
 
         <Link href="/dashboard"
-          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
-          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
+          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-95 topbar-float"
+          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)", animationDelay: "0.3s" }}
           title="Dashboard · tu uso y gasto estimado">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
             <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
@@ -2479,8 +2593,8 @@ export default function ChatPage() {
         </Link>
 
         <button onClick={() => setMemoryOpen(true)}
-          className="hidden md:inline-flex relative items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
-          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
+          className="hidden md:inline-flex relative items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-95 topbar-float"
+          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)", animationDelay: "0.6s" }}
           title="Memoria · lo que las IAs recuerdan de vos">
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
             <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
@@ -2497,8 +2611,8 @@ export default function ChatPage() {
         </button>
 
         <button onClick={handleNewSession}
-          className="inline-flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
-          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
+          className="inline-flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-95 topbar-float"
+          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)", animationDelay: "0.9s" }}
           title="Nueva conversación">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
             <path d="M12 5v14M5 12h14" />
@@ -2524,6 +2638,7 @@ export default function ChatPage() {
         <Sidebar
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          onExpand={() => setSidebarOpen(true)}
           sessions={sessions}
           activeSessionId={activeSessionId}
           onSelectSession={handleSelectSession}
@@ -2531,6 +2646,8 @@ export default function ChatPage() {
           onNewSession={handleNewSession}
           onOpenMemory={() => setMemoryOpen(true)}
           memoryCount={memories.length}
+          userName={session?.user?.name}
+          userEmail={session?.user?.email}
           folders={folders}
           collapsedFolders={collapsedFolders}
           onToggleFolder={handleToggleFolder}
@@ -2554,6 +2671,7 @@ export default function ChatPage() {
                   turn={turn}
                   activeProviders={PROVIDERS.filter((p) => !!turn.responses[p])}
                   selectedModels={selectedModels}
+                  onRegenerate={handleRegenerate}
                 />
               ))
             )}
