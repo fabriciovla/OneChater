@@ -1532,29 +1532,35 @@ function PricingSection() {
                   ))}
                 </ul>
 
-                <button
-                  disabled={plan.comingSoon}
-                  className={`relative w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-                    plan.comingSoon
-                      ? "cursor-not-allowed text-gray-400"
-                      : plan.highlighted
-                        ? "cursor-pointer text-[#0E0F12] hover:-translate-y-0.5"
-                        : "cursor-pointer btn-primary"
-                  }`}
-                  style={
-                    plan.comingSoon
-                      ? { background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)" }
-                      : plan.highlighted
-                        ? {
-                            background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
-                            boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 28px -8px rgba(255,255,255,0.4)",
-                          }
-                        : undefined
-                  }
-                >
-                  {plan.cta}
-                  {!plan.comingSoon && <IconArrowRight />}
-                </button>
+                {plan.comingSoon ? (
+                  <button
+                    disabled
+                    className="relative w-full py-3 rounded-xl font-semibold text-sm cursor-not-allowed text-gray-400"
+                    style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--border)" }}
+                  >
+                    {plan.cta}
+                  </button>
+                ) : plan.highlighted ? (
+                  <a
+                    href="/checkout/pro"
+                    className="relative w-full py-3 rounded-xl font-semibold text-sm cursor-pointer text-[#0E0F12] hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2"
+                    style={{
+                      background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 28px -8px rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    {plan.cta}
+                    <IconArrowRight />
+                  </a>
+                ) : (
+                  <a
+                    href="/chat"
+                    className="relative w-full py-3 rounded-xl font-semibold text-sm cursor-pointer btn-primary transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    {plan.cta}
+                    <IconArrowRight />
+                  </a>
+                )}
 
                 {/* Bottom accent bar */}
                 {!plan.highlighted && (
@@ -1574,7 +1580,7 @@ function PricingSection() {
             <span>Pago seguro con encriptación</span>
           </div>
           <span className="hidden sm:block text-gray-300">·</span>
-          <span className="text-sm text-gray-400">ARS · MXN · PEN · BRL · Mercado Pago · Tarjeta local · Stripe</span>
+          <span className="text-sm text-gray-400">Powered by Paddle · Tarjeta de crédito · ARS · MXN · BRL y más</span>
         </div>
       </div>
     </section>

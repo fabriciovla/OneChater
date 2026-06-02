@@ -40,7 +40,11 @@ export default function RefundsPage() {
           </ul>
         </Section>
 
-        <Section title="4. Cómo solicitar un reembolso">
+        <Section title="4. Procesador de pagos">
+          <p>Los pagos de planes pagos son procesados por <strong>Paddle</strong> (paddle.com), que actúa como Merchant of Record. Paddle se encarga de la facturación, impuestos (IVA/GST local) y cumplimiento normativo en cada región. Al suscribirte, aceptás también los <a href="https://www.paddle.com/legal/terms" target="_blank" rel="noopener noreferrer" className="underline text-gray-700 hover:text-gray-900">Términos de Paddle</a>.</p>
+        </Section>
+
+        <Section title="5. Cómo solicitar un reembolso">
           <p>Para solicitar un reembolso (cuando aplique), escribí a <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a> con el asunto <strong>"Solicitud de reembolso"</strong> e incluí:</p>
           <ul>
             <li>Tu email de cuenta registrado en OneChat.</li>
@@ -50,7 +54,7 @@ export default function RefundsPage() {
           <p>Responderemos dentro de los 5 días hábiles.</p>
         </Section>
 
-        <Section title="5. Excepciones">
+        <Section title="6. Excepciones">
           <p>No se procesarán reembolsos en casos de:</p>
           <ul>
             <li>Violación de los Términos de uso que resultó en suspensión de la cuenta.</li>
@@ -59,7 +63,7 @@ export default function RefundsPage() {
           </ul>
         </Section>
 
-        <Section title="6. Contacto">
+        <Section title="7. Contacto">
           <p>¿Tenés alguna duda? Escribinos a <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
         </Section>
       </main>
