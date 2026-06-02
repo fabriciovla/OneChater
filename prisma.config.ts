@@ -19,6 +19,9 @@ if (fs.existsSync(envPath)) {
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: process.env.DIRECT_URL!,
+    // Prefer a direct connection for schema sync; fall back to the pooled URL
+    // so `prisma db push` still works in environments that only set
+    // DATABASE_URL (e.g. Vercel without a separate DIRECT_URL).
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL!,
   },
 })

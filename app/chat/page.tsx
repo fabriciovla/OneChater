@@ -21,6 +21,7 @@ interface ModelResponseState {
 interface ConversationTurn {
   id: string
   userMessage: string
+  images?: string[] // data URLs the user attached for vision models
   responses: Partial<Record<Provider, ModelResponseState>>
   isFusion?: boolean
   fusedResponse?: ModelResponseState
@@ -222,9 +223,38 @@ const CFG = {
   },
 } as const
 
+// Short, human descriptions shown under each model in the picker (menu style).
+const MODEL_DESC: Record<string, string> = {
+  "gpt-5.5": "Lo más capaz de OpenAI",
+  "gpt-5.4": "Equilibrio entre calidad y costo",
+  "gpt-5.4-mini": "Rápido y económico",
+  "claude-opus-4-8": "Máxima capacidad de Claude",
+  "claude-sonnet-4-6": "Balance ideal para el día a día",
+  "claude-haiku-4-5-20251001": "El más rápido para respuestas cortas",
+  "gemini-3-pro-preview": "Razonamiento avanzado de Google",
+  "gemini-2.5-pro": "Potente para tareas complejas",
+  "gemini-2.5-flash": "Rápido y multimodal",
+  "llama-3.3-70b-versatile": "Versátil, muy veloz en Groq",
+  "openai/gpt-oss-120b": "Modelo abierto grande",
+  "llama-3.1-8b-instant": "Ultrarrápido para tareas simples",
+  "grok-4.3": "Lo último de xAI",
+  "grok-4-0709": "Grok 4 estándar",
+  "grok-3": "Generación anterior, económico",
+  "mistral-large-latest": "El más capaz de Mistral",
+  "mistral-medium-latest": "Equilibrado",
+  "mistral-small-latest": "Liviano y rápido",
+  "codestral-latest": "Especializado en código",
+  "deepseek-chat": "Conversación general",
+  "deepseek-reasoner": "Razonamiento profundo paso a paso",
+}
+
 // ─── Image generation ──────────────────────────────────────────────────────────
 
 const IMAGE_CAPABLE: Provider[] = ["openai", "google", "xai"]
+
+// Providers whose default models reliably accept image INPUT (vision). Others
+// get the text only, so attaching an image never errors a non-vision model.
+const VISION_CAPABLE: Provider[] = ["openai", "anthropic", "google", "xai"]
 
 const IMAGE_MODELS: Partial<Record<Provider, { id: string; label: string }[]>> = {
   openai: [
@@ -769,7 +799,21 @@ function TurnBlock({ turn, activeProviders, selectedModels, onRegenerate }: {
     <div className={`space-y-4 w-full max-w-4xl mx-auto${isNewTurn ? " turn-enter" : ""}`}>
       {/* User message */}
       <div className="flex justify-end">
-        <div className="flex items-end gap-2.5 max-w-[78%]">
+        <div className="flex flex-col items-end gap-2 max-w-[78%]">
+          {/* Attached images */}
+          {turn.images && turn.images.length > 0 && (
+            <div className="flex flex-wrap justify-end gap-2">
+              {turn.images.map((src, i) => (
+                <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`adjunto ${i + 1}`} className="rounded-xl max-h-44 w-auto object-cover transition-transform duration-200 hover:scale-[1.02]"
+                    style={{ border: "1px solid var(--border)" }} />
+                </a>
+              ))}
+            </div>
+          )}
+          <div className="flex items-end gap-2.5">
+          {turn.userMessage && (
           <div className={`px-4 py-3 rounded-2xl rounded-br-md text-[15px] text-white leading-relaxed break-words whitespace-pre-wrap transition-transform duration-200 hover:scale-[1.015]${isNewTurn ? " msg-enter" : ""}`}
             style={{
               background: "linear-gradient(135deg, #2a2b30 0%, #1a1b1f 50%, #0e0f12 100%)",
@@ -777,6 +821,7 @@ function TurnBlock({ turn, activeProviders, selectedModels, onRegenerate }: {
             }}>
             {turn.userMessage}
           </div>
+          )}
           <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 transition-transform duration-300 hover:scale-110 hover:rotate-6${isNewTurn ? " pop-in" : ""}`}
             style={{
               background: "linear-gradient(135deg, #1e1f24, #0a0b0d)",
@@ -786,6 +831,7 @@ function TurnBlock({ turn, activeProviders, selectedModels, onRegenerate }: {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
             </svg>
+          </div>
           </div>
         </div>
       </div>
@@ -1102,24 +1148,32 @@ function AIChipSelector({
                           </button>
                         )}
                       </div>
-                      {/* Model chips */}
+                      {/* Model list — menu style: name + description + check */}
                       <div>
                         <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Modelo</span>
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {c.models.map((m) => {
+                        <div className="mt-1.5 rounded-xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                          {c.models.map((m, mi) => {
                             const sel = selectedModels[p] === m.id
+                            const desc = MODEL_DESC[m.id]
                             return (
                               <button
                                 key={m.id}
                                 onClick={() => setSelectedModels({ ...selectedModels, [p]: m.id })}
-                                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all duration-150 active:scale-95"
+                                className="ai-model-row w-full flex items-center gap-3 px-3 py-2.5 text-left cursor-pointer transition-colors"
                                 style={{
-                                  background: sel ? c.color : "var(--surface)",
-                                  color: sel ? "#fff" : "var(--text-2)",
-                                  border: `1px solid ${sel ? c.color : "var(--border)"}`,
+                                  background: sel ? c.colorLight : "transparent",
+                                  borderTop: mi === 0 ? "none" : "1px solid var(--border-soft)",
                                 }}
                               >
-                                {m.label}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-[13px] font-semibold leading-tight" style={{ color: sel ? c.color : "var(--text-1)" }}>{m.label}</div>
+                                  {desc && <div className="text-[11px] mt-0.5 leading-tight truncate" style={{ color: "var(--text-4)" }}>{desc}</div>}
+                                </div>
+                                {sel && (
+                                  <svg viewBox="0 0 24 24" fill="none" stroke={c.color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 flex-shrink-0">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                )}
                               </button>
                             )
                           })}
@@ -1488,7 +1542,7 @@ function Sidebar({
     <>
       {/* Mobile backdrop */}
       {open && (
-        <div className="fixed inset-0 z-30 md:hidden" style={{ background: "rgba(0,0,0,0.45)" }} onClick={onClose} />
+        <div className="fixed inset-0 z-30 md:hidden" style={{ background: "rgba(0,0,0,0.45)", animation: "memFadeIn 0.22s ease both" }} onClick={onClose} />
       )}
 
       <aside
@@ -1907,6 +1961,24 @@ export default function ChatPage() {
   const [sendKey, setSendKey] = useState(0)
   const [inputFocused, setInputFocused] = useState(false)
   const [imageMode, setImageMode] = useState(false)
+  // Images the user attached for vision models (data URLs, current message only).
+  const [attachments, setAttachments] = useState<string[]>([])
+  const imageInputRef = useRef<HTMLInputElement>(null)
+
+  const addAttachments = useCallback((files: FileList | null) => {
+    if (!files?.length) return
+    const room = 4 - attachments.length
+    const picked = Array.from(files).filter((f) => f.type.startsWith("image/")).slice(0, Math.max(0, room))
+    picked.forEach((file) => {
+      if (file.size > 5 * 1024 * 1024) return // 5MB cap each
+      const reader = new FileReader()
+      reader.onload = () => {
+        const url = reader.result as string
+        if (url?.startsWith("data:image")) setAttachments((prev) => (prev.length >= 4 ? prev : [...prev, url]))
+      }
+      reader.readAsDataURL(file)
+    })
+  }, [attachments.length])
 
   // Cross-conversation memory: facts the AI knows about the user everywhere.
   const [memories, setMemories] = useState<Memory[]>([])
@@ -2188,12 +2260,12 @@ export default function ChatPage() {
   const fusionMode = activeProviders.length > 1
 
   const streamProvider = useCallback(
-    async (provider: Provider, messages: { role: string; content: string }[], turnId: string, opts?: { mode?: "image"; model?: string }) => {
+    async (provider: Provider, messages: { role: string; content: string }[], turnId: string, opts?: { mode?: "image"; model?: string; images?: string[] }) => {
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: opts?.model ?? selectedModels[provider], mode: opts?.mode }),
+          body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: opts?.model ?? selectedModels[provider], mode: opts?.mode, images: opts?.images }),
         })
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
         const reader = res.body.getReader()
@@ -2243,11 +2315,11 @@ export default function ChatPage() {
     await streamProvider(provider, buildSharedHistory(prevTurns, providersInTurn, turn.userMessage, provider, memoriesRef.current), turnId)
   }, [turns, apiKeys, streamProvider, setTurns])
 
-  const collectFull = useCallback(async (provider: Provider, messages: { role: string; content: string }[], modelOverride?: string): Promise<string> => {
+  const collectFull = useCallback(async (provider: Provider, messages: { role: string; content: string }[], modelOverride?: string, images?: string[]): Promise<string> => {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: modelOverride ?? selectedModels[provider] }),
+      body: JSON.stringify({ messages, provider, apiKey: apiKeys[provider], model: modelOverride ?? selectedModels[provider], images }),
     })
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
     const reader = res.body.getReader()
@@ -2477,7 +2549,9 @@ export default function ChatPage() {
 
   const handleSend = useCallback(async () => {
     const msg = input.trim()
-    if (!msg) return
+    // Attached images can be sent with no text (e.g. "qué ves acá").
+    const imgs = imageMode ? [] : attachments
+    if (!msg && imgs.length === 0) return
     const matchedCmd = SLASH_COMMANDS.find((c) => c.label === msg)
     if (matchedCmd) { execCommand(matchedCmd.id); return }
     if (isLoading || activeProviders.length === 0) return
@@ -2487,15 +2561,22 @@ export default function ChatPage() {
       showToast("Activá OpenAI, Google o xAI para generar imágenes")
       return
     }
+    if (imgs.length > 0 && !activeProviders.some((p) => VISION_CAPABLE.includes(p))) {
+      showToast("Activá OpenAI, Claude, Gemini o Grok para enviar imágenes")
+      return
+    }
 
     await ensureActiveSession()
     setInput("")
+    setAttachments([])
     if (textareaRef.current) textareaRef.current.style.height = "auto"
     setIsLoading(true)
     setSendKey((k) => k + 1)
 
     const turnId = crypto.randomUUID()
     const currentTurns = turns
+    // Text shown/sent for this turn; vision-only sends get a default prompt.
+    const sendText = msg || (imgs.length ? "¿Qué ves en esta imagen?" : "")
 
     if (imageMode) {
       const initialResponses: Partial<Record<Provider, ModelResponseState>> = {}
@@ -2506,10 +2587,10 @@ export default function ChatPage() {
       ))
     } else if (fusionMode) {
       setTurns((prev) => [...prev, {
-        id: turnId, userMessage: msg, responses: {}, isFusion: true,
+        id: turnId, userMessage: sendText, images: imgs, responses: {}, isFusion: true,
         fusedResponse: { content: "", loading: true, done: false, phase: "collecting" },
       }])
-      const results = await Promise.allSettled(activeProviders.map((p) => collectFull(p, buildSharedHistory(currentTurns, activeProviders, msg, p, memoriesRef.current))))
+      const results = await Promise.allSettled(activeProviders.map((p) => collectFull(p, buildSharedHistory(currentTurns, activeProviders, sendText, p, memoriesRef.current), undefined, VISION_CAPABLE.includes(p) ? imgs : [])))
       const parts = activeProviders
         .map((p, i) => {
           const r = results[i]
@@ -2523,7 +2604,7 @@ export default function ChatPage() {
         return
       }
       const synthesisMsg =
-        `A continuación están las respuestas de distintos modelos de IA a la pregunta del usuario: "${msg}"\n\n` +
+        `A continuación están las respuestas de distintos modelos de IA a la pregunta del usuario: "${sendText}"\n\n` +
         parts.join("\n\n---\n\n") +
         `\n\nSintetizá estas respuestas en UNA SOLA respuesta unificada, clara y completa. Tomá los mejores insights de cada modelo, eliminá redundancias y presentá la información de forma coherente. Respondé directamente y naturalmente, sin mencionar que estás sintetizando ni referenciar los modelos por nombre.`
       const synthProvider = activeProviders[0]
@@ -2539,13 +2620,13 @@ export default function ChatPage() {
     } else {
       const initialResponses: Partial<Record<Provider, ModelResponseState>> = {}
       activeProviders.forEach((p) => { initialResponses[p] = { content: "", loading: true, done: false } })
-      setTurns((prev) => [...prev, { id: turnId, userMessage: msg, responses: initialResponses }])
-      await Promise.all(activeProviders.map((p) => streamProvider(p, buildSharedHistory(currentTurns, activeProviders, msg, p, memoriesRef.current), turnId)))
+      setTurns((prev) => [...prev, { id: turnId, userMessage: sendText, images: imgs, responses: initialResponses }])
+      await Promise.all(activeProviders.map((p) => streamProvider(p, buildSharedHistory(currentTurns, activeProviders, sendText, p, memoriesRef.current), turnId, { images: VISION_CAPABLE.includes(p) ? imgs : [] })))
     }
 
     setIsLoading(false)
     textareaRef.current?.focus()
-  }, [input, isLoading, activeProviders, turns, fusionMode, imageMode, showToast, streamProvider, collectFull, streamFusion, execCommand, ensureActiveSession, setTurns])
+  }, [input, isLoading, activeProviders, turns, fusionMode, imageMode, attachments, showToast, streamProvider, collectFull, streamFusion, execCommand, ensureActiveSession, setTurns])
 
   const filteredCmds = input.startsWith("/")
     ? SLASH_COMMANDS.filter((c) => c.label.startsWith(input.toLowerCase().split(" ")[0]))
@@ -2573,19 +2654,39 @@ export default function ChatPage() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
 
-      {/* Mobile-only: open the conversations drawer (no topbar) */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="md:hidden fixed top-3 left-3 z-30 w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer active:scale-95"
-          style={{ color: "var(--text-2)", background: "var(--surface-blur)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "1px solid var(--border)", boxShadow: "0 4px 14px -6px rgba(0,0,0,0.3)" }}
-          title="Ver conversaciones"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-            <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" />
-          </svg>
-        </button>
-      )}
+      {/* Mobile-only: open the conversations drawer (always mounted so it
+          animates in/out; slides + fades away as the drawer opens). */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        aria-label="Ver conversaciones"
+        title="Ver conversaciones"
+        className="md:hidden fixed top-3 left-3 z-30 h-10 pl-2.5 pr-3 rounded-xl flex items-center gap-2 cursor-pointer active:scale-95"
+        style={{
+          color: "var(--text-1)",
+          background: "var(--surface-blur)",
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 4px 14px -6px rgba(0,0,0,0.3)",
+          opacity: sidebarOpen ? 0 : 1,
+          transform: sidebarOpen ? "translateX(-14px) scale(0.92)" : "none",
+          pointerEvents: sidebarOpen ? "none" : "auto",
+          transition: "opacity 0.22s ease, transform 0.32s cubic-bezier(0.22,1,0.36,1)",
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]" style={{ color: "var(--text-2)" }}>
+          <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" /><path d="M13.5 9l2.5 3-2.5 3" />
+        </svg>
+        <span className="text-[12px] font-semibold">Chats</span>
+      </button>
+
+      {/* Edge hint: a thin tappable strip so a swipe/tap on the far-left
+          screen edge also opens the drawer on mobile. */}
+      <button
+        aria-label="Abrir conversaciones"
+        onClick={() => setSidebarOpen(true)}
+        className="md:hidden fixed top-0 bottom-0 left-0 w-2 z-20"
+        style={{ background: "transparent", opacity: sidebarOpen ? 0 : 1, pointerEvents: sidebarOpen ? "none" : "auto" }}
+      />
 
       {/* ── Memory drawer ─────────────────────────────────────────────── */}
       {memoryOpen && (
@@ -2690,6 +2791,26 @@ export default function ChatPage() {
                     : "0 8px 26px -12px rgba(0,0,0,0.22)",
               }}>
 
+              {/* Attachment thumbnails (vision) */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 px-4 pt-3">
+                  {attachments.map((src, i) => (
+                    <div key={i} className="relative group/att w-16 h-16 rounded-xl overflow-hidden flex-shrink-0"
+                      style={{ border: "1px solid var(--border)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt={`adjunto ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center cursor-pointer"
+                        style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
+                        title="Quitar imagen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Row 1: textarea */}
               <div className="px-4 pt-3 pb-1">
                 <textarea
@@ -2739,6 +2860,29 @@ export default function ChatPage() {
                   onActivateDemo={activateDemo}
                 />
                 <div className="flex-1" />
+                {/* Attach image (vision) — hidden in image-generation mode */}
+                {!imageMode && (
+                  <>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => { addAttachments(e.target.files); if (e.target) e.target.value = "" }}
+                    />
+                    <button
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={activeCount === 0 || isLoading || attachments.length >= 4}
+                      title={attachments.length >= 4 ? "Máximo 4 imágenes" : "Adjuntar imagen"}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ background: "rgba(0,0,0,0.05)", color: "#6b7280", border: "1px solid rgba(0,0,0,0.1)" }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                      </svg>
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setImageMode((v) => !v)}
                   title={imageMode ? "Modo imagen activo" : "Generar imágenes"}
@@ -2755,7 +2899,7 @@ export default function ChatPage() {
                 </button>
                 <button
                   onClick={handleSend}
-                  disabled={!input.trim() || activeCount === 0 || isLoading}
+                  disabled={(!input.trim() && attachments.length === 0) || activeCount === 0 || isLoading}
                   className="send-btn w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{
                     background: "linear-gradient(135deg, #2a2b30, #1e1f24)",

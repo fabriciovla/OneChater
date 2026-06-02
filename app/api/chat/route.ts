@@ -5,7 +5,10 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 })
 
-  const { messages, provider, apiKey, model, mode } = await req.json()
+  const { messages, provider, apiKey, model, mode, images } = await req.json()
+  // Attached images for the newest user message (data URLs). Only providers
+  // with vision get them; the rest receive text only.
+  const imgs: string[] = Array.isArray(images) ? images.filter((u) => typeof u === "string" && u.startsWith("data:image")) : []
 
   const encoder = new TextEncoder()
 
@@ -21,21 +24,21 @@ export async function POST(req: NextRequest) {
           else if (provider === "xai") await imageXAI(prompt, apiKey, model, controller, encoder)
           else controller.enqueue(encoder.encode(`[Error: ${provider} no genera imágenes]`))
         } else if (apiKey === "demo") {
-          await streamDemo(messages, provider, controller, encoder)
+          await streamDemo(messages, provider, controller, encoder, imgs)
         } else if (provider === "openai") {
-          await streamOpenAI(messages, apiKey, model, controller, encoder)
+          await streamOpenAI(withImagesOpenAI(messages, imgs), apiKey, model, controller, encoder)
         } else if (provider === "anthropic") {
-          await streamAnthropic(messages, apiKey, model, controller, encoder)
+          await streamAnthropic(withImagesAnthropic(messages, imgs), apiKey, model, controller, encoder)
         } else if (provider === "google") {
-          await streamGoogle(messages, apiKey, model, controller, encoder)
+          await streamGoogle(messages, apiKey, model, controller, encoder, imgs)
         } else if (provider === "groq") {
-          await streamGroq(messages, apiKey, model, controller, encoder)
+          await streamGroq(withImagesOpenAI(messages, imgs), apiKey, model, controller, encoder)
         } else if (provider === "openrouter") {
-          await streamOpenRouter(messages, apiKey, model, controller, encoder)
+          await streamOpenRouter(withImagesOpenAI(messages, imgs), apiKey, model, controller, encoder)
         } else if (provider === "xai") {
-          await streamOpenAICompat("https://api.x.ai/v1/chat/completions", "xAI", messages, apiKey, model || "grok-4.3", controller, encoder)
+          await streamOpenAICompat("https://api.x.ai/v1/chat/completions", "xAI", withImagesOpenAI(messages, imgs), apiKey, model || "grok-4.3", controller, encoder)
         } else if (provider === "mistral") {
-          await streamOpenAICompat("https://api.mistral.ai/v1/chat/completions", "Mistral", messages, apiKey, model || "mistral-large-latest", controller, encoder)
+          await streamOpenAICompat("https://api.mistral.ai/v1/chat/completions", "Mistral", withImagesOpenAI(messages, imgs), apiKey, model || "mistral-large-latest", controller, encoder)
         } else if (provider === "deepseek") {
           await streamOpenAICompat("https://api.deepseek.com/v1/chat/completions", "DeepSeek", messages, apiKey, model || "deepseek-chat", controller, encoder)
         }
@@ -57,8 +60,52 @@ export async function POST(req: NextRequest) {
   })
 }
 
+// ─── Vision: inject attached images into the newest user message ────────────────
+
+type ChatMsg = { role: string; content: unknown }
+
+// OpenAI-compatible (OpenAI, Groq, xAI, OpenRouter, Mistral pixtral): the last
+// user message becomes a content array of text + image_url parts.
+function withImagesOpenAI(messages: { role: string; content: string }[], images: string[]): ChatMsg[] {
+  if (!images.length) return messages
+  const out: ChatMsg[] = messages.map((m) => ({ ...m }))
+  for (let i = out.length - 1; i >= 0; i--) {
+    if (out[i].role === "user") {
+      out[i] = {
+        role: "user",
+        content: [
+          { type: "text", text: String((messages[i] as { content: string }).content) },
+          ...images.map((url) => ({ type: "image_url", image_url: { url } })),
+        ],
+      }
+      break
+    }
+  }
+  return out
+}
+
+// Anthropic: image blocks (base64 source) precede the text block.
+function withImagesAnthropic(messages: { role: string; content: string }[], images: string[]): ChatMsg[] {
+  if (!images.length) return messages
+  const out: ChatMsg[] = messages.map((m) => ({ ...m }))
+  for (let i = out.length - 1; i >= 0; i--) {
+    if (out[i].role === "user") {
+      const blocks = images.map((url) => {
+        const m = url.match(/^data:(.+?);base64,(.*)$/)
+        return { type: "image", source: { type: "base64", media_type: m?.[1] ?? "image/png", data: m?.[2] ?? "" } }
+      })
+      out[i] = {
+        role: "user",
+        content: [...blocks, { type: "text", text: String((messages[i] as { content: string }).content) }],
+      }
+      break
+    }
+  }
+  return out
+}
+
 async function streamOpenAI(
-  messages: { role: string; content: string }[],
+  messages: ChatMsg[],
   apiKey: string,
   model: string,
   controller: ReadableStreamDefaultController,
@@ -102,7 +149,7 @@ async function streamOpenAI(
 }
 
 async function streamAnthropic(
-  messages: { role: string; content: string }[],
+  messages: ChatMsg[],
   apiKey: string,
   model: string,
   controller: ReadableStreamDefaultController,
@@ -213,9 +260,11 @@ async function streamDemo(
   messages: { role: string; content: string }[],
   provider: string,
   controller: ReadableStreamDefaultController,
-  encoder: TextEncoder
+  encoder: TextEncoder,
+  images: string[] = []
 ) {
-  const text = buildDemoResponse(provider, messages)
+  const text = (images.length ? `📎 Recibí ${images.length} ${images.length === 1 ? "imagen" : "imágenes"} (en modo demo no las analizo, pero con tu API key real sí).\n\n` : "")
+    + buildDemoResponse(provider, messages)
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
   // Stream word by word to simulate realistic typing
@@ -234,9 +283,11 @@ async function streamGoogle(
   apiKey: string,
   model: string,
   controller: ReadableStreamDefaultController,
-  encoder: TextEncoder
+  encoder: TextEncoder,
+  images: string[] = []
 ) {
-  type GMsg = { role: "user" | "model"; parts: { text: string }[] }
+  type GPart = { text?: string; inlineData?: { mimeType: string; data: string } }
+  type GMsg = { role: "user" | "model"; parts: GPart[] }
   const googleMessages = messages.reduce<GMsg[]>((acc, m) => {
     const role: "user" | "model" = m.role === "assistant" ? "model" : "user"
     if (acc.length > 0 && acc[acc.length - 1].role === role) {
@@ -246,6 +297,19 @@ async function streamGoogle(
     }
     return acc
   }, [])
+
+  // Attach images to the last user turn as inlineData parts.
+  if (images.length) {
+    for (let i = googleMessages.length - 1; i >= 0; i--) {
+      if (googleMessages[i].role === "user") {
+        for (const url of images) {
+          const mm = url.match(/^data:(.+?);base64,(.*)$/)
+          if (mm) googleMessages[i].parts.push({ inlineData: { mimeType: mm[1], data: mm[2] } })
+        }
+        break
+      }
+    }
+  }
 
   const modelName = model || "gemini-2.5-flash"
   const res = await fetch(
@@ -274,7 +338,7 @@ async function streamGoogle(
 }
 
 async function streamGroq(
-  messages: { role: string; content: string }[],
+  messages: ChatMsg[],
   apiKey: string,
   model: string,
   controller: ReadableStreamDefaultController,
@@ -320,7 +384,7 @@ async function streamGroq(
 async function streamOpenAICompat(
   baseUrl: string,
   providerName: string,
-  messages: { role: string; content: string }[],
+  messages: ChatMsg[],
   apiKey: string,
   model: string,
   controller: ReadableStreamDefaultController,
@@ -469,7 +533,7 @@ async function imageDemo(
 }
 
 async function streamOpenRouter(
-  messages: { role: string; content: string }[],
+  messages: ChatMsg[],
   apiKey: string,
   model: string,
   controller: ReadableStreamDefaultController,
