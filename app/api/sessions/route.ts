@@ -9,7 +9,7 @@ export async function GET() {
   const sessions = await prisma.chatSession.findMany({
     where: { userId: session.user.id },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, createdAt: true, updatedAt: true },
+    select: { id: true, title: true, folderId: true, createdAt: true, updatedAt: true },
   })
 
   return NextResponse.json(

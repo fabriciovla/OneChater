@@ -35,6 +35,7 @@ model User {
   chatSessions     ChatSession[]
   providerSettings UserProviderSetting[]
   memories         Memory[]
+  folders          Folder[]
 
   @@map("users")
 }
@@ -75,16 +76,36 @@ model VerificationToken {
 model ChatSession {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
+  folderId  String?  @map("folder_id")
   title     String   @default("Nueva conversación")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  turns ConversationTurn[]
+  user   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder Folder?            @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  turns  ConversationTurn[]
 
   @@index([userId])
+  @@index([folderId])
   @@index([updatedAt(sort: Desc)])
   @@map("chat_sessions")
+}
+
+// User-created folder to organize chat sessions. Chats can live in at most one
+// folder; deleting a folder just unfiles its chats (SetNull), never deletes them.
+model Folder {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String   @default("Nueva carpeta")
+  color     String?  // accent hex, e.g. "#f97316"
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions ChatSession[]
+
+  @@index([userId])
+  @@map("folders")
 }
 
 model ConversationTurn {

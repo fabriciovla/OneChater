@@ -29,9 +29,19 @@ interface ConversationTurn {
 interface ChatSession {
   id: string
   title: string
+  folderId?: string | null
   createdAt: number
   updatedAt: number
   turns?: ConversationTurn[]
+}
+
+// A user-created folder that groups chat sessions.
+interface Folder {
+  id: string
+  name: string
+  color?: string | null
+  createdAt: number
+  updatedAt: number
 }
 
 // A durable fact the AI remembers about the user across ALL conversations.
@@ -1103,11 +1113,16 @@ function AIChipSelector({
 
 // ─── History Item ─────────────────────────────────────────────────────────────
 
-function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
+function HistoryItem({ session, active, onSelect, onDelete, delay = 0, folders, onMove }: {
   session: ChatSession; active: boolean; onSelect: () => void; onDelete: () => void; delay?: number
+  folders: Folder[]; onMove: (folderId: string | null) => void
 }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
     <div
+      draggable
+      onDragStart={(e) => { e.dataTransfer.setData("text/chat-id", session.id); e.dataTransfer.effectAllowed = "move" }}
       className="group flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg cursor-pointer transition-all duration-150 relative history-item-enter"
       style={{
         background: active ? "var(--overlay)" : "transparent",
@@ -1128,9 +1143,60 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
         style={{ color: active ? "var(--text-1)" : "var(--text-2)", fontWeight: active ? 600 : 500 }}>
         {session.title}
       </span>
-      <span className="text-[10px] flex-shrink-0 group-hover:hidden tabular-nums" style={{ color: "var(--text-4)" }}>
+      <span className={`text-[10px] flex-shrink-0 tabular-nums ${menuOpen ? "hidden" : "group-hover:hidden"}`} style={{ color: "var(--text-4)" }}>
         {formatRelativeTime(session.updatedAt)}
       </span>
+
+      {/* Move to folder */}
+      <div className="relative flex-shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
+          className={`${menuOpen ? "flex" : "hidden group-hover:flex"} w-6 h-6 items-center justify-center rounded-md transition-colors cursor-pointer`}
+          style={{ color: menuOpen ? "#f97316" : "var(--text-4)" }}
+          onMouseEnter={(e) => { if (!menuOpen) e.currentTarget.style.color = "var(--text-2)" }}
+          onMouseLeave={(e) => { if (!menuOpen) e.currentTarget.style.color = "var(--text-4)" }}
+          title="Mover a carpeta"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+        {menuOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenuOpen(false) }} />
+            <div className="absolute right-0 top-7 z-50 w-48 rounded-xl py-1 overflow-hidden"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 10px 30px -8px rgba(0,0,0,0.3)" }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Mover a</div>
+              {session.folderId && (
+                <button onClick={() => { onMove(null); setMenuOpen(false) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-black/[0.04]" style={{ color: "var(--text-2)" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                  Quitar de carpeta
+                </button>
+              )}
+              {folders.length === 0 && (
+                <div className="px-3 py-2 text-[12px]" style={{ color: "var(--text-4)" }}>No hay carpetas todavía.</div>
+              )}
+              {folders.map((f) => {
+                const here = session.folderId === f.id
+                return (
+                  <button key={f.id} disabled={here} onClick={() => { onMove(f.id); setMenuOpen(false) }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-black/[0.04] disabled:opacity-50 disabled:cursor-default"
+                    style={{ color: "var(--text-1)" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke={f.color ?? "#f97316"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span className="flex-1 truncate">{f.name}</span>
+                    {here && <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
       <button
         onClick={(e) => { e.stopPropagation(); onDelete() }}
         className="hidden group-hover:flex w-6 h-6 flex-shrink-0 items-center justify-center rounded-md transition-colors cursor-pointer"
@@ -1147,11 +1213,135 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
   )
 }
 
+// ─── Folder section (collapsible) ───────────────────────────────────────────────
+
+function FolderSection({
+  folder, sessions, collapsed, onToggle, activeSessionId, onSelectSession, onDeleteSession,
+  onRenameFolder, onDeleteFolder, onMoveChat, allFolders,
+}: {
+  folder: Folder
+  sessions: ChatSession[]
+  collapsed: boolean
+  onToggle: () => void
+  activeSessionId: string | null
+  onSelectSession: (id: string) => void
+  onDeleteSession: (id: string) => void
+  onRenameFolder: (id: string, name: string) => void
+  onDeleteFolder: (id: string) => void
+  onMoveChat: (chatId: string, folderId: string | null) => void
+  allFolders: Folder[]
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const [name, setName] = useState(folder.name)
+  const [dragOver, setDragOver] = useState(false)
+  const accent = folder.color ?? "#f97316"
+
+  const commitRename = () => {
+    const clean = name.trim()
+    if (clean && clean !== folder.name) onRenameFolder(folder.id, clean)
+    else setName(folder.name)
+    setRenaming(false)
+  }
+
+  return (
+    <div
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("text/chat-id")) { e.preventDefault(); setDragOver(true) } }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        const id = e.dataTransfer.getData("text/chat-id")
+        setDragOver(false)
+        if (id) onMoveChat(id, folder.id)
+      }}
+      className="rounded-lg transition-colors"
+      style={{ background: dragOver ? `color-mix(in srgb, ${accent} 12%, transparent)` : "transparent", outline: dragOver ? `1px dashed ${accent}` : "none" }}
+    >
+      {/* Folder header row */}
+      <div className="group/folder flex items-center gap-1.5 pl-1.5 pr-1 py-1.5 rounded-lg cursor-pointer transition-colors"
+        onClick={onToggle}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--border-soft)" }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          className="w-3 h-3 flex-shrink-0 transition-transform" style={{ color: "var(--text-4)", transform: collapsed ? "none" : "rotate(90deg)" }}>
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+        <svg viewBox="0 0 24 24" fill={collapsed ? "none" : accent} stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 flex-shrink-0" style={{ opacity: collapsed ? 1 : 0.9 }}>
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+        {renaming ? (
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") { setName(folder.name); setRenaming(false) } }}
+            onBlur={commitRename}
+            className="flex-1 min-w-0 bg-transparent text-[12.5px] font-semibold outline-none rounded px-1"
+            style={{ color: "var(--text-1)", border: `1px solid ${accent}` }}
+          />
+        ) : (
+          <span className="flex-1 text-[12.5px] font-semibold truncate min-w-0" style={{ color: "var(--text-1)" }}>{folder.name}</span>
+        )}
+        <span className="text-[10px] tabular-nums flex-shrink-0 px-1.5 rounded-full" style={{ color: "var(--text-4)", background: "var(--overlay)" }}>{sessions.length}</span>
+
+        <div className="relative flex-shrink-0">
+          <button onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
+            className={`${menuOpen ? "flex" : "hidden group-hover/folder:flex"} w-6 h-6 items-center justify-center rounded-md cursor-pointer`}
+            style={{ color: menuOpen ? "#f97316" : "var(--text-4)" }} title="Opciones">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenuOpen(false) }} />
+              <div className="absolute right-0 top-7 z-50 w-40 rounded-xl py-1 overflow-hidden"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 10px 30px -8px rgba(0,0,0,0.3)" }}
+                onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => { setRenaming(true); setMenuOpen(false) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-black/[0.04]" style={{ color: "var(--text-2)" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                  Renombrar
+                </button>
+                <button onClick={() => { onDeleteFolder(folder.id); setMenuOpen(false) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-red-500/10" style={{ color: "#ef4444" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /></svg>
+                  Eliminar carpeta
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Folder contents */}
+      {!collapsed && (
+        <div className="pl-3 pb-1 space-y-0.5">
+          {sessions.length === 0 ? (
+            <div className="px-3 py-2 text-[11px] italic" style={{ color: "var(--text-4)" }}>Vacía · arrastrá un chat acá</div>
+          ) : (
+            sessions.map((s) => (
+              <HistoryItem
+                key={s.id}
+                session={s}
+                active={s.id === activeSessionId}
+                onSelect={() => onSelectSession(s.id)}
+                onDelete={() => onDeleteSession(s.id)}
+                folders={allFolders}
+                onMove={(fid) => onMoveChat(s.id, fid)}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Sidebar (history only, light theme) ─────────────────────────────────────
 
 function Sidebar({
   open, onClose, sessions, activeSessionId, onSelectSession, onDeleteSession, onNewSession,
   onOpenMemory, memoryCount,
+  folders, collapsedFolders, onToggleFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onMoveChat,
 }: {
   open: boolean
   onClose: () => void
@@ -1162,12 +1352,25 @@ function Sidebar({
   onNewSession: () => void
   onOpenMemory: () => void
   memoryCount: number
+  folders: Folder[]
+  collapsedFolders: Record<string, boolean>
+  onToggleFolder: (id: string) => void
+  onCreateFolder: () => void
+  onRenameFolder: (id: string, name: string) => void
+  onDeleteFolder: (id: string) => void
+  onMoveChat: (chatId: string, folderId: string | null) => void
 }) {
   // Close the drawer after an action only on mobile (overlay); desktop keeps it pinned.
   const closeIfMobile = () => { if (typeof window !== "undefined" && window.innerWidth < 768) onClose() }
   const selectSession = (id: string) => { onSelectSession(id); closeIfMobile() }
   const newSession = () => { onNewSession(); closeIfMobile() }
   const openMemory = () => { onOpenMemory(); closeIfMobile() }
+
+  // Partition: chats inside a (still-existing) folder vs unfiled chats.
+  const folderIds = new Set(folders.map((f) => f.id))
+  const sessionsByFolder = (fid: string) => sessions.filter((s) => s.folderId === fid)
+  const unfiled = sessions.filter((s) => !s.folderId || !folderIds.has(s.folderId))
+  const [rootDragOver, setRootDragOver] = useState(false)
 
   return (
     <>
@@ -1200,12 +1403,23 @@ function Sidebar({
             <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
               Conversaciones
             </span>
-            {sessions.length > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold tabular-nums"
-                style={{ background: "var(--overlay)", color: "var(--text-3)", border: "1px solid var(--border-soft)" }}>
-                {sessions.length}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5">
+              {sessions.length > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold tabular-nums"
+                  style={{ background: "var(--overlay)", color: "var(--text-3)", border: "1px solid var(--border-soft)" }}>
+                  {sessions.length}
+                </span>
+              )}
+              <button onClick={onCreateFolder} title="Nueva carpeta"
+                className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer transition-colors"
+                style={{ color: "var(--text-3)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; e.currentTarget.style.color = "#f97316" }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-3)" }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><path d="M12 11v6M9 14h6" />
+                </svg>
+              </button>
+            </div>
           </div>
           <button
             onClick={newSession}
@@ -1225,9 +1439,9 @@ function Sidebar({
           </button>
         </div>
 
-        {/* History grouped by date */}
+        {/* Folders + history grouped by date */}
         <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-3">
-          {sessions.length === 0 && (
+          {sessions.length === 0 && folders.length === 0 && (
             <div className="px-3 py-10 text-center flex flex-col items-center gap-2">
               <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
                 style={{ background: "var(--overlay)", border: "1px solid var(--border-soft)" }}>
@@ -1238,27 +1452,61 @@ function Sidebar({
               <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-4)" }}>Sin conversaciones aún.<br />Empezá a chatear para verlas acá.</p>
             </div>
           )}
-          {groupSessionsByDate(sessions).map((group) => (
-            <div key={group.label} className="mt-3 first:mt-1">
-              <div className="px-2 pb-1.5 pt-0.5">
-                <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
-                  {group.label}
-                </span>
-              </div>
-              <div className="space-y-0.5">
-                {group.sessions.map((s) => (
-                  <HistoryItem
-                    key={s.id}
-                    session={s}
-                    active={s.id === activeSessionId}
-                    onSelect={() => selectSession(s.id)}
-                    onDelete={() => onDeleteSession(s.id)}
-                    delay={sessions.indexOf(s) * 35}
-                  />
-                ))}
-              </div>
+
+          {/* Folders */}
+          {folders.length > 0 && (
+            <div className="space-y-0.5 mb-1">
+              {folders.map((f) => (
+                <FolderSection
+                  key={f.id}
+                  folder={f}
+                  sessions={sessionsByFolder(f.id)}
+                  collapsed={collapsedFolders[f.id] ?? false}
+                  onToggle={() => onToggleFolder(f.id)}
+                  activeSessionId={activeSessionId}
+                  onSelectSession={selectSession}
+                  onDeleteSession={onDeleteSession}
+                  onRenameFolder={onRenameFolder}
+                  onDeleteFolder={onDeleteFolder}
+                  onMoveChat={onMoveChat}
+                  allFolders={folders}
+                />
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Unfiled chats grouped by date — also a drop zone to unfile a chat */}
+          <div
+            onDragOver={(e) => { if (e.dataTransfer.types.includes("text/chat-id")) { e.preventDefault(); setRootDragOver(true) } }}
+            onDragLeave={() => setRootDragOver(false)}
+            onDrop={(e) => { const id = e.dataTransfer.getData("text/chat-id"); setRootDragOver(false); if (id) onMoveChat(id, null) }}
+            className="rounded-lg transition-colors"
+            style={{ outline: rootDragOver ? "1px dashed var(--border-strong)" : "none" }}
+          >
+            {groupSessionsByDate(unfiled).map((group) => (
+              <div key={group.label} className="mt-3 first:mt-1">
+                <div className="px-2 pb-1.5 pt-0.5">
+                  <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>
+                    {group.label}
+                  </span>
+                </div>
+                <div className="space-y-0.5">
+                  {group.sessions.map((s) => (
+                    <HistoryItem
+                      key={s.id}
+                      session={s}
+                      active={s.id === activeSessionId}
+                      onSelect={() => selectSession(s.id)}
+                      onDelete={() => onDeleteSession(s.id)}
+                      delay={unfiled.indexOf(s) * 35}
+                      folders={folders}
+                      onMove={(fid) => onMoveChat(s.id, fid)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Mobile-only nav: Dashboard + Memoria (topbar hides these < md) */}
@@ -1513,6 +1761,10 @@ export default function ChatPage() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const activeSessionIdRef = useRef<string | null>(null)
   const sessionsRef = useRef<ChatSession[]>([])
+
+  // Folders to organize chats. Collapse state is UI-only, kept in localStorage.
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({})
   const [turns, setTurnsState] = useState<ConversationTurn[]>([])
   const persistingRef = useRef<Set<string>>(new Set())
   const { data: session } = useSession()
@@ -1608,6 +1860,8 @@ export default function ChatPage() {
         setSelectedModelsRaw(migrated)
         localStorage.setItem("oc_models", JSON.stringify(migrated))
       }
+      const fc = localStorage.getItem("oc_folders_collapsed")
+      if (fc) setCollapsedFolders(JSON.parse(fc))
     } catch {}
 
     fetch(`/api/sessions`)
@@ -1621,6 +1875,11 @@ export default function ChatPage() {
           await loadTurnsForSession(data[0].id)
         }
       })
+      .catch(() => {})
+
+    fetch(`/api/folders`)
+      .then((r) => r.json())
+      .then((data: Folder[]) => { if (Array.isArray(data)) setFolders(data) })
       .catch(() => {})
   }, [session?.user?.id, loadTurnsForSession])
 
@@ -1735,6 +1994,63 @@ export default function ChatPage() {
       return updated
     })
   }, [loadTurnsForSession])
+
+  // ─── Folder handlers ──────────────────────────────────────────────────────
+  const handleCreateFolder = useCallback(async () => {
+    try {
+      const res = await fetch("/api/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Nueva carpeta" }),
+      })
+      if (!res.ok) return
+      const folder: Folder = await res.json()
+      setFolders((prev) => [...prev, folder])
+    } catch {}
+  }, [])
+
+  const handleRenameFolder = useCallback(async (id: string, name: string) => {
+    const clean = name.trim().slice(0, 60)
+    if (!clean) return
+    setFolders((prev) => prev.map((f) => (f.id === id ? { ...f, name: clean } : f)))
+    await fetch(`/api/folders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: clean }),
+    }).catch(() => {})
+  }, [])
+
+  const handleDeleteFolder = useCallback(async (id: string) => {
+    // Optimistic: drop the folder and unfile its chats locally (they stay).
+    setFolders((prev) => prev.filter((f) => f.id !== id))
+    setSessions((prev) => {
+      const updated = prev.map((s) => (s.folderId === id ? { ...s, folderId: null } : s))
+      sessionsRef.current = updated
+      return updated
+    })
+    await fetch(`/api/folders/${id}`, { method: "DELETE" }).catch(() => {})
+  }, [])
+
+  const handleMoveChat = useCallback(async (chatId: string, folderId: string | null) => {
+    setSessions((prev) => {
+      const updated = prev.map((s) => (s.id === chatId ? { ...s, folderId } : s))
+      sessionsRef.current = updated
+      return updated
+    })
+    await fetch(`/api/sessions/${chatId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId }),
+    }).catch(() => {})
+  }, [])
+
+  const handleToggleFolder = useCallback((id: string) => {
+    setCollapsedFolders((prev) => {
+      const next = { ...prev, [id]: !prev[id] }
+      try { localStorage.setItem("oc_folders_collapsed", JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -2213,6 +2529,13 @@ export default function ChatPage() {
           onNewSession={handleNewSession}
           onOpenMemory={() => setMemoryOpen(true)}
           memoryCount={memories.length}
+          folders={folders}
+          collapsedFolders={collapsedFolders}
+          onToggleFolder={handleToggleFolder}
+          onCreateFolder={handleCreateFolder}
+          onRenameFolder={handleRenameFolder}
+          onDeleteFolder={handleDeleteFolder}
+          onMoveChat={handleMoveChat}
         />
 
         <div className="flex flex-col flex-1 overflow-hidden">
