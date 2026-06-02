@@ -807,7 +807,7 @@ function ModelDropdown({ provider, selectedModel, onSelect }: {
         style={{
           background: open ? c.colorLight : "white",
           border: open ? `1px solid ${c.colorBorder}` : "1px solid rgba(0,0,0,0.12)",
-          color: open ? c.color : "#374151",
+          color: open ? c.color : "var(--text-2)",
         }}
       >
         <span className="max-w-[100px] truncate">{current?.label ?? selectedModel}</span>
@@ -844,7 +844,7 @@ function ModelDropdown({ provider, selectedModel, onSelect }: {
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                     style={{ background: isSelected ? c.color : "transparent", border: isSelected ? "none" : "1.5px solid #d1d5db" }}
                   />
-                  <span className="text-[12px] font-medium flex-1" style={{ color: isSelected ? c.color : "#111827" }}>
+                  <span className="text-[12px] font-medium flex-1" style={{ color: isSelected ? c.color : "var(--text-1)" }}>
                     {m.label}
                   </span>
                   {isSelected && (
@@ -926,7 +926,7 @@ function AIChipSelector({
         style={{
           background: panelOpen ? "#1e1f24" : "rgba(0,0,0,0.05)",
           border: panelOpen ? "1px solid #1e1f24" : "1px solid rgba(0,0,0,0.1)",
-          color: panelOpen ? "white" : "#374151",
+          color: panelOpen ? "white" : "var(--text-2)",
         }}
       >
         {activeProviders.length > 0 ? (
@@ -1005,7 +1005,7 @@ function AIChipSelector({
                       <c.Logo size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-semibold" style={{ color: active ? "#111827" : "#374151" }}>{c.name}</div>
+                      <div className="text-[13px] font-semibold" style={{ color: active ? "var(--text-1)" : "var(--text-2)" }}>{c.name}</div>
                       <div className="text-[11px] truncate" style={{ color: active ? c.color : "#9ca3af" }}>
                         {isDemoKey ? "Modo demo" : hasKey ? currentModel : "Sin API key · click para agregar"}
                       </div>
@@ -1096,7 +1096,7 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
       {active && <span className="history-active-bar absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full" />}
 
       <span className="flex-1 text-[12.5px] truncate min-w-0 font-medium"
-        style={{ color: active ? "#111827" : "#4b5563" }}>
+        style={{ color: active ? "var(--text-1)" : "var(--text-2)" }}>
         {session.title}
       </span>
       <span className="text-[10px] flex-shrink-0 group-hover:hidden tabular-nums" style={{ color: active ? "#9ca3af" : "#b8b8b8" }}>

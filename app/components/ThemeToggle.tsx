@@ -13,9 +13,26 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
 
   const toggle = () => {
     const next = !dark
-    document.documentElement.classList.toggle("dark", next)
-    setDark(next)
+    const root = document.documentElement
     try { localStorage.setItem("theme", next ? "dark" : "light") } catch {}
+
+    const apply = () => {
+      // Kill per-element transitions so nothing janks; the View Transition
+      // (when supported) provides the single smooth crossfade instead.
+      root.classList.add("theme-switching")
+      root.classList.toggle("dark", next)
+      setDark(next)
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => root.classList.remove("theme-switching"))
+      )
+    }
+
+    const startVT = (document as Document & {
+      startViewTransition?: (cb: () => void) => unknown
+    }).startViewTransition
+
+    if (typeof startVT === "function") startVT.call(document, apply)
+    else apply()
   }
 
   return (

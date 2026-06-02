@@ -703,6 +703,18 @@ html.dark .bg-gray-200\/60 { background-color: rgba(55,65,81,0.40) !important; }
               border-color 0.22s ease, color 0.18s ease, box-shadow 0.22s ease !important;
 }
 
+/* ── Smooth theme switch ─────────────────────────────────────────────
+   While toggling, kill every element transition so nothing janks, and let
+   the View Transition crossfade (supported browsers) be the only motion.   */
+html.theme-switching,
+html.theme-switching * { transition: none !important; }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.33s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* ── Dark-mode variants for classes with baked-in light surfaces ── */
 html.dark .surface-light,
 html.dark .premium-card,

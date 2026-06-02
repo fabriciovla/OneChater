@@ -292,7 +292,7 @@ function Navbar() {
     { label: "Funcionalidades", href: "#features" },
     { label: "Cómo funciona", href: "#how-it-works" },
     { label: "Precios", href: "#pricing" },
-    { label: "GitHub", href: "https://github.com", external: true },
+    { label: "GitHub", href: "https://github.com/fabriciovla", external: true },
   ];
 
   useEffect(() => {
@@ -736,26 +736,29 @@ function FeatureCard({ f, span }: { f: FeatureDef; span: boolean }) {
         <h3 className="display text-xl md:text-2xl font-semibold text-gray-900 tracking-tight leading-tight">{f.name}</h3>
         <p className="mt-3 text-gray-500 text-[14px] leading-relaxed text-pretty">{f.long}</p>
 
-        {/* capabilities — static list */}
-        <div className={`mt-6 grid gap-x-5 gap-y-3.5 ${span ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+        {/* capabilities — static list (enlarged on the wide span card) */}
+        <div className={`grid ${span ? "mt-7 gap-x-6 gap-y-5 sm:grid-cols-2" : "mt-6 gap-x-5 gap-y-3.5 grid-cols-1"}`}>
           {bullets.map((b) => (
-            <div key={b.label} className="flex items-start gap-2.5">
+            <div key={b.label} className={`flex items-start ${span ? "gap-3.5 p-3 rounded-xl" : "gap-2.5"}`}
+              style={span ? { background: "var(--overlay)", border: "1px solid var(--border-soft)" } : undefined}>
               <span
-                className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${f.accent.text}`}
+                className={`rounded-lg flex items-center justify-center flex-shrink-0 ${f.accent.text} ${
+                  span ? "mt-0.5 w-10 h-10 [&_svg]:w-[20px] [&_svg]:h-[20px]" : "mt-0.5 w-6 h-6 [&_svg]:w-3.5 [&_svg]:h-3.5"
+                }`}
                 style={{ background: f.accent.ring }}
               >
-                <span className="w-3.5 h-3.5 inline-flex">{b.icon}</span>
+                {b.icon}
               </span>
               <div className="min-w-0">
-                <div className="text-[12.5px] font-semibold text-gray-900 leading-snug">{b.label}</div>
-                <div className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5">{b.desc}</div>
+                <div className={`font-semibold text-gray-900 leading-snug ${span ? "text-[15px]" : "text-[12.5px]"}`}>{b.label}</div>
+                <div className={`text-gray-500 leading-relaxed mt-0.5 ${span ? "text-[13px]" : "text-[11.5px]"}`}>{b.desc}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* static bottom accent */}
-        <div className={`mt-6 h-1 w-12 rounded-full bg-gradient-to-r ${f.accent.bar} opacity-60`} />
+        <div className={`${span ? "mt-7" : "mt-6"} h-1 w-12 rounded-full bg-gradient-to-r ${f.accent.bar} opacity-60`} />
       </div>
     </div>
   );
@@ -775,7 +778,7 @@ function FeaturesSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="features" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="features" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
@@ -865,7 +868,7 @@ function HowItWorksSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="how-it-works" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="how-it-works" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] opacity-[0.04] rounded-full"
@@ -1025,7 +1028,7 @@ function ModelsSection() {
   const rowB = supportedModels.slice(half);
 
   return (
-    <section ref={sectionRef} id="models" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="models" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Modelos soportados</span>
@@ -1245,7 +1248,7 @@ function TestimonialsSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="testimonials" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="testimonials" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[760px] h-[420px] opacity-[0.04] rounded-full"
@@ -1357,7 +1360,7 @@ function PricingSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="pricing" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="pricing" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-[0.03] rounded-full"
@@ -1557,7 +1560,7 @@ function CTASection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
       <div className="max-w-5xl mx-auto text-center">
         <div
           className={`relative rounded-[28px] p-8 md:p-20 overflow-hidden card-item${inView ? " in-view" : ""}`}
@@ -1611,7 +1614,7 @@ function CTASection() {
                 Empezar gratis <IconArrowRight />
               </a>
               <a
-                href="https://github.com"
+                href="https://github.com/fabriciovla"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-white/85 transition-all cursor-pointer hover:bg-white/[0.08] hover:text-white"
@@ -1656,7 +1659,7 @@ function Footer() {
               Una memoria. Todas las IAs. Traé tus keys, controlá tus datos.
             </p>
             <div className="mt-4 flex gap-3">
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer"
+              <a href="https://github.com/fabriciovla" target="_blank" rel="noopener noreferrer"
                 className="footer-social-btn w-8 h-8 rounded-lg bg-black/[0.04] border border-black/10 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-black/[0.08] transition-all cursor-pointer">
                 <IconGithub />
               </a>
