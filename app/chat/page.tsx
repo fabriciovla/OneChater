@@ -1426,6 +1426,13 @@ function Sidebar({
   const railBtnBase = "w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-colors"
   const rail = (
     <div className="hidden md:flex flex-col items-center h-full w-[72px] py-3">
+      {/* Expand toggle */}
+      <button onClick={onExpand} title="Expandir barra" className={railBtnBase} style={{ color: "var(--text-2)" }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)" }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" /></svg>
+      </button>
+      <div className="w-8 h-px my-2 flex-shrink-0" style={{ background: "var(--border-soft)" }} />
       <div className="flex flex-col items-center gap-1">
         <button onClick={() => onNewSession()} title="Nuevo chat" className={railBtnBase}
           style={{ color: "#fff", background: "linear-gradient(135deg,#2a2b30,#0e0f12)" }}>
@@ -1454,7 +1461,8 @@ function Sidebar({
         </button>
       </div>
       <div className="flex-1" />
-      <button onClick={onExpand} title="Expandir barra" className="mt-2"><Avatar /></button>
+      <ThemeToggle />
+      <button onClick={onExpand} title="Perfil" className="mt-2"><Avatar /></button>
     </div>
   )
 
@@ -1486,8 +1494,8 @@ function Sidebar({
       <aside
         className={[
           "z-40 overflow-hidden",
-          // mobile: fixed slide-in drawer under the topbar
-          "fixed top-14 bottom-0 left-0 w-[280px] transition-transform duration-300",
+          // mobile: fixed slide-in drawer (full height, no topbar)
+          "fixed top-0 bottom-0 left-0 w-[280px] transition-transform duration-300",
           open ? "translate-x-0" : "-translate-x-full",
           // desktop: in-flow, width-animated (rail when collapsed)
           "md:static md:top-auto md:bottom-auto md:z-auto md:translate-x-0 md:transition-[width] md:duration-300 md:flex-shrink-0",
@@ -1502,14 +1510,43 @@ function Sidebar({
       {!open ? rail : (
       <div className="flex flex-col h-full w-full md:w-[260px]">
 
+        {/* Header: logo + theme + collapse */}
+        <div className="flex items-center justify-between px-3 pt-3 pb-1 flex-shrink-0">
+          <Link href="/" className="flex items-center group cursor-pointer">
+            <OneChatLogo className="h-8 w-auto opacity-90 group-hover:opacity-100 transition-opacity" />
+          </Link>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <button onClick={onClose} title="Colapsar barra"
+              className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer transition-colors"
+              style={{ color: "var(--text-3)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; e.currentTarget.style.color = "var(--text-1)" }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-3)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" /></svg>
+            </button>
+          </div>
+        </div>
+
         {/* Nav block */}
-        <div className="px-2 pt-3 pb-1 flex-shrink-0 space-y-0.5">
+        <div className="px-2 pt-2 pb-1 flex-shrink-0 space-y-0.5">
           <NavRow label="Nuevo chat" onClick={newSession} accent="var(--text-1)"
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>} />
           <NavRow label="Buscar chats" onClick={() => { setSearchOpen((v) => !v); setTimeout(() => searchRef.current?.focus(), 60) }}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>} />
           <NavRow label="Nueva carpeta" onClick={onCreateFolder}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><path d="M12 11v6M9 14h6" /></svg>} />
+          <Link href="/dashboard" onClick={closeIfMobile}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium cursor-pointer transition-colors"
+            style={{ color: "var(--text-2)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--border-soft)" }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}>
+            <span className="flex-shrink-0" style={{ color: "#7c3aed" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>
+            </span>
+            <span className="flex-1 text-left">Dashboard</span>
+          </Link>
+          <NavRow label="Memoria" onClick={openMemory} accent="#7c3aed" badge={memoryCount}
+            icon={<svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]"><path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" /><path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" /><path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" /></svg>} />
 
           {/* Search input (revealed) */}
           {searchOpen && (
@@ -1624,14 +1661,6 @@ function Sidebar({
               <div className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>{userName || "Usuario"}</div>
               <div className="text-[11px] truncate" style={{ color: "var(--text-4)" }}>{userEmail || "Gratis"}</div>
             </div>
-            {/* Mobile-only quick links (desktop has them in topbar) */}
-            <button onClick={openMemory} className="md:hidden relative w-7 h-7 rounded-md flex items-center justify-center cursor-pointer" style={{ color: "#7c3aed" }} title="Memoria">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" /><path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" /><path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" /></svg>
-              {memoryCount > 0 && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full" style={{ background: "#7c3aed" }} />}
-            </button>
-            <Link href="/dashboard" onClick={closeIfMobile} className="md:hidden w-7 h-7 rounded-md flex items-center justify-center cursor-pointer" style={{ color: "#7c3aed" }} title="Dashboard">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>
-            </Link>
           </div>
         </div>
       </div>
@@ -2542,84 +2571,21 @@ export default function ChatPage() {
   }, [setApiKeys, setEnabled])
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
 
-      {/* ── Topbar ────────────────────────────────────────────────────── */}
-      <header
-        className="flex items-center gap-2 md:gap-2.5 px-3 md:px-4 h-14 flex-shrink-0 z-20"
-        style={{ background: "var(--surface-blur)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--border-soft)" }}
-      >
+      {/* Mobile-only: open the conversations drawer (no topbar) */}
+      {!sidebarOpen && (
         <button
-          onClick={() => setSidebarOpen((v) => !v)}
-          className="flex w-9 h-9 rounded-xl items-center justify-center transition-all cursor-pointer active:scale-95"
-          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
-          title={sidebarOpen ? "Ocultar conversaciones" : "Ver conversaciones"}
+          onClick={() => setSidebarOpen(true)}
+          className="md:hidden fixed top-3 left-3 z-30 w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer active:scale-95"
+          style={{ color: "var(--text-2)", background: "var(--surface-blur)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "1px solid var(--border)", boxShadow: "0 4px 14px -6px rgba(0,0,0,0.3)" }}
+          title="Ver conversaciones"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
             <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" />
           </svg>
         </button>
-
-        <Link href="/" className="flex items-center group cursor-pointer ml-0.5">
-          <OneChatLogo className="h-9 w-auto opacity-90 group-hover:opacity-100 transition-opacity" />
-        </Link>
-
-        <div className="flex-1" />
-
-        {/* Divider before the action cluster */}
-        <span className="hidden sm:block w-px h-6 mr-0.5" style={{ background: "var(--border)" }} aria-hidden />
-
-        {activeCount > 1 && (
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide"
-            style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.12), rgba(234,88,12,0.08))", border: "1px solid rgba(249,115,22,0.25)", color: "#c2410c" }}>
-            <span className="relative flex items-center justify-center">
-              <span className="absolute w-2 h-2 rounded-full bg-orange-400 animate-ping opacity-60" />
-              <span className="relative w-1.5 h-1.5 rounded-full bg-orange-500" />
-            </span>
-            FUSIÓN · {activeCount}
-          </span>
-        )}
-
-        <ThemeToggle className="topbar-float" />
-
-        <Link href="/dashboard"
-          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-95 topbar-float"
-          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)", animationDelay: "0.3s" }}
-          title="Dashboard · tu uso y gasto estimado">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
-            <rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" />
-          </svg>
-          <span className="hidden sm:inline">Dashboard</span>
-        </Link>
-
-        <button onClick={() => setMemoryOpen(true)}
-          className="hidden md:inline-flex relative items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-95 topbar-float"
-          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)", animationDelay: "0.6s" }}
-          title="Memoria · lo que las IAs recuerdan de vos">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
-            <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
-            <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
-            <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
-          </svg>
-          <span className="hidden sm:inline">Memoria</span>
-          {memories.length > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
-              style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>
-              {memories.length}
-            </span>
-          )}
-        </button>
-
-        <button onClick={handleNewSession}
-          className="inline-flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-95 topbar-float"
-          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)", animationDelay: "0.9s" }}
-          title="Nueva conversación">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          <span className="hidden sm:inline">Nuevo</span>
-        </button>
-      </header>
+      )}
 
       {/* ── Memory drawer ─────────────────────────────────────────────── */}
       {memoryOpen && (
