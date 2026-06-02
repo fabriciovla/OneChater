@@ -24,7 +24,8 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "OneChat · Una memoria. Todas las IAs.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://one-chater.vercel.app"),
+  title: "OneChat",
   description:
     "La única app de chat con IA que no te olvida cuando cambiás de modelo. GPT, Claude y Gemini en un solo lugar, con una memoria que viaja con vos.",
   keywords: ["AI chat", "OpenAI", "Claude", "Gemini", "multi-modelo", "LLM", "OneChat", "LATAM"],

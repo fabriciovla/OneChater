@@ -5,6 +5,15 @@ import { signIn } from "next-auth/react"
 
 type Step = "email" | "otp"
 
+// Read ?next= and only allow same-origin relative paths (block open redirects
+// like //evil.com or /\evil.com). Falls back to /chat.
+function safeNext(): string {
+  if (typeof window === "undefined") return "/chat"
+  const p = new URLSearchParams(window.location.search).get("next")
+  if (p && p.startsWith("/") && !p.startsWith("//") && !p.startsWith("/\\")) return p
+  return "/chat"
+}
+
 export default function LoginPage() {
   const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")
@@ -54,7 +63,7 @@ export default function LoginPage() {
     try {
       const res = await signIn("otp", { email: email.trim(), code, redirect: false })
       if (res?.error) throw new Error("Código incorrecto o expirado")
-      window.location.href = "/chat"
+      window.location.href = safeNext()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al verificar el código")
       setOtp(["", "", "", "", "", ""])
@@ -362,9 +371,9 @@ export default function LoginPage() {
 
           <p className="text-center text-[11px] text-gray-400 mt-6 leading-relaxed">
             Al continuar aceptás nuestros{" "}
-            <span className="underline underline-offset-2 cursor-pointer hover:text-gray-600">Términos de servicio</span>
+            <a href="/terms" className="underline underline-offset-2 cursor-pointer hover:text-gray-600">Términos de servicio</a>
             {" "}y{" "}
-            <span className="underline underline-offset-2 cursor-pointer hover:text-gray-600">Política de privacidad</span>
+            <a href="/privacy" className="underline underline-offset-2 cursor-pointer hover:text-gray-600">Política de privacidad</a>
           </p>
         </div>
       </div>

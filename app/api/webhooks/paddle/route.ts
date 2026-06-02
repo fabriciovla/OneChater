@@ -95,8 +95,10 @@ export async function POST(req: NextRequest) {
       console.log("[paddle webhook] downgraded to free:", whereClause)
     }
   } catch (err) {
-    // Log but return 200 — Paddle will retry on 5xx, which could cause loops
+    // Return 500 so Paddle retries (finite, with backoff). Swallowing a DB
+    // error here would mean a paying user never gets upgraded.
     console.error("[paddle webhook] db error:", err)
+    return NextResponse.json({ error: "DB error" }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })
