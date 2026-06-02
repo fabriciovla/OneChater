@@ -1130,7 +1130,8 @@ function Sidebar({
 }) {
   return (
     <aside
-      className="flex-shrink-0 overflow-hidden transition-all duration-300"
+      className="chat-sidebar flex-shrink-0 overflow-hidden transition-all duration-300"
+      data-open={open}
       style={{
         width: open ? "240px" : "0",
         opacity: open ? 1 : 0,
@@ -1413,7 +1414,7 @@ export default function ChatPage() {
   const { data: session } = useSession()
 
   const [input, setInput] = useState("")
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [cmdIndex, setCmdIndex] = useState(0)
   const [toast, setToast] = useState("")
@@ -1452,6 +1453,10 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (window.innerWidth >= 768) setSidebarOpen(true)
+  }, [])
 
   useEffect(() => { activeSessionIdRef.current = activeSessionId }, [activeSessionId])
   useEffect(() => { sessionsRef.current = sessions }, [sessions])
@@ -2067,12 +2072,13 @@ export default function ChatPage() {
         </button>
 
         <button onClick={handleNewSession}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
-          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}>
+          className="inline-flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
+          style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
+          title="Nueva conversación">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Nuevo
+          <span className="hidden sm:inline">Nuevo</span>
         </button>
       </header>
 
@@ -2102,7 +2108,7 @@ export default function ChatPage() {
         <div className="flex flex-col flex-1 overflow-hidden">
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto chat-scroll chat-backdrop px-4 md:px-8 py-10 space-y-10">
+          <div className="flex-1 overflow-y-auto chat-scroll chat-backdrop px-3 md:px-8 py-6 md:py-10 space-y-8 md:space-y-10">
             {turns.length === 0 ? (
               <EmptyState hasActive={activeCount > 0} onActivateDemo={activateDemo}
                 onPromptClick={(p) => { setInput(p); textareaRef.current?.focus() }} />
@@ -2120,7 +2126,7 @@ export default function ChatPage() {
           </div>
 
           {/* ── Input area ────────────────────────────────────────────── */}
-          <div className="flex-shrink-0 px-4 md:px-8 py-4 bg-white" style={{ borderTop: "1px solid var(--border-soft)" }}>
+          <div className="flex-shrink-0 px-3 md:px-8 py-3 md:py-4" style={{ background: "var(--surface)", borderTop: "1px solid var(--border-soft)" }}>
 
             {toast && (
               <div key={toastKey} className="max-w-3xl mx-auto mb-2 flex justify-center">
@@ -2164,17 +2170,8 @@ export default function ChatPage() {
                     : "0 2px 8px rgba(0,0,0,0.06)",
               }}>
 
-              {/* Textarea + send */}
-              <div className="flex gap-3 items-end px-4 py-3">
-                <AIChipSelector
-                  apiKeys={apiKeys}
-                  setApiKeys={setApiKeys}
-                  enabled={enabled}
-                  setEnabled={setEnabled}
-                  selectedModels={selectedModels}
-                  setSelectedModels={setSelectedModels}
-                  onActivateDemo={activateDemo}
-                />
+              {/* Row 1: textarea */}
+              <div className="px-4 pt-3 pb-1">
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -2205,9 +2202,23 @@ export default function ChatPage() {
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck={false}
-                  className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder-gray-600 resize-none focus:outline-none disabled:opacity-70 leading-relaxed"
+                  className="w-full bg-transparent text-[15px] text-gray-900 placeholder-gray-600 resize-none focus:outline-none disabled:opacity-70 leading-relaxed"
                   style={{ maxHeight: "160px" }}
                 />
+              </div>
+
+              {/* Row 2: toolbar */}
+              <div className="flex items-center gap-2 px-3 pb-2.5">
+                <AIChipSelector
+                  apiKeys={apiKeys}
+                  setApiKeys={setApiKeys}
+                  enabled={enabled}
+                  setEnabled={setEnabled}
+                  selectedModels={selectedModels}
+                  setSelectedModels={setSelectedModels}
+                  onActivateDemo={activateDemo}
+                />
+                <div className="flex-1" />
                 <button
                   onClick={() => setImageMode((v) => !v)}
                   title={imageMode ? "Modo imagen activo" : "Generar imágenes"}
@@ -2245,11 +2256,11 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <p className="text-center text-[11px] text-gray-500 mt-2">
+            <p className="text-center text-[11px] text-gray-500 mt-1.5 truncate px-2">
               {imageMode
-                ? "Modo imagen · cada IA capaz (OpenAI, Google, xAI) genera su propia imagen"
+                ? "Modo imagen · OpenAI, Google, xAI generan su imagen"
                 : fusionMode
-                ? "Fusión automática · los modelos responden internamente y se sintetiza una sola respuesta"
+                ? "Fusión · los modelos sintetizan una sola respuesta"
                 : "Enter para enviar · Shift+Enter nueva línea"}
             </p>
           </div>

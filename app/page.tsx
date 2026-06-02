@@ -290,93 +290,119 @@ function Navbar() {
 
   const navItems = [
     { label: "Funcionalidades", href: "#features" },
-    { label: "Como Funciona", href: "#how-it-works" },
+    { label: "Cómo funciona", href: "#how-it-works" },
     { label: "Precios", href: "#pricing" },
-    { label: "GitHub", href: "https://github.com", external: true, icon: <IconGithub /> },
+    { label: "GitHub", href: "https://github.com", external: true },
   ];
 
-  return (
-    <nav
-      className="nav-enter absolute top-0 left-0 right-0 z-50"
-      style={{
-        background: "transparent",
-      }}
-    >
-      <div className="w-full max-w-[1600px] mx-auto px-6 md:px-10 lg:px-16 h-[72px] flex items-center justify-between">
-        {/* Logo — far left */}
-        <a href="#" className="flex items-center cursor-pointer group" aria-label="OneChat inicio">
-          <div className="transition-all duration-300 group-hover:opacity-80 group-hover:scale-[1.02]">
-            <OneChatLogoFull className="h-9 w-auto" />
-          </div>
-        </a>
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
-        {/* Right group — links + CTAs */}
-        <div className="hidden md:flex items-center gap-1">
+  const close = () => setMobileOpen(false);
+
+  return (
+    <>
+      <nav className="nav-enter absolute top-0 left-0 right-0 z-50" style={{ background: "transparent" }}>
+        <div className="w-full max-w-[1600px] mx-auto px-5 md:px-10 lg:px-16 h-[72px] flex items-center justify-between">
+          {/* Logo */}
+          <a href="#" className="flex items-center cursor-pointer group" aria-label="OneChat inicio">
+            <div className="transition-all duration-300 group-hover:opacity-80 group-hover:scale-[1.02]">
+              <OneChatLogoFull className="h-8 md:h-9 w-auto" />
+            </div>
+          </a>
+
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-1">
+            {navItems.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noopener noreferrer" : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+            <span className="nav-separator mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
+            <ThemeToggle className="!w-8 !h-8" />
+            <a href="/login" className="px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all cursor-pointer">
+              Iniciar sesión
+            </a>
+            <a href="/login" className="ml-1 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold text-white transition-all duration-200 cursor-pointer hover:-translate-y-px"
+              style={{ background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(14,15,18,0.2), 0 6px 18px -6px rgba(14,15,18,0.35)" }}>
+              Empezar gratis <IconArrowRight />
+            </a>
+          </div>
+
+          {/* Mobile right: theme + open */}
+          <div className="md:hidden flex items-center gap-2">
+            <ThemeToggle className="!w-8 !h-8" />
+            <button
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menú"
+              className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-[13px] font-semibold cursor-pointer transition-all"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-2)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-4 h-4">
+                <path d="M3 12h18M3 6h18M3 18h12" />
+              </svg>
+              Menú
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Fullscreen mobile overlay ── */}
+      <div className={`nav-overlay md:hidden${mobileOpen ? " open" : ""}`} aria-hidden={!mobileOpen}>
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-5 h-[72px] border-b" style={{ borderColor: "var(--border)" }}>
+          <OneChatLogoFull className="h-8 w-auto" />
+          <button
+            onClick={close}
+            aria-label="Cerrar menú"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer"
+            style={{ background: "var(--surface-2)", color: "var(--text-2)" }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-5 h-5">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Nav links */}
+        <nav className="px-5 mt-2">
           {navItems.map((item) => (
             <a
               key={item.label}
               href={item.href}
-              className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+              onClick={close}
+              className="nav-overlay-link"
               target={item.external ? "_blank" : undefined}
               rel={item.external ? "noopener noreferrer" : undefined}
             >
-              {item.icon}
               {item.label}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
             </a>
           ))}
+        </nav>
 
-          <span className="nav-separator mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
-
-          <ThemeToggle className="!w-8 !h-8" />
-
-          <a href="/login" className="px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all cursor-pointer">
+        {/* Bottom CTAs */}
+        <div className="px-5 mt-8 flex flex-col gap-3">
+          <a href="/login" className="btn-primary text-[15px] py-3.5 justify-center">
+            Empezar gratis <IconArrowRight />
+          </a>
+          <a href="/login" className="text-center text-sm py-2.5 font-medium rounded-xl transition-all"
+            style={{ color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border)" }}>
             Iniciar sesión
           </a>
-          <a
-            href="/login"
-            className="ml-1 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold text-white transition-all duration-200 cursor-pointer hover:-translate-y-px"
-            style={{
-              background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)",
-              boxShadow:
-                "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(14,15,18,0.2), 0 6px 18px -6px rgba(14,15,18,0.35)",
-            }}
-          >
-            Empezar gratis <IconArrowRight />
-          </a>
         </div>
-
-        {/* Mobile burger */}
-        <button
-          className="md:hidden p-2.5 text-gray-700 hover:text-gray-900 rounded-full hover:bg-black/[0.05] cursor-pointer transition-all"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-          aria-expanded={mobileOpen}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-            {mobileOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
       </div>
-
-      {/* Mobile menu */}
-      {mobileOpen && (
-        <div className="nav-mobile-menu md:hidden border-t border-black/8 px-6 py-4 flex flex-col gap-1 bg-white/85 backdrop-blur-xl">
-          {navItems.map((item) => (
-            <a key={item.label} href={item.href} className="nav-mobile-link px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 rounded-xl hover:bg-black/[0.05] transition-all cursor-pointer flex items-center gap-2">
-              {item.icon}
-              {item.label}
-            </a>
-          ))}
-          <a href="/login" className="btn-primary text-sm mt-2 justify-center">
-            Empezar gratis <IconArrowRight />
-          </a>
-        </div>
-      )}
-    </nav>
+    </>
   );
 }
 
@@ -783,11 +809,11 @@ function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
             <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
           </div>
-          <div className="flex-1 h-7 rounded-lg bg-gray-100 border border-black/8 flex items-center px-3">
-            <span className="text-[11px] text-gray-500">¿Cómo optimizo esta query de Postgres?</span>
+          <div className="flex-1 min-w-0 h-7 rounded-lg bg-gray-100 border border-black/8 flex items-center px-3 overflow-hidden">
+            <span className="text-[11px] text-gray-500 truncate">¿Cómo optimizo esta query de Postgres?</span>
           </div>
         </div>
-        <div className="fv-col-grid grid grid-cols-3 divide-x divide-black/8 bg-white">
+        <div className="fv-col-grid grid grid-cols-3 divide-x divide-black/8 bg-white min-w-0 overflow-hidden">
           {[
             { name: "GPT-5", dot: "bg-green-500", logo: <OpenAILogo />, text: "Agregá un índice compuesto en user_id, created_at y usá EXPLAIN ANALYZE para verificar." },
             { name: "Claude", dot: "bg-orange-400", logo: <AnthropicLogo />, text: "Con pgvector en Supabase, usá índices HNSW para búsquedas más eficientes." },
@@ -960,7 +986,7 @@ function FeatureRow({ f, reversed }: { f: FeatureDef; reversed: boolean }) {
           </div>
         </div>
 
-        <h3 className="display text-3xl md:text-[2.25rem] font-semibold text-gray-900 tracking-tight leading-[1.1]">{f.name}</h3>
+        <h3 className="display text-2xl sm:text-3xl md:text-[2.25rem] font-semibold text-gray-900 tracking-tight leading-[1.1]">{f.name}</h3>
         <p className="mt-4 text-gray-500 text-[15px] leading-relaxed text-pretty">{f.long}</p>
 
         {/* Capabilities */}
@@ -983,7 +1009,7 @@ function FeatureRow({ f, reversed }: { f: FeatureDef; reversed: boolean }) {
       </div>
 
       {/* Visual */}
-      <div className={`${visualOrder} relative w-full`}>
+      <div className={`${visualOrder} relative w-full min-w-0 overflow-hidden`}>
         {/* ambient accent glow */}
         <div
           className="pointer-events-none absolute -inset-6 rounded-[2.5rem] opacity-60"
@@ -1011,13 +1037,13 @@ function FeaturesSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="features" className="relative py-28 px-6">
+    <section ref={sectionRef} id="features" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
         <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Funcionalidades</span>
-          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
+          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Nunca más empezar de cero
           </h2>
           <p className="mt-5 text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
@@ -1095,7 +1121,7 @@ function HowItWorksSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="how-it-works" className="relative py-28 px-6 overflow-hidden">
+    <section ref={sectionRef} id="how-it-works" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] opacity-[0.04] rounded-full"
@@ -1105,7 +1131,7 @@ function HowItWorksSection() {
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Cómo funciona</span>
-          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
+          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Funcionando en{" "}
             <span className="gradient-text">60 segundos</span>
           </h2>
@@ -1151,7 +1177,7 @@ function HowItWorksSection() {
                   </div>
                 </div>
 
-                <h3 className="display text-xl font-semibold text-gray-900 tracking-tight mb-3 group-hover:text-gray-700 transition-colors">{step.title}</h3>
+                <h3 className="display text-lg md:text-xl font-semibold text-gray-900 tracking-tight mb-3 group-hover:text-gray-700 transition-colors">{step.title}</h3>
                 <p className="text-gray-500 leading-relaxed mb-6 text-[15px]">{step.description}</p>
 
                 <div className="flex flex-wrap gap-2">
@@ -1255,11 +1281,11 @@ function ModelsSection() {
   const rowB = supportedModels.slice(half);
 
   return (
-    <section ref={sectionRef} id="models" className="relative py-28 px-6 overflow-hidden">
+    <section ref={sectionRef} id="models" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Modelos soportados</span>
-          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
+          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Todos los modelos que usás
           </h2>
           <p className="mt-5 text-gray-500 max-w-md mx-auto text-lg leading-relaxed">
@@ -1475,7 +1501,7 @@ function TestimonialsSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="testimonials" className="relative py-28 px-6 overflow-hidden">
+    <section ref={sectionRef} id="testimonials" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[760px] h-[420px] opacity-[0.04] rounded-full"
@@ -1486,7 +1512,7 @@ function TestimonialsSection() {
         {/* Header */}
         <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Testimonios</span>
-          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
+          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Quienes ya no{" "}
             <span className="gradient-text">empiezan de cero</span>
           </h2>
@@ -1587,7 +1613,7 @@ function PricingSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="pricing" className="relative py-28 px-6 overflow-hidden">
+    <section ref={sectionRef} id="pricing" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-[0.03] rounded-full"
@@ -1597,7 +1623,7 @@ function PricingSection() {
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Precios</span>
-          <h2 className="display mt-6 text-4xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.05] text-balance">
+          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Precios simples y{" "}
             <span className="gradient-text">transparentes</span>
           </h2>
@@ -1787,10 +1813,10 @@ function CTASection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative py-28 px-6">
+    <section ref={sectionRef} className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
       <div className="max-w-5xl mx-auto text-center">
         <div
-          className={`relative rounded-[28px] p-12 md:p-20 overflow-hidden card-item${inView ? " in-view" : ""}`}
+          className={`relative rounded-[28px] p-8 md:p-20 overflow-hidden card-item${inView ? " in-view" : ""}`}
           style={{
             background:
               "radial-gradient(1000px 500px at 20% -10%, rgba(99,102,241,0.16), transparent 60%)," +
@@ -1875,7 +1901,7 @@ function Footer() {
   };
 
   return (
-    <footer className="border-t border-black/8 py-20 px-6">
+    <footer className="border-t border-black/8 py-14 md:py-20 px-5 md:px-6">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-12">
           <div className="col-span-2 md:col-span-1">
@@ -2072,8 +2098,8 @@ function HeroSection() {
           </div>
         </div>
 
-        {/* Video */}
-        <div className="animate-fade-up delay-600 w-full mt-16 flex justify-center px-4">
+        {/* Video — hidden on mobile */}
+        <div className="animate-fade-up delay-600 w-full mt-16 hidden md:flex justify-center px-4">
           <div className="relative flex justify-center" style={{ maxWidth: "980px", width: "100%" }}>
             {/* Glow behind video */}
             <div
