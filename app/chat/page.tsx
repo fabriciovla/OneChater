@@ -916,13 +916,19 @@ function AIChipSelector({
         }}
       >
         {activeProviders.length > 0 ? (
-          <div className="flex -space-x-1">
+          <div className="flex -space-x-1.5">
             {activeProviders.slice(0, 4).map((p, i) => {
               const Logo = CFG[p].Logo
               return (
-                <div key={p} className="ai-trigger-pop w-4 h-4 rounded-full flex items-center justify-center ring-1 ring-white"
-                  style={{ background: CFG[p].colorLight, color: CFG[p].color, animationDelay: `${i * 0.05}s` }}>
-                  <Logo size={9} />
+                <div key={p} className="ai-trigger-pop w-[18px] h-[18px] rounded-full flex items-center justify-center"
+                  style={{
+                    background: CFG[p].colorLight,
+                    color: CFG[p].color,
+                    boxShadow: `0 0 0 1.5px ${panelOpen ? "#1e1f24" : "var(--surface)"}, inset 0 0 0 1px ${CFG[p].colorBorder}`,
+                    zIndex: 10 - i,
+                    animationDelay: `${i * 0.05}s`,
+                  }}>
+                  <Logo size={10} />
                 </div>
               )
             })}
