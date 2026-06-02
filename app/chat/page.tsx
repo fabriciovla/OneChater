@@ -1135,7 +1135,8 @@ function Sidebar({
         width: open ? "240px" : "0",
         opacity: open ? 1 : 0,
         background: "var(--surface-2)",
-        borderRight: "1px solid rgba(0,0,0,0.07)",
+        borderRight: "1px solid var(--border)",
+        boxShadow: open ? "1px 0 0 var(--border-soft), 4px 0 24px -16px rgba(0,0,0,0.18)" : "none",
       }}
     >
       <div className="flex flex-col h-full w-[240px]">

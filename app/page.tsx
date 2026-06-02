@@ -661,28 +661,6 @@ const FEATURES: FeatureDef[] = [
   },
 ];
 
-const TERMINAL_LINES = [
-  { k: "proyecto", v: "Cliente bancario", kc: "text-purple-300", vc: "text-green-300" },
-  { k: "stack",    v: "Supabase TypeScript Tailwind", kc: "text-purple-300", vc: "text-green-300" },
-  { k: "tono",     v: "tecnico, sin rodeos, rioplatense", kc: "text-purple-300", vc: "text-green-300" },
-  { k: "decision", v: "pgvector sobre Pinecone por costo", kc: "text-purple-300", vc: "text-green-300" },
-  { k: "modelos",  v: "gpt-5.5 claude-sonnet-4-6 gemini-2.5-flash", kc: "text-blue-300", vc: "text-yellow-200" },
-];
-
-const DASH_BARS = [
-  { name: "GPT-5", amount: "$2.40", pct: 50, color: "#1f2937", delay: 100 },
-  { name: "Claude", amount: "$1.80", pct: 38, color: "#f97316", delay: 200 },
-  { name: "Gemini", amount: "$0.60", pct: 12, color: "#3b82f6", delay: 300 },
-];
-
-const FOLDERS = [
-  { depth: 0, isFolder: true,  name: "Cliente bancario", active: true },
-  { depth: 1, isFolder: false, name: "API optimization",  active: false },
-  { depth: 1, isFolder: false, name: "DB schema review",  active: false },
-  { depth: 0, isFolder: true,  name: "Proyecto personal", active: false },
-  { depth: 0, isFolder: true,  name: "Dev trabajo",       active: false },
-];
-
 const MEMORY_BULLETS = [
   { icon: <IconZap />, label: "Captura automática", desc: "Stack y decisiones, sin esfuerzo." },
   { icon: <IconPencil />, label: "Perfil editable", desc: "Agregás, editás y borrás qué sabe de vos." },
@@ -726,260 +704,21 @@ const FEATURE_BULLETS: Record<string, Array<{ icon: React.ReactNode; label: stri
   spend: SPEND_BULLETS,
 };
 
-function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
-  if (id === "memory") {
-    return (
-      <div className="fv-card rounded-2xl border border-black/8 bg-gradient-to-br from-gray-50 to-white overflow-hidden shadow-xl">
-        {/* Top bar */}
-        <div className="px-4 py-2.5 bg-white border-b border-black/8 flex items-center gap-2.5">
-          <div className="flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
-            <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
-          </div>
-          <div className="flex-1 flex justify-center">
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-100">
-              <span className="w-3 h-3 inline-flex text-orange-600"><IconBrain /></span>
-              <span className="text-[10px] font-semibold text-orange-700">Memoria activa</span>
-            </div>
-          </div>
-          <span className="text-[10px] text-gray-400 font-mono">2 semanas después</span>
-        </div>
-
-        {/* Chat body */}
-        <div className="p-5 space-y-3.5">
-          {/* User question */}
-          <div
-            className={`flex justify-end terminal-line${inView ? " in-view" : ""}`}
-            style={inView ? { animationDelay: "150ms" } : {}}
-          >
-            <div className="max-w-[78%] rounded-2xl rounded-tr-md bg-gray-900 text-white px-3.5 py-2 text-[12.5px] leading-snug shadow-sm">
-              ¿Qué habíamos decidido para la base vectorial?
-            </div>
-          </div>
-
-          {/* AI response with memory pills */}
-          <div
-            className={`flex items-start gap-2.5 terminal-line${inView ? " in-view" : ""}`}
-            style={inView ? { animationDelay: "350ms" } : {}}
-          >
-            <div
-              className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white ring-1 ring-white/40 flex-shrink-0"
-              style={{ boxShadow: "0 4px 10px -2px rgba(249,115,22,0.45)" }}
-            >
-              <span className="w-3.5 h-3.5 inline-flex"><IconBrain /></span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="rounded-2xl rounded-tl-md bg-white border border-black/8 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-gray-800 shadow-sm">
-                Elegiste{" "}
-                <span className="inline-flex items-center gap-1 px-1.5 py-0 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold text-[11px]">
-                  pgvector
-                </span>{" "}
-                sobre{" "}
-                <span className="inline-flex items-center gap-1 px-1.5 py-0 rounded bg-gray-100 border border-gray-200 text-gray-500 line-through text-[11px]">
-                  Pinecone
-                </span>{" "}
-                por costo, para tu{" "}
-                <span className="inline-flex items-center gap-1 px-1.5 py-0 rounded bg-orange-50 border border-orange-200 text-orange-700 font-semibold text-[11px]">
-                  cliente bancario
-                </span>
-                . Stack:{" "}
-                <span className="inline-flex items-center gap-1 px-1.5 py-0 rounded bg-blue-50 border border-blue-200 text-blue-700 font-semibold text-[11px]">
-                  Supabase
-                </span>
-                .
-              </div>
-              {/* Source footer */}
-              <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-500">
-                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white border border-black/8">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-2.5 h-2.5 text-orange-600">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  <span className="font-mono">recordado hace 14 días</span>
-                </div>
-                <span className="text-gray-300">·</span>
-                <span>4 hechos citados</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "multi") {
-    return (
-      <div className="fv-card rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white overflow-hidden shadow-xl">
-        <div className="px-4 py-3 bg-white border-b border-black/8 flex items-center gap-3">
-          <div className="flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
-            <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
-          </div>
-          <div className="flex-1 min-w-0 h-7 rounded-lg bg-gray-100 border border-black/8 flex items-center px-3 overflow-hidden">
-            <span className="text-[11px] text-gray-500 truncate">¿Cómo optimizo esta query de Postgres?</span>
-          </div>
-        </div>
-        <div className="fv-col-grid grid grid-cols-3 divide-x divide-black/8 bg-white min-w-0 overflow-hidden">
-          {[
-            { name: "GPT-5", dot: "bg-green-500", logo: <OpenAILogo />, text: "Agregá un índice compuesto en user_id, created_at y usá EXPLAIN ANALYZE para verificar." },
-            { name: "Claude", dot: "bg-orange-400", logo: <AnthropicLogo />, text: "Con pgvector en Supabase, usá índices HNSW para búsquedas más eficientes." },
-            { name: "Gemini", dot: "bg-blue-400 animate-pulse", logo: <GoogleLogo />, text: null },
-          ].map((m) => (
-            <div key={m.name} className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-gray-100 border border-black/8 flex items-center justify-center">{m.logo}</div>
-                <span className="text-[11px] font-bold text-gray-700">{m.name}</span>
-                <div className={`ml-auto w-1.5 h-1.5 rounded-full ${m.dot}`} />
-              </div>
-              {m.text
-                ? <p className="text-[11px] text-gray-500 leading-relaxed">{m.text}</p>
-                : <div className="flex gap-1 mt-1">{[0, 150, 300].map((d) => <div key={d} className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: `${d}ms` }} />)}</div>
-              }
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "byok") {
-    return (
-      <div className="fv-card rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-6 shadow-xl">
-        <div className="space-y-3">
-          {[
-            { provider: "OpenAI", logo: <OpenAILogo />, status: "activa" },
-            { provider: "Anthropic", logo: <AnthropicLogo />, status: "activa" },
-            { provider: "Google", logo: <GoogleLogo />, status: "activa" },
-          ].map((row, i) => (
-            <div
-              key={row.provider}
-              className={`flex items-center gap-3 p-3.5 rounded-xl bg-white border border-black/8 shadow-sm terminal-line${inView ? " in-view" : ""}`}
-              style={inView ? { animationDelay: `${150 + i * 100}ms` } : {}}
-            >
-              <div className="w-9 h-9 rounded-lg bg-gray-50 border border-black/8 flex items-center justify-center flex-shrink-0">{row.logo}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-gray-900">{row.provider}</div>
-                <div className="text-[11px] font-mono text-gray-400 tracking-wider truncate">sk-•••••••••••••••••••••••••••</div>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-50 border border-green-100 flex-shrink-0">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                <span className="text-[10px] text-green-700 font-semibold">{row.status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-100">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-violet-600 shrink-0">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          <span className="text-xs text-violet-700 font-semibold">Solo en tu navegador · Nunca llegan a nuestros servidores</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "projects") {
-    return (
-      <div className="fv-card rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-5 shadow-xl">
-        <div className="flex items-center justify-between mb-4 px-2">
-          <span className="eyebrow text-gray-500">Tus proyectos</span>
-          <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-semibold">3 activos</span>
-        </div>
-        <div className="space-y-1.5">
-          {FOLDERS.map((item, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-2 py-2 px-2.5 rounded-lg text-xs terminal-line${inView ? " in-view" : ""} ${
-                item.active
-                  ? "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 font-semibold border border-emerald-200 shadow-sm"
-                  : "text-gray-500 hover:bg-gray-100 border border-transparent"
-              }`}
-              style={{ paddingLeft: `${item.depth * 18 + 10}px`, ...(inView ? { animationDelay: `${150 + i * 70}ms` } : {}) }}
-            >
-              {item.isFolder
-                ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 shrink-0"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
-                : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 shrink-0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-              }
-              <span className="truncate">{item.name}</span>
-              {item.active && <span className="ml-auto text-[9px] px-2 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold shrink-0 shadow-sm">activo</span>}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "spend") {
-    return (
-      <div className="fv-card rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-6 shadow-xl">
-        <div className="flex items-end justify-between mb-5">
-          <div>
-            <span className="eyebrow text-gray-500">Gasto este mes</span>
-            <div className="display text-4xl font-semibold text-gray-900 mt-1 leading-none">$4.80 <span className="text-base text-gray-400 font-normal">USD</span></div>
-          </div>
-          <span className="text-[10px] px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 font-semibold">↓ 12% vs mes pasado</span>
-        </div>
-        <div className="space-y-4">
-          {DASH_BARS.map((m) => (
-            <div key={m.name}>
-              <div className="flex justify-between mb-2">
-                <span className="text-xs font-medium text-gray-700">{m.name}</span>
-                <span className="text-xs font-bold text-gray-900">{m.amount}</span>
-              </div>
-              <div className="h-2 bg-gray-200/60 rounded-full overflow-hidden shadow-inner">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: inView ? `${m.pct}%` : "0%",
-                    background: m.color,
-                    boxShadow: `0 0 10px ${m.color}66`,
-                    transition: inView ? `width 0.9s cubic-bezier(0.22,1,0.36,1) ${m.delay}ms` : "none",
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-5 pt-4 border-t border-black/8 flex items-center justify-between">
-          <span className="text-[11px] text-gray-500">Límite mensual configurado en <span className="font-bold text-gray-900">$20 USD</span></span>
-          <button className="text-[11px] font-semibold text-amber-600 hover:text-amber-700 transition-colors cursor-pointer">Editar →</button>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}
-
-function FeatureRow({ f, reversed }: { f: FeatureDef; reversed: boolean }) {
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
+// ── Static feature card (no inner interactivity) ────────────────────
+function FeatureCard({ f, span }: { f: FeatureDef; span: boolean }) {
   const bullets = FEATURE_BULLETS[f.id];
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } },
-      { threshold: 0.18 }
-    );
-    if (rowRef.current) obs.observe(rowRef.current);
-    return () => obs.disconnect();
-  }, []);
-
-  const textOrder = reversed ? "md:order-1" : "md:order-2";
-  const visualOrder = reversed ? "md:order-2" : "md:order-1";
-
   return (
-    <div
-      ref={rowRef}
-      className={`grid md:grid-cols-2 gap-10 md:gap-16 items-center feature-card-hover card-item${inView ? " in-view" : ""}`}
-    >
-      {/* Text */}
-      <div className={`${textOrder} max-w-xl`}>
+    <div className={`feature-card relative rounded-2xl p-7 md:p-8 h-full overflow-hidden`}>
+      {/* faint static corner accent */}
+      <div
+        className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 rounded-full opacity-40"
+        style={{ background: `radial-gradient(circle, ${f.accent.glow}, transparent 65%)`, filter: "blur(44px)" }}
+      />
+      <div className="relative">
+        {/* header */}
         <div className="flex items-center gap-3 mb-5">
           <div
-            className={`feature-icon w-12 h-12 rounded-2xl bg-gradient-to-br ${f.accent.from} ${f.accent.to} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40`}
+            className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${f.accent.from} ${f.accent.to} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40`}
             style={{ boxShadow: `0 10px 28px -6px ${f.accent.glow}, inset 0 1px 0 rgba(255,255,255,0.25)` }}
           >
             {f.icon}
@@ -994,38 +733,29 @@ function FeatureRow({ f, reversed }: { f: FeatureDef; reversed: boolean }) {
           </div>
         </div>
 
-        <h3 className="display text-2xl sm:text-3xl md:text-[2.25rem] font-semibold text-gray-900 tracking-tight leading-[1.1]">{f.name}</h3>
-        <p className="mt-3 text-gray-500 text-[14px] md:text-[15px] leading-relaxed text-pretty">{f.long}</p>
+        <h3 className="display text-xl md:text-2xl font-semibold text-gray-900 tracking-tight leading-tight">{f.name}</h3>
+        <p className="mt-3 text-gray-500 text-[14px] leading-relaxed text-pretty">{f.long}</p>
 
-        {/* Capabilities */}
-        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
-          {bullets.map((b, idx) => (
-            <div key={b.label} className={`flex items-start gap-2.5${idx >= 2 ? " hidden sm:flex" : ""}`}>
-              <div
-                className={`w-7 h-7 rounded-lg bg-gradient-to-br ${f.accent.from} ${f.accent.to} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40`}
-                style={{ boxShadow: `0 4px 12px -2px ${f.accent.glow}` }}
+        {/* capabilities — static list */}
+        <div className={`mt-6 grid gap-x-5 gap-y-3.5 ${span ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+          {bullets.map((b) => (
+            <div key={b.label} className="flex items-start gap-2.5">
+              <span
+                className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${f.accent.text}`}
+                style={{ background: f.accent.ring }}
               >
-                {b.icon}
-              </div>
+                <span className="w-3.5 h-3.5 inline-flex">{b.icon}</span>
+              </span>
               <div className="min-w-0">
                 <div className="text-[12.5px] font-semibold text-gray-900 leading-snug">{b.label}</div>
-                <div className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5 hidden sm:block">{b.desc}</div>
+                <div className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5">{b.desc}</div>
               </div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Visual */}
-      <div className={`${visualOrder} relative w-full min-w-0 overflow-hidden`}>
-        {/* ambient accent glow */}
-        <div
-          className="pointer-events-none absolute -inset-6 rounded-[2.5rem] opacity-60"
-          style={{ background: `radial-gradient(circle at ${reversed ? "70%" : "30%"} 38%, ${f.accent.glow}, transparent 64%)`, filter: "blur(38px)" }}
-        />
-        <div className="relative transition-transform duration-500 hover:-translate-y-1">
-          <FeatureVisual id={f.id} inView={inView} />
-        </div>
+        {/* static bottom accent */}
+        <div className={`mt-6 h-1 w-12 rounded-full bg-gradient-to-r ${f.accent.bar} opacity-60`} />
       </div>
     </div>
   );
@@ -1045,7 +775,7 @@ function FeaturesSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="features" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="features" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
@@ -1059,10 +789,16 @@ function FeaturesSection() {
           </p>
         </div>
 
-        {/* Alternating feature rows */}
-        <div className="space-y-14 md:space-y-24">
+        {/* Bento grid — static cards, no inner interactivity */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr">
           {FEATURES.map((f, i) => (
-            <FeatureRow key={f.id} f={f} reversed={i % 2 === 1} />
+            <div
+              key={f.id}
+              className={`card-item${inView ? " in-view" : ""} ${f.id === "memory" ? "lg:col-span-2" : ""}`}
+              style={inView ? { animationDelay: `${i * 90}ms` } : {}}
+            >
+              <FeatureCard f={f} span={f.id === "memory"} />
+            </div>
           ))}
         </div>
 
@@ -1129,7 +865,7 @@ function HowItWorksSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="how-it-works" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="how-it-works" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] opacity-[0.04] rounded-full"
@@ -1289,7 +1025,7 @@ function ModelsSection() {
   const rowB = supportedModels.slice(half);
 
   return (
-    <section ref={sectionRef} id="models" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="models" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Modelos soportados</span>
@@ -1509,7 +1245,7 @@ function TestimonialsSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="testimonials" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="testimonials" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[760px] h-[420px] opacity-[0.04] rounded-full"
@@ -1621,7 +1357,7 @@ function PricingSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="pricing" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="pricing" className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-[0.03] rounded-full"
@@ -1821,7 +1557,7 @@ function CTASection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} className="relative py-14 md:py-20 px-5 md:px-6 overflow-hidden">
       <div className="max-w-5xl mx-auto text-center">
         <div
           className={`relative rounded-[28px] p-8 md:p-20 overflow-hidden card-item${inView ? " in-view" : ""}`}
@@ -2136,7 +1872,7 @@ function HeroSection() {
                 <iframe
                   id="demo-video"
                   className="w-full block"
-                  style={{ height: "600px" }}
+                  style={{ height: "600px", background: "#0E0F12" }}
                 />
               </div>
             </div>
