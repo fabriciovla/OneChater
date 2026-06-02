@@ -695,7 +695,7 @@ const FEATURE_BULLETS: Record<string, Array<{ icon: React.ReactNode; label: stri
 function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
   if (id === "memory") {
     return (
-      <div className="rounded-2xl border border-black/8 bg-gradient-to-br from-gray-50 to-white overflow-hidden shadow-xl">
+      <div className="fv-card rounded-2xl border border-black/8 bg-gradient-to-br from-gray-50 to-white overflow-hidden shadow-xl">
         {/* Top bar */}
         <div className="px-4 py-2.5 bg-white border-b border-black/8 flex items-center gap-2.5">
           <div className="flex gap-1.5">
@@ -776,7 +776,7 @@ function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
 
   if (id === "multi") {
     return (
-      <div className="rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white overflow-hidden shadow-xl">
+      <div className="fv-card rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white overflow-hidden shadow-xl">
         <div className="px-4 py-3 bg-white border-b border-black/8 flex items-center gap-3">
           <div className="flex gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
@@ -787,7 +787,7 @@ function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
             <span className="text-[11px] text-gray-500">¿Cómo optimizo esta query de Postgres?</span>
           </div>
         </div>
-        <div className="grid grid-cols-3 divide-x divide-black/8 bg-white">
+        <div className="fv-col-grid grid grid-cols-3 divide-x divide-black/8 bg-white">
           {[
             { name: "GPT-5", dot: "bg-green-500", logo: <OpenAILogo />, text: "Agregá un índice compuesto en user_id, created_at y usá EXPLAIN ANALYZE para verificar." },
             { name: "Claude", dot: "bg-orange-400", logo: <AnthropicLogo />, text: "Con pgvector en Supabase, usá índices HNSW para búsquedas más eficientes." },
@@ -812,7 +812,7 @@ function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
 
   if (id === "byok") {
     return (
-      <div className="rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-6 shadow-xl">
+      <div className="fv-card rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-6 shadow-xl">
         <div className="space-y-3">
           {[
             { provider: "OpenAI", logo: <OpenAILogo />, status: "activa" },
@@ -848,7 +848,7 @@ function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
 
   if (id === "projects") {
     return (
-      <div className="rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-5 shadow-xl">
+      <div className="fv-card rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-5 shadow-xl">
         <div className="flex items-center justify-between mb-4 px-2">
           <span className="eyebrow text-gray-500">Tus proyectos</span>
           <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-semibold">3 activos</span>
@@ -879,7 +879,7 @@ function FeatureVisual({ id, inView }: { id: string; inView: boolean }) {
 
   if (id === "spend") {
     return (
-      <div className="rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-6 shadow-xl">
+      <div className="fv-card rounded-2xl border border-black/10 bg-gradient-to-br from-gray-50 to-white p-6 shadow-xl">
         <div className="flex items-end justify-between mb-5">
           <div>
             <span className="eyebrow text-gray-500">Gasto este mes</span>
@@ -1728,7 +1728,7 @@ function PricingSection() {
                     plan.comingSoon
                       ? "cursor-not-allowed text-gray-400"
                       : plan.highlighted
-                        ? "cursor-pointer text-gray-900 hover:-translate-y-0.5"
+                        ? "cursor-pointer text-[#0E0F12] hover:-translate-y-0.5"
                         : "cursor-pointer btn-primary"
                   }`}
                   style={
@@ -1832,7 +1832,7 @@ function CTASection() {
               Únete a miles de profesionales y freelancers en LATAM que usan OneChat para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-              <a href="/chat" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-gray-900 transition-all cursor-pointer hover:-translate-y-0.5"
+              <a href="/chat" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-[#0E0F12] transition-all cursor-pointer hover:-translate-y-0.5"
                 style={{
                   background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 30px -10px rgba(255,255,255,0.4)",
@@ -2089,15 +2089,7 @@ function HeroSection() {
               }}
             />
             {/* Outer ring */}
-            <div
-              className="hero-video-outer relative w-full rounded-[20px] p-1.5"
-              style={{
-                background: "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(247,247,245,0.7))",
-                border: "1px solid rgba(14,15,18,0.08)",
-                boxShadow: "0 1px 0 rgba(255,255,255,0.8) inset, 0 30px 80px -20px rgba(14,15,18,0.20), 0 12px 32px -8px rgba(99,102,241,0.08)",
-                zIndex: 1,
-              }}
-            >
+            <div className="hero-video-outer relative w-full rounded-[20px] p-1.5">
               {/* Window chrome */}
               <div
                 className="relative w-full rounded-[14px] overflow-hidden"

@@ -791,6 +791,14 @@ html.dark .hero-dot-grid {
   opacity: 0.06 !important;
   background-image: radial-gradient(rgba(255,255,255,0.20) 1px, transparent 1px) !important;
 }
+/* Light-mode base (dark-mode override below wins in html.dark) */
+.hero-video-outer {
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(247,247,245,0.7));
+  border: 1px solid rgba(14,15,18,0.08);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset, 0 30px 80px -20px rgba(14,15,18,0.20), 0 12px 32px -8px rgba(99,102,241,0.08);
+  position: relative;
+  z-index: 1;
+}
 html.dark .hero-video-outer {
   background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%) !important;
   border-color: var(--border) !important;
@@ -804,6 +812,35 @@ html.dark .footer-social-btn:hover {
   background: rgba(255,255,255,0.09) !important;
   color: var(--text-1) !important;
 }
+
+/* ── FeatureVisual cards: semantic color pills → translucent in dark mode ── */
+html.dark .fv-card .bg-amber-50   { background: rgba(245,158,11,0.12)  !important; }
+html.dark .fv-card .bg-emerald-50 { background: rgba(16,185,129,0.12)  !important; }
+html.dark .fv-card .bg-green-50   { background: rgba(34,197,94,0.12)   !important; }
+html.dark .fv-card .bg-orange-50  { background: rgba(249,115,22,0.12)  !important; }
+html.dark .fv-card .bg-blue-50    { background: rgba(59,130,246,0.12)  !important; }
+html.dark .fv-card .bg-violet-50  { background: rgba(139,92,246,0.12)  !important; }
+html.dark .fv-card .bg-purple-50  { background: rgba(168,85,247,0.12)  !important; }
+/* Gradient color stops used in active-item pills */
+html.dark .fv-card .from-emerald-50 { --tw-gradient-from: rgba(16,185,129,0.12) !important; }
+html.dark .fv-card .to-green-50     { --tw-gradient-to:   rgba(34,197,94,0.12)  !important; }
+html.dark .fv-card .from-violet-50  { --tw-gradient-from: rgba(139,92,246,0.12) !important; }
+html.dark .fv-card .to-purple-50    { --tw-gradient-to:   rgba(168,85,247,0.12) !important; }
+/* Colored borders inside feature visuals (emerald-200, orange-200, etc.) */
+html.dark .fv-card [class*="border-emerald"],
+html.dark .fv-card [class*="border-green"],
+html.dark .fv-card [class*="border-orange"],
+html.dark .fv-card [class*="border-amber"],
+html.dark .fv-card [class*="border-violet"],
+html.dark .fv-card [class*="border-purple"],
+html.dark .fv-card [class*="border-blue"] { border-color: rgba(255,255,255,0.12) !important; }
+/* Progress bar track */
+html.dark .fv-card .bg-gray-200\/60 { background-color: rgba(255,255,255,0.06) !important; }
+/* Multi-model column dividers (divide-x divide-black/8 targets children) */
+html.dark .fv-col-grid > div { border-left-color: var(--border) !important; }
+/* Step card hover border in dark mode */
+html.dark .step-card-premium:hover { border-color: var(--border-strong) !important; }
+html.dark .step-card-premium::before { background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px) !important; }
 
 /* ── Brand blob: subtle rotating glow ─────────────────────────
    9s cycle, glow softly travels blob1 → blob2 → blob3 → blob1.
