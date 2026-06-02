@@ -1265,6 +1265,18 @@ html.dark [class*="border-black"] { border-color: var(--border) !important; }
 }
 .pop-in { animation: popIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
 
+/* AI selector — bottom sheet (mobile) / popover (desktop) */
+@keyframes aiSheetUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes aiSheetPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: none; } }
+.ai-sheet { animation: aiSheetUp 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+@media (min-width: 768px) {
+  .ai-sheet { animation: aiSheetPop 0.26s cubic-bezier(0.22,1,0.36,1) both; transform-origin: bottom left; }
+}
+
+/* Mobile sidebar drawer slide-in */
+@keyframes drawerInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+.drawer-in-left { animation: drawerInLeft 0.28s cubic-bezier(0.22,1,0.36,1) both; }
+
 /* Memory drawer entrance */
 @keyframes memDrawerIn {
   from { opacity: 0; transform: translateX(28px); }

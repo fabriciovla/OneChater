@@ -780,91 +780,6 @@ function EmptyState({ hasActive, onActivateDemo, onPromptClick }: {
 
 // ─── Model Dropdown ───────────────────────────────────────────────────────────
 
-function ModelDropdown({ provider, selectedModel, onSelect }: {
-  provider: Provider
-  selectedModel: string
-  onSelect: (id: string) => void
-}) {
-  const c = CFG[provider]
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const current = c.models.find((m) => m.id === selectedModel)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  return (
-    <div ref={ref} className="relative flex-shrink-0">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all duration-150"
-        style={{
-          background: open ? c.colorLight : "white",
-          border: open ? `1px solid ${c.colorBorder}` : "1px solid rgba(0,0,0,0.12)",
-          color: open ? c.color : "var(--text-2)",
-        }}
-      >
-        <span className="max-w-[100px] truncate">{current?.label ?? selectedModel}</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ width: 10, height: 10, flexShrink: 0, transition: "transform 0.15s", transform: open ? "rotate(180deg)" : "none", color: open ? c.color : "#9ca3af" }}>
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-
-      {open && (
-        <div
-          className="absolute right-0 bottom-full mb-1.5 z-50 rounded-xl overflow-hidden dropdown-enter"
-          style={{
-            minWidth: "160px",
-            background: "var(--surface)",
-            border: "1px solid rgba(0,0,0,0.1)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)",
-          }}
-        >
-          <div className="px-2.5 pt-2 pb-1">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Modelo</span>
-          </div>
-          <div className="pb-1.5">
-            {c.models.map((m) => {
-              const isSelected = m.id === selectedModel
-              return (
-                <button
-                  key={m.id}
-                  onMouseDown={(e) => { e.preventDefault(); onSelect(m.id); setOpen(false) }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 text-left cursor-pointer transition-colors duration-100 hover:bg-black/[0.04]"
-                  style={{ background: isSelected ? c.colorLight : undefined }}
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: isSelected ? c.color : "transparent", border: isSelected ? "none" : "1.5px solid #d1d5db" }}
-                  />
-                  <span className="text-[12px] font-medium flex-1" style={{ color: isSelected ? c.color : "var(--text-1)" }}>
-                    {m.label}
-                  </span>
-                  {isSelected && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ width: 11, height: 11, color: c.color, flexShrink: 0 }}>
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── AI Selector ──────────────────────────────────────────────────────────────
-
 function AIChipSelector({
   apiKeys, setApiKeys, enabled, setEnabled, selectedModels, setSelectedModels, onActivateDemo,
 }: {
@@ -883,12 +798,12 @@ function AIChipSelector({
   const isDemo = PROVIDERS.some((p) => apiKeys[p] === "demo")
   const activeProviders = PROVIDERS.filter((p) => apiKeys[p].trim() && enabled[p])
 
+  const close = () => { setPanelOpen(false); setExpanded(null); setDraftKey("") }
+
   useEffect(() => {
     if (!panelOpen) return
     const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setPanelOpen(false); setExpanded(null); setDraftKey("")
-      }
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) close()
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
@@ -921,12 +836,12 @@ function AIChipSelector({
     <div ref={panelRef} className="relative">
       {/* Trigger */}
       <button
-        onClick={() => { setPanelOpen(v => !v); if (panelOpen) { setExpanded(null); setDraftKey("") } }}
+        onClick={() => { if (panelOpen) close(); else setPanelOpen(true) }}
         className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-all duration-150 select-none"
         style={{
-          background: panelOpen ? "#1e1f24" : "rgba(0,0,0,0.05)",
-          border: panelOpen ? "1px solid #1e1f24" : "1px solid rgba(0,0,0,0.1)",
-          color: panelOpen ? "white" : "var(--text-2)",
+          background: panelOpen ? "#1e1f24" : "var(--overlay)",
+          border: panelOpen ? "1px solid #1e1f24" : "1px solid var(--border)",
+          color: panelOpen ? "#fff" : "var(--text-2)",
         }}
       >
         {activeProviders.length > 0 ? (
@@ -957,24 +872,40 @@ function AIChipSelector({
         </svg>
       </button>
 
-      {/* Panel */}
+      {/* Mobile backdrop */}
       {panelOpen && (
-        <div className="absolute left-0 bottom-full mb-2 z-50 rounded-2xl overflow-hidden panel-enter"
-          style={{ width: "320px", background: "var(--surface)", border: "1px solid rgba(0,0,0,0.1)", boxShadow: "0 -4px 6px -1px rgba(0,0,0,0.05), 0 -10px 32px rgba(0,0,0,0.12)" }}>
+        <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(0,0,0,0.45)" }} onClick={close} />
+      )}
+
+      {/* Panel — bottom sheet on mobile, popover on desktop */}
+      {panelOpen && (
+        <div
+          className="ai-sheet z-50 flex flex-col fixed inset-x-0 bottom-0 rounded-t-2xl md:absolute md:inset-x-auto md:left-0 md:bottom-full md:mb-2 md:w-[340px] md:rounded-2xl"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 -8px 44px rgba(0,0,0,0.24)",
+            maxHeight: "min(72vh, 470px)",
+          }}
+        >
+          {/* mobile grabber */}
+          <div className="md:hidden flex justify-center pt-2.5 pb-1 flex-shrink-0">
+            <span className="w-9 h-1 rounded-full" style={{ background: "var(--border-strong)" }} />
+          </div>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
-            <span className="text-sm font-semibold text-gray-900">Seleccionar IA</span>
+          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--border-soft)" }}>
+            <span className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>Seleccionar IA</span>
             {isDemo ? (
               <span className="flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full"
                 style={{ color: "#f97316", background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
                 Demo
                 <button onClick={() => setApiKeys({ openai: "", anthropic: "", google: "", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "" })}
-                  className="ml-0.5 hover:opacity-70 cursor-pointer text-gray-400" title="Salir del modo demo">×</button>
+                  className="ml-0.5 hover:opacity-70 cursor-pointer" style={{ color: "var(--text-4)" }} title="Salir del modo demo">×</button>
               </span>
             ) : (
-              <button onClick={() => { onActivateDemo(); setPanelOpen(false) }}
+              <button onClick={() => { onActivateDemo(); close() }}
                 className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full cursor-pointer transition-colors"
                 style={{ color: "#f97316", background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.2)" }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 9, height: 9 }}>
@@ -986,7 +917,7 @@ function AIChipSelector({
           </div>
 
           {/* List */}
-          <div className="overflow-y-auto" style={{ maxHeight: "360px" }}>
+          <div className="overflow-y-auto flex-1">
             {PROVIDERS.map((p) => {
               const c = CFG[p]
               const hasKey = !!apiKeys[p].trim() && apiKeys[p] !== "demo"
@@ -996,39 +927,40 @@ function AIChipSelector({
               const currentModel = c.models.find(m => m.id === selectedModels[p])?.label ?? selectedModels[p]
 
               return (
-                <div key={p} style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                <div key={p} style={{ borderBottom: "1px solid var(--border-soft)" }}>
                   {/* Row */}
-                  <div className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-black/[0.02]"
+                  <div className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-black/[0.03]"
                     onClick={() => handleRowClick(p)}>
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: active ? c.colorLight : "rgba(0,0,0,0.04)", border: `1px solid ${active ? c.colorBorder : "rgba(0,0,0,0.07)"}`, color: active ? c.color : "#9ca3af" }}>
-                      <c.Logo size={16} />
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: active ? c.colorLight : "var(--overlay)", border: `1px solid ${active ? c.colorBorder : "var(--border)"}`, color: active ? c.color : "var(--text-4)" }}>
+                      <c.Logo size={17} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-semibold" style={{ color: active ? "var(--text-1)" : "var(--text-2)" }}>{c.name}</div>
-                      <div className="text-[11px] truncate" style={{ color: active ? c.color : "#9ca3af" }}>
-                        {isDemoKey ? "Modo demo" : hasKey ? currentModel : "Sin API key · click para agregar"}
+                      <div className="text-[11px] truncate" style={{ color: active ? c.color : "var(--text-4)" }}>
+                        {isDemoKey ? "Modo demo" : hasKey ? currentModel : "Sin API key · tocá para agregar"}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-2.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
                       {(hasKey || isDemoKey) && (
                         <button onClick={() => handleToggle(p)}
-                          className="w-8 h-4 rounded-full transition-colors duration-200 relative cursor-pointer flex-shrink-0"
-                          style={{ background: active ? c.color : "rgba(0,0,0,0.15)" }}>
-                          <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all duration-200"
-                            style={{ left: active ? "17px" : "2px" }} />
+                          className="w-9 h-5 rounded-full transition-colors duration-200 relative cursor-pointer flex-shrink-0"
+                          style={{ background: active ? c.color : "var(--border-strong)" }}>
+                          <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200"
+                            style={{ left: active ? "18px" : "2px" }} />
                         </button>
                       )}
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                        style={{ width: 12, height: 12, color: "var(--text-4)", transition: "transform 0.15s", transform: isExp ? "rotate(180deg)" : "none" }}>
+                        style={{ width: 13, height: 13, color: "var(--text-4)", transition: "transform 0.18s", transform: isExp ? "rotate(180deg)" : "none" }}>
                         <path d="M6 9l6 6 6-6" />
                       </svg>
                     </div>
                   </div>
 
-                  {/* Expanded config */}
+                  {/* Expanded config — inline, no nested dropdown */}
                   {isExp && (
-                    <div className="px-4 pb-3 pt-1 flex flex-col gap-2" style={{ background: c.colorLight }}>
+                    <div className="px-4 pb-3.5 pt-1.5 flex flex-col gap-3" style={{ background: c.colorLight }}>
+                      {/* API key */}
                       <div className="flex items-center gap-2">
                         <input
                           type="password"
@@ -1036,31 +968,49 @@ function AIChipSelector({
                           value={draftKey}
                           onChange={(e) => setDraftKey(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Enter") handleSaveKey(p) }}
-                          className="flex-1 text-xs rounded-lg px-3 py-2 focus:outline-none text-gray-900 placeholder-gray-400 min-w-0 bg-white"
-                          style={{ border: `1px solid ${c.colorBorder}` }}
+                          className="flex-1 text-xs rounded-lg px-3 py-2 focus:outline-none min-w-0"
+                          style={{ border: `1px solid ${c.colorBorder}`, background: "var(--surface)", color: "var(--text-1)" }}
                           autoComplete="off" spellCheck={false} autoFocus
                         />
                         <button onClick={() => handleSaveKey(p)} disabled={!draftKey.trim()}
-                          className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer disabled:opacity-30 hover:opacity-85 flex-shrink-0"
+                          className="flex items-center justify-center w-9 h-9 rounded-lg cursor-pointer disabled:opacity-30 hover:opacity-85 flex-shrink-0"
                           style={{ background: c.color }} title="Guardar">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         </button>
                         {hasKey && (
                           <button onClick={() => handleRemoveKey(p)}
-                            className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-red-50 flex-shrink-0 bg-white"
-                            style={{ border: "1px solid var(--border)" }} title="Eliminar key">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, color: "#ef4444" }}>
+                            className="flex items-center justify-center w-9 h-9 rounded-lg cursor-pointer flex-shrink-0"
+                            style={{ border: "1px solid var(--border)", background: "var(--surface)" }} title="Eliminar key">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, color: "#ef4444" }}>
                               <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
                             </svg>
                           </button>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-medium text-gray-500">Modelo:</span>
-                        <ModelDropdown provider={p} selectedModel={selectedModels[p]}
-                          onSelect={(id) => setSelectedModels({ ...selectedModels, [p]: id })} />
+                      {/* Model chips */}
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Modelo</span>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {c.models.map((m) => {
+                            const sel = selectedModels[p] === m.id
+                            return (
+                              <button
+                                key={m.id}
+                                onClick={() => setSelectedModels({ ...selectedModels, [p]: m.id })}
+                                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all duration-150 active:scale-95"
+                                style={{
+                                  background: sel ? c.color : "var(--surface)",
+                                  color: sel ? "#fff" : "var(--text-2)",
+                                  border: `1px solid ${sel ? c.color : "var(--border)"}`,
+                                }}
+                              >
+                                {m.label}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1119,32 +1069,50 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0 }: {
 // ─── Sidebar (history only, light theme) ─────────────────────────────────────
 
 function Sidebar({
-  open, sessions, activeSessionId, onSelectSession, onDeleteSession, onNewSession,
+  open, onClose, sessions, activeSessionId, onSelectSession, onDeleteSession, onNewSession,
 }: {
   open: boolean
+  onClose: () => void
   sessions: ChatSession[]
   activeSessionId: string | null
   onSelectSession: (id: string) => void
   onDeleteSession: (id: string) => void
   onNewSession: () => void
 }) {
+  // Close the drawer after an action only on mobile (overlay); desktop keeps it pinned.
+  const closeIfMobile = () => { if (typeof window !== "undefined" && window.innerWidth < 768) onClose() }
+  const selectSession = (id: string) => { onSelectSession(id); closeIfMobile() }
+  const newSession = () => { onNewSession(); closeIfMobile() }
+
   return (
-    <aside
-      className="flex-shrink-0 overflow-hidden transition-all duration-300"
-      style={{
-        width: open ? "240px" : "0",
-        opacity: open ? 1 : 0,
-        background: "var(--surface-2)",
-        borderRight: "1px solid var(--border)",
-        boxShadow: open ? "1px 0 0 var(--border-soft), 4px 0 24px -16px rgba(0,0,0,0.18)" : "none",
-      }}
-    >
-      <div className="flex flex-col h-full w-[240px]">
+    <>
+      {/* Mobile backdrop */}
+      {open && (
+        <div className="fixed inset-0 z-30 md:hidden" style={{ background: "rgba(0,0,0,0.45)" }} onClick={onClose} />
+      )}
+
+      <aside
+        className={[
+          "z-40 overflow-hidden",
+          // mobile: fixed slide-in drawer under the topbar
+          "fixed top-14 bottom-0 left-0 w-[268px] transition-transform duration-300",
+          open ? "translate-x-0" : "-translate-x-full",
+          // desktop: in-flow, width-animated
+          "md:static md:top-auto md:bottom-auto md:z-auto md:translate-x-0 md:transition-[width] md:duration-300 md:flex-shrink-0",
+          open ? "md:w-[240px]" : "md:w-0",
+        ].join(" ")}
+        style={{
+          background: "var(--surface-2)",
+          borderRight: "1px solid var(--border)",
+          boxShadow: open ? "4px 0 24px -16px rgba(0,0,0,0.25)" : "none",
+        }}
+      >
+      <div className="flex flex-col h-full w-full md:w-[240px]">
 
         {/* New chat button */}
         <div className="p-3 flex-shrink-0">
           <button
-            onClick={onNewSession}
+            onClick={newSession}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium cursor-pointer transition-all hover:shadow-sm"
             style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border)" }}
           >
@@ -1181,7 +1149,7 @@ function Sidebar({
                     key={s.id}
                     session={s}
                     active={s.id === activeSessionId}
-                    onSelect={() => onSelectSession(s.id)}
+                    onSelect={() => selectSession(s.id)}
                     onDelete={() => onDeleteSession(s.id)}
                     delay={sessions.indexOf(s) * 35}
                   />
@@ -1192,6 +1160,7 @@ function Sidebar({
         </div>
       </div>
     </aside>
+    </>
   )
 }
 
@@ -2015,9 +1984,9 @@ export default function ChatPage() {
       >
         <button
           onClick={() => setSidebarOpen((v) => !v)}
-          className="hidden md:flex w-9 h-9 rounded-xl items-center justify-center transition-all cursor-pointer hover:bg-black/[0.05] active:scale-95"
+          className="flex w-9 h-9 rounded-xl items-center justify-center transition-all cursor-pointer hover:bg-black/[0.05] active:scale-95"
           style={{ color: "var(--text-3)" }}
-          title="Panel lateral"
+          title="Conversaciones"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
             <rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" />
@@ -2098,6 +2067,7 @@ export default function ChatPage() {
 
         <Sidebar
           open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
           sessions={sessions}
           activeSessionId={activeSessionId}
           onSelectSession={handleSelectSession}
@@ -2125,8 +2095,8 @@ export default function ChatPage() {
             <div ref={bottomRef} className="h-2" />
           </div>
 
-          {/* ── Input area ────────────────────────────────────────────── */}
-          <div className="flex-shrink-0 px-3 md:px-8 py-3 md:py-4" style={{ background: "var(--surface)", borderTop: "1px solid var(--border-soft)" }}>
+          {/* ── Input area (floating island — no background band) ───────── */}
+          <div className="flex-shrink-0 px-3 md:px-8 pb-3 md:pb-4 pt-1" style={{ background: "transparent" }}>
 
             {toast && (
               <div key={toastKey} className="max-w-3xl mx-auto mb-2 flex justify-center">
@@ -2159,15 +2129,16 @@ export default function ChatPage() {
             )}
 
             {/* Input card */}
-            <div className="input-card-lift max-w-3xl mx-auto rounded-2xl overflow-visible bg-white"
+            <div className="input-card-lift max-w-3xl mx-auto rounded-2xl overflow-visible"
               style={{
-                border: inputFocused ? "1px solid rgba(0,0,0,0.2)" : "1px solid rgba(0,0,0,0.11)",
+                background: "var(--surface)",
+                border: inputFocused ? "1px solid var(--border-strong)" : "1px solid var(--border)",
                 transform: inputFocused ? "translateY(-1px)" : "translateY(0)",
                 boxShadow: isLoading
-                  ? "0 0 0 3px rgba(249,115,22,0.08), 0 2px 8px rgba(0,0,0,0.06)"
+                  ? "0 0 0 3px rgba(249,115,22,0.08), 0 8px 28px -10px rgba(0,0,0,0.22)"
                   : inputFocused
-                    ? "0 0 0 3px rgba(0,0,0,0.055), 0 4px 18px rgba(0,0,0,0.09)"
-                    : "0 2px 8px rgba(0,0,0,0.06)",
+                    ? "0 0 0 3px var(--overlay), 0 10px 30px -12px rgba(0,0,0,0.28)"
+                    : "0 8px 26px -12px rgba(0,0,0,0.22)",
               }}>
 
               {/* Row 1: textarea */}

@@ -292,7 +292,7 @@ function Navbar() {
     { label: "Funcionalidades", href: "#features" },
     { label: "Cómo funciona", href: "#how-it-works" },
     { label: "Precios", href: "#pricing" },
-    { label: "GitHub", href: "https://github.com/fabriciovla", external: true },
+    { label: "GitHub", href: "https://github.com/fabriciovla", external: true, icon: <IconGithub /> },
   ];
 
   useEffect(() => {
@@ -323,6 +323,7 @@ function Navbar() {
                 target={item.external ? "_blank" : undefined}
                 rel={item.external ? "noopener noreferrer" : undefined}
               >
+                {"icon" in item && item.icon}
                 {item.label}
               </a>
             ))}
@@ -391,7 +392,7 @@ function Navbar() {
               target={item.external ? "_blank" : undefined}
               rel={item.external ? "noopener noreferrer" : undefined}
             >
-              {item.label}
+              <span className="inline-flex items-center gap-2">{"icon" in item && item.icon}{item.label}</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
