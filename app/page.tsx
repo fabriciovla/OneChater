@@ -355,6 +355,14 @@ function Navbar() {
         </div>
       </nav>
 
+      {/* ── Backdrop ── */}
+      <div
+        className="fixed inset-0 z-[199] md:hidden bg-black/20 backdrop-blur-[2px] transition-opacity duration-300"
+        style={{ opacity: mobileOpen ? 1 : 0, pointerEvents: mobileOpen ? "auto" : "none" }}
+        onClick={close}
+        aria-hidden="true"
+      />
+
       {/* ── Fullscreen mobile overlay ── */}
       <div className={`nav-overlay md:hidden${mobileOpen ? " open" : ""}`} aria-hidden={!mobileOpen}>
         {/* Top bar */}
@@ -987,21 +995,21 @@ function FeatureRow({ f, reversed }: { f: FeatureDef; reversed: boolean }) {
         </div>
 
         <h3 className="display text-2xl sm:text-3xl md:text-[2.25rem] font-semibold text-gray-900 tracking-tight leading-[1.1]">{f.name}</h3>
-        <p className="mt-4 text-gray-500 text-[15px] leading-relaxed text-pretty">{f.long}</p>
+        <p className="mt-3 text-gray-500 text-[14px] md:text-[15px] leading-relaxed text-pretty">{f.long}</p>
 
         {/* Capabilities */}
-        <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-          {bullets.map((b) => (
-            <div key={b.label} className="flex items-start gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
+          {bullets.map((b, idx) => (
+            <div key={b.label} className={`flex items-start gap-2.5${idx >= 2 ? " hidden sm:flex" : ""}`}>
               <div
-                className={`w-8 h-8 rounded-lg bg-gradient-to-br ${f.accent.from} ${f.accent.to} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40`}
+                className={`w-7 h-7 rounded-lg bg-gradient-to-br ${f.accent.from} ${f.accent.to} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40`}
                 style={{ boxShadow: `0 4px 12px -2px ${f.accent.glow}` }}
               >
                 {b.icon}
               </div>
               <div className="min-w-0">
-                <div className="text-[13px] font-semibold text-gray-900 leading-snug">{b.label}</div>
-                <div className="text-[12px] text-gray-500 leading-relaxed mt-0.5">{b.desc}</div>
+                <div className="text-[12.5px] font-semibold text-gray-900 leading-snug">{b.label}</div>
+                <div className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5 hidden sm:block">{b.desc}</div>
               </div>
             </div>
           ))}
@@ -1041,7 +1049,7 @@ function FeaturesSection() {
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
-        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Funcionalidades</span>
           <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Nunca más empezar de cero
@@ -1052,7 +1060,7 @@ function FeaturesSection() {
         </div>
 
         {/* Alternating feature rows */}
-        <div className="space-y-24 md:space-y-32">
+        <div className="space-y-14 md:space-y-24">
           {FEATURES.map((f, i) => (
             <FeatureRow key={f.id} f={f} reversed={i % 2 === 1} />
           ))}
@@ -1129,7 +1137,7 @@ function HowItWorksSection() {
       </div>
 
       <div className="max-w-7xl mx-auto relative">
-        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Cómo funciona</span>
           <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Funcionando en{" "}
@@ -1283,7 +1291,7 @@ function ModelsSection() {
   return (
     <section ref={sectionRef} id="models" className="relative py-20 md:py-28 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto relative">
-        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Modelos soportados</span>
           <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Todos los modelos que usás
@@ -1510,7 +1518,7 @@ function TestimonialsSection() {
 
       <div className="max-w-7xl mx-auto relative">
         {/* Header */}
-        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Testimonios</span>
           <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Quienes ya no{" "}
@@ -1621,7 +1629,7 @@ function PricingSection() {
       </div>
 
       <div className="max-w-7xl mx-auto relative">
-        <div className={`text-center mb-16 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">Precios</span>
           <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             Precios simples y{" "}

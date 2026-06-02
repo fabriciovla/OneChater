@@ -240,6 +240,11 @@ html.dark body {
 }
 
 /* Animated gradient text shimmer */
+@keyframes iconPop {
+  from { opacity: 0; transform: scale(0.65) rotate(-15deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
 @keyframes shimmerGradient {
   0%, 100% { background-position: 0% center; }
   50% { background-position: 200% center; }
@@ -676,10 +681,13 @@ html.dark .to-gray-50   { --tw-gradient-to:   var(--surface-2) !important; }
 html.dark .bg-gray-50\/80  { background-color: rgba(31,32,36,0.80) !important; }
 html.dark .bg-gray-200\/60 { background-color: rgba(55,65,81,0.40) !important; }
 
-/* ── Instant theme switch — no lag from cascading transitions ────────────
-   Suppress all transitions for exactly two rAF frames when toggling.      */
-html.theme-switching,
-html.theme-switching * { transition: none !important; }
+/* ── Theme switch: smooth transition on key surfaces ────────────────────── */
+.nav-enter, nav, header, footer, aside,
+.surface-light, .surface-dark, .step-card-premium, .plan-card-light, .plan-card-pro,
+.btn-primary, .btn-ghost, .section-label, .chip {
+  transition: background 0.22s ease, background-color 0.22s ease,
+              border-color 0.22s ease, color 0.18s ease, box-shadow 0.22s ease !important;
+}
 
 /* ── Dark-mode variants for classes with baked-in light surfaces ── */
 html.dark .surface-light,
@@ -814,40 +822,49 @@ html.dark .footer-social-btn:hover {
   color: var(--text-1) !important;
 }
 
-/* ── Chat sidebar: overlay on mobile ─────────────────────────────────────── */
-@media (max-width: 767px) {
-  .chat-sidebar[data-open="true"] {
-    position: fixed !important;
-    top: 56px;  /* topbar height */
-    left: 0;
-    bottom: 0;
-    z-index: 30;
-    width: 280px !important;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.18);
-  }
-  .chat-sidebar[data-open="false"] {
-    width: 0 !important;
-  }
-}
-
 /* ── Fullscreen mobile nav overlay ───────────────────────────────────────── */
 .nav-overlay {
   position: fixed;
   inset: 0;
   z-index: 200;
-  transform: translateX(100%);
-  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
   background: var(--bg-primary);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Hidden state */
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 0.28s cubic-bezier(0.22,1,0.36,1),
+              transform 0.3s cubic-bezier(0.22,1,0.36,1),
+              visibility 0s linear 0.3s;
 }
-.nav-overlay.open { transform: translateX(0); }
+.nav-overlay.open {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.28s cubic-bezier(0.22,1,0.36,1),
+              transform 0.3s cubic-bezier(0.22,1,0.36,1),
+              visibility 0s linear 0s;
+}
+
+/* Stagger link entrance */
+.nav-overlay.open .nav-overlay-link {
+  animation: navLinkIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
+}
+.nav-overlay.open .nav-overlay-link:nth-child(1) { animation-delay: 60ms; }
+.nav-overlay.open .nav-overlay-link:nth-child(2) { animation-delay: 100ms; }
+.nav-overlay.open .nav-overlay-link:nth-child(3) { animation-delay: 140ms; }
+.nav-overlay.open .nav-overlay-link:nth-child(4) { animation-delay: 180ms; }
+@keyframes navLinkIn {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
 
 .nav-overlay-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.2rem 0;
+  padding: 1.15rem 0;
   font-size: 1.375rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -856,7 +873,8 @@ html.dark .footer-social-btn:hover {
   text-decoration: none;
   transition: opacity 0.15s;
 }
-.nav-overlay-link:hover { opacity: 0.65; }
+.nav-overlay-link:hover { opacity: 0.6; }
+.nav-overlay-link:active { opacity: 0.4; }
 
 /* ── FeatureVisual cards: semantic color pills → translucent in dark mode ── */
 html.dark .fv-card .bg-amber-50   { background: rgba(245,158,11,0.12)  !important; }

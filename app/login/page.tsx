@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react"
 import { signIn } from "next-auth/react"
-import ThemeToggle from "../components/ThemeToggle"
 
 type Step = "email" | "otp"
 
@@ -239,7 +238,6 @@ export default function LoginPage() {
         className="relative flex flex-col items-center justify-center px-6 py-12 lg:px-12"
         style={{ background: "var(--bg-secondary)" }}
       >
-        <ThemeToggle className="absolute top-5 right-5 z-20" />
 
         {/* Mobile logo (visible only when left panel hidden) */}
         <div className="lg:hidden flex justify-center mb-8">

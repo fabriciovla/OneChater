@@ -1130,8 +1130,7 @@ function Sidebar({
 }) {
   return (
     <aside
-      className="chat-sidebar flex-shrink-0 overflow-hidden transition-all duration-300"
-      data-open={open}
+      className="flex-shrink-0 overflow-hidden transition-all duration-300"
       style={{
         width: open ? "240px" : "0",
         opacity: open ? 1 : 0,
@@ -2015,7 +2014,7 @@ export default function ChatPage() {
       >
         <button
           onClick={() => setSidebarOpen((v) => !v)}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:bg-black/[0.05] active:scale-95"
+          className="hidden md:flex w-9 h-9 rounded-xl items-center justify-center transition-all cursor-pointer hover:bg-black/[0.05] active:scale-95"
           style={{ color: "var(--text-3)" }}
           title="Panel lateral"
         >
@@ -2044,7 +2043,7 @@ export default function ChatPage() {
         <ThemeToggle />
 
         <Link href="/dashboard"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
+          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
           style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
           title="Dashboard — tu uso y gasto estimado">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
@@ -2054,7 +2053,7 @@ export default function ChatPage() {
         </Link>
 
         <button onClick={() => setMemoryOpen(true)}
-          className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
+          className="hidden md:inline-flex relative items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer hover:shadow-sm active:scale-95"
           style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
           title="Memoria — lo que las IAs recuerdan de vos">
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" style={{ color: "#7c3aed" }}>
