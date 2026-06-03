@@ -1085,7 +1085,7 @@ function HowItWorksSection() {
                 </div>
 
                 <h3 className="display text-lg md:text-xl font-semibold text-gray-900 tracking-tight mb-3 group-hover:text-gray-700 transition-colors">{st.title}</h3>
-                <p className="hidden sm:block text-gray-500 leading-relaxed mb-6 text-[15px]">{st.description}</p>
+                <p className="hidden sm:block text-gray-500 leading-relaxed mb-6 text-[15px]">{st.desc}</p>
 
                 <div className="flex flex-wrap gap-2">
                   {st.tags.map((tag) => (
