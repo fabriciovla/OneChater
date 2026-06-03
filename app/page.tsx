@@ -299,6 +299,7 @@ function Navbar() {
   const navItems: NavItem[] = [
     { label: "Funcionalidades", sectionId: "features",    slug: "funcionalidades" },
     { label: "Cómo funciona",   sectionId: "how-it-works", slug: "como-funciona" },
+    { label: "Memoria",         sectionId: "memoria",      slug: "memoria" },
     { label: "Precios",         sectionId: "pricing",      slug: "precios" },
     { label: "GitHub", href: "https://github.com/fabriciovla", external: true, icon: <IconGithub /> },
   ];
@@ -2317,6 +2318,7 @@ function SectionScrollHandler() {
       precios: "pricing",
       funcionalidades: "features",
       "como-funciona": "how-it-works",
+      memoria: "memoria",
     };
     const id = map[to];
     if (!id) return;
