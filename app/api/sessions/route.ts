@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const { title } = await req.json()
 
   const chatSession = await prisma.chatSession.create({
-    data: { userId: session.user.id, title: title ?? "Nueva conversación" },
+    data: { userId: session.user.id, title: title ?? "New conversation" },
     select: { id: true, title: true, createdAt: true, updatedAt: true },
   })
 

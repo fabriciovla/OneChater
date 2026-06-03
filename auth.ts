@@ -3,7 +3,7 @@ import NextAuth from "next-auth"
 // Fail fast if AUTH_SECRET was never replaced — forged JWTs become trivial otherwise.
 if (process.env.AUTH_SECRET === "REEMPLAZAR_CON_SECRET_SEGURO") {
   throw new Error(
-    "[OneChat] AUTH_SECRET is still the placeholder value. " +
+    "[OneChater] AUTH_SECRET is still the placeholder value. " +
     "Generate a real secret with: openssl rand -base64 32"
   )
 }
@@ -30,7 +30,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "otp",
       credentials: {
         email: { label: "Email", type: "email" },
-        code:  { label: "Código", type: "text" },
+        code:  { label: "Code", type: "text" },
       },
       authorize: async (credentials) => {
         const email = credentials?.email as string | undefined

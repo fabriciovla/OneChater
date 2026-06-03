@@ -11,7 +11,7 @@ export default function OneChatLogo({ className = "h-9 w-auto", height = 48, wid
     <>
       <Image
         src="/OneChater-35-blobs/svg/horizontal-light.svg"
-        alt="OneChat"
+        alt="OneChater"
         height={height}
         width={width}
         className={`${className} logo-dark-hidden`}
@@ -19,7 +19,7 @@ export default function OneChatLogo({ className = "h-9 w-auto", height = 48, wid
       />
       <Image
         src="/OneChater-35-blobs/svg/horizontal-dark.svg"
-        alt="OneChat"
+        alt="OneChater"
         height={height}
         width={width}
         className={`${className} logo-dark-only`}

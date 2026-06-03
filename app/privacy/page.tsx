@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Política de privacidad · OneChat",
-  description: "Cómo OneChat recopila, usa y protege tu información.",
+  title: "Privacy policy",
+  description: "How OneChater collects, uses and protects your information.",
 };
 
 export default function PrivacyPage() {
@@ -12,73 +12,73 @@ export default function PrivacyPage() {
       {/* Nav */}
       <header className="border-b border-black/6 px-5 md:px-10 h-14 flex items-center justify-between">
         <Link href="/" className="text-[15px] font-semibold text-gray-900 hover:opacity-70 transition-opacity">
-          ← OneChat
+          ← OneChater
         </Link>
-        <span className="text-xs text-gray-400">Actualizado: junio 2026</span>
+        <span className="text-xs text-gray-400">Updated: June 2026</span>
       </header>
 
       <main className="max-w-2xl mx-auto px-5 py-14">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Política de privacidad</h1>
-        <p className="text-gray-500 mb-10">Tu privacidad importa. Acá te explicamos qué datos recopilamos y cómo los usamos.</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy policy</h1>
+        <p className="text-gray-500 mb-10">Your privacy matters. Here&apos;s what data we collect and how we use it.</p>
 
-        <Section title="1. Qué datos recopilamos">
-          <p><strong>Datos de cuenta:</strong> nombre, dirección de email y foto de perfil (cuando iniciás sesión con Google, GitHub, o Apple). También almacenamos las sesiones de autenticación necesarias para mantener tu sesión activa.</p>
-          <p><strong>Conversaciones:</strong> el historial de tus chats se guarda en nuestra base de datos para que puedas accederlo desde cualquier dispositivo.</p>
-          <p><strong>Memoria persistente:</strong> los hechos que el sistema extrae de tus conversaciones se guardan asociados a tu cuenta para personalizar futuras respuestas.</p>
-          <p><strong>API keys:</strong> tus API keys de terceros (OpenAI, Anthropic, Google, etc.) se almacenan <em>únicamente en tu navegador</em> (localStorage). Nunca las enviamos ni almacenamos en nuestros servidores.</p>
+        <Section title="1. What data we collect">
+          <p><strong>Account data:</strong> name, email address and profile picture (when you sign in with Google, GitHub, or Apple). We also store the authentication sessions needed to keep you signed in.</p>
+          <p><strong>Conversations:</strong> your chat history is saved in our database so you can access it from any device.</p>
+          <p><strong>Persistent memory:</strong> the memory profile the system builds from your conversations is stored, tied to your account, to personalize future answers.</p>
+          <p><strong>API keys:</strong> your third-party API keys (OpenAI, Anthropic, Google, etc.) are stored <em>only in your browser</em> (localStorage). We never send or store them on our servers.</p>
         </Section>
 
-        <Section title="2. Cómo usamos tus datos">
+        <Section title="2. How we use your data">
           <ul>
-            <li>Proveer y mejorar el Servicio.</li>
-            <li>Mantener tu historial de conversaciones y memoria sincronizados entre dispositivos.</li>
-            <li>Enviarte emails transaccionales (OTP para login, notificaciones importantes). Usamos <strong>Resend</strong> para el envío de emails.</li>
-            <li>Detectar y prevenir abusos.</li>
+            <li>Provide and improve the Service.</li>
+            <li>Keep your conversation history and memory in sync across devices.</li>
+            <li>Send you transactional emails (login OTP, important notifications). We use <strong>Resend</strong> to deliver email.</li>
+            <li>Detect and prevent abuse.</li>
           </ul>
-          <p>No vendemos tus datos. No los usamos para publicidad.</p>
+          <p>We don&apos;t sell your data. We don&apos;t use it for advertising.</p>
         </Section>
 
-        <Section title="3. Terceros con acceso a tus datos">
+        <Section title="3. Third parties with access to your data">
           <ul>
-            <li><strong>Neon</strong> (base de datos Postgres) — almacena tus conversaciones y datos de cuenta.</li>
-            <li><strong>Vercel</strong> — hosting e infraestructura de la aplicación.</li>
-            <li><strong>Resend</strong> — envío de emails transaccionales.</li>
-            <li><strong>NextAuth / Auth.js</strong> — gestión de sesiones y OAuth.</li>
-            <li><strong>Proveedores de IA</strong> (OpenAI, Anthropic, Google, etc.) — tus mensajes se envían directamente a estos servicios usando tu propia API key. Están sujetos a sus propias políticas de privacidad.</li>
+            <li><strong>Neon</strong> (Postgres database) — stores your conversations and account data.</li>
+            <li><strong>Vercel</strong> — application hosting and infrastructure.</li>
+            <li><strong>Resend</strong> — transactional email delivery.</li>
+            <li><strong>NextAuth / Auth.js</strong> — session and OAuth management.</li>
+            <li><strong>AI providers</strong> (OpenAI, Anthropic, Google, etc.) — your messages are sent directly to these services using your own API key. They are subject to their own privacy policies.</li>
           </ul>
         </Section>
 
-        <Section title="4. Cookies y almacenamiento local">
-          <p>Usamos cookies de sesión necesarias para la autenticación (HttpOnly, Secure). No usamos cookies de rastreo ni de publicidad.</p>
-          <p>Usamos <code>localStorage</code> para guardar tus API keys y preferencias de la app (tema, modelos seleccionados). Estos datos nunca salen de tu dispositivo.</p>
+        <Section title="4. Cookies and local storage">
+          <p>We use session cookies required for authentication (HttpOnly, Secure). We don&apos;t use tracking or advertising cookies.</p>
+          <p>We use <code>localStorage</code> to save your API keys and app preferences (theme, selected models). This data never leaves your device.</p>
         </Section>
 
-        <Section title="5. Retención de datos">
-          <p>Conservamos tus datos mientras tu cuenta esté activa. Podés solicitar la eliminación de tu cuenta y todos sus datos asociados escribiendo a nuestro email de contacto.</p>
+        <Section title="5. Data retention">
+          <p>We keep your data while your account is active. You can request deletion of your account and all associated data by writing to our contact email.</p>
         </Section>
 
-        <Section title="6. Tus derechos">
-          <p>Tenés derecho a acceder, corregir, exportar o eliminar tus datos personales. Para ejercer estos derechos, escribinos a <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
+        <Section title="6. Your rights">
+          <p>You have the right to access, correct, export or delete your personal data. To exercise these rights, write to <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
         </Section>
 
-        <Section title="7. Seguridad">
-          <p>Usamos HTTPS en todas las comunicaciones, tokens de sesión con rotación, y acceso a la base de datos restringido por roles. Ningún sistema es 100% seguro; ante cualquier incidente de seguridad, lo comunicaremos a los usuarios afectados.</p>
+        <Section title="7. Security">
+          <p>We use HTTPS on all communications, session tokens with rotation, and role-restricted database access. No system is 100% secure; in the event of a security incident, we will inform the affected users.</p>
         </Section>
 
-        <Section title="8. Cambios a esta política">
-          <p>Podemos actualizar esta política. Si los cambios son significativos, te notificaremos por email o mediante un aviso en el Servicio.</p>
+        <Section title="8. Changes to this policy">
+          <p>We may update this policy. If the changes are significant, we&apos;ll notify you by email or via a notice within the Service.</p>
         </Section>
 
-        <Section title="9. Contacto">
-          <p>Para consultas sobre privacidad: <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
+        <Section title="9. Contact">
+          <p>For privacy questions: <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
         </Section>
       </main>
 
       <footer className="border-t border-black/6 px-5 py-8 text-center text-xs text-gray-400">
         <div className="flex justify-center gap-6">
-          <Link href="/privacy" className="hover:text-gray-700 transition-colors">Privacidad</Link>
-          <Link href="/terms" className="hover:text-gray-700 transition-colors">Términos</Link>
-          <Link href="/refunds" className="hover:text-gray-700 transition-colors">Reembolsos</Link>
+          <Link href="/privacy" className="hover:text-gray-700 transition-colors">Privacy</Link>
+          <Link href="/terms" className="hover:text-gray-700 transition-colors">Terms</Link>
+          <Link href="/refunds" className="hover:text-gray-700 transition-colors">Refunds</Link>
         </div>
       </footer>
     </div>

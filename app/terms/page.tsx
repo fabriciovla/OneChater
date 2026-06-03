@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Términos de uso · OneChat",
-  description: "Términos y condiciones de uso de OneChat.",
+  title: "Terms of use",
+  description: "Terms and conditions for using OneChater.",
 };
 
 export default function TermsPage() {
@@ -12,75 +12,75 @@ export default function TermsPage() {
       {/* Nav */}
       <header className="border-b border-black/6 px-5 md:px-10 h-14 flex items-center justify-between">
         <Link href="/" className="text-[15px] font-semibold text-gray-900 hover:opacity-70 transition-opacity">
-          ← OneChat
+          ← OneChater
         </Link>
-        <span className="text-xs text-gray-400">Actualizado: junio 2026</span>
+        <span className="text-xs text-gray-400">Updated: June 2026</span>
       </header>
 
       <main className="max-w-2xl mx-auto px-5 py-14">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Términos de uso</h1>
-        <p className="text-gray-500 mb-10">Al usar OneChat aceptás estos términos. Leelos con cuidado.</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of use</h1>
+        <p className="text-gray-500 mb-10">By using OneChater you accept these terms. Please read them carefully.</p>
 
-        <Section title="1. Aceptación">
-          <p>Al acceder o usar OneChat ("el Servicio"), aceptás quedar vinculado por estos Términos de uso. Si no estás de acuerdo, no uses el Servicio.</p>
+        <Section title="1. Acceptance">
+          <p>By accessing or using OneChater (&quot;the Service&quot;), you agree to be bound by these Terms of use. If you don&apos;t agree, don&apos;t use the Service.</p>
         </Section>
 
-        <Section title="2. Descripción del servicio">
-          <p>OneChat es una aplicación de chat multi-modelo que te permite interactuar con distintos proveedores de IA (OpenAI, Anthropic, Google, y otros) utilizando tus propias API keys (modelo BYOK — Bring Your Own Key). OneChat no provee ni financia el acceso a las APIs de terceros.</p>
+        <Section title="2. Description of the service">
+          <p>OneChater is a multi-model chat application that lets you interact with different AI providers (OpenAI, Anthropic, Google, and others) using your own API keys (the BYOK — Bring Your Own Key — model). OneChater does not provide or fund access to third-party APIs.</p>
         </Section>
 
-        <Section title="3. Cuenta de usuario">
+        <Section title="3. User account">
           <ul>
-            <li>Debés tener al menos 13 años para usar el Servicio.</li>
-            <li>Sos responsable de mantener la confidencialidad de tus credenciales.</li>
-            <li>Notificanos inmediatamente ante cualquier uso no autorizado de tu cuenta.</li>
+            <li>You must be at least 13 years old to use the Service.</li>
+            <li>You are responsible for keeping your credentials confidential.</li>
+            <li>Notify us immediately of any unauthorized use of your account.</li>
           </ul>
         </Section>
 
-        <Section title="4. Tus API keys (BYOK)">
-          <p>Vos proveés tus propias API keys de terceros. Esas keys se almacenan únicamente en tu navegador (localStorage). OneChat no almacena tus keys en nuestros servidores. Sos responsable del uso y los costos asociados a esas keys. No compartás tus keys con nadie.</p>
+        <Section title="4. Your API keys (BYOK)">
+          <p>You provide your own third-party API keys. Those keys are stored solely in your browser (localStorage). OneChater does not store your keys on our servers. You are responsible for the usage and costs associated with those keys. Do not share your keys with anyone.</p>
         </Section>
 
-        <Section title="5. Uso aceptable">
-          <p>No podés usar OneChat para:</p>
+        <Section title="5. Acceptable use">
+          <p>You may not use OneChater to:</p>
           <ul>
-            <li>Generar contenido ilegal, abusivo, o que viole derechos de terceros.</li>
-            <li>Hacer ingeniería inversa, descompilar, o copiar el código fuente (más allá de lo que permite la licencia MIT).</li>
-            <li>Intentar interferir con la infraestructura del Servicio.</li>
-            <li>Suplantar la identidad de otras personas.</li>
+            <li>Generate illegal, abusive content, or content that infringes the rights of others.</li>
+            <li>Reverse engineer, decompile, or copy the source code.</li>
+            <li>Attempt to interfere with the Service&apos;s infrastructure.</li>
+            <li>Impersonate other people.</li>
           </ul>
         </Section>
 
-        <Section title="6. Contenido generado por IA">
-          <p>Las respuestas de los modelos de IA son generadas por terceros (OpenAI, Anthropic, Google, etc.). OneChat no es responsable por la exactitud, completitud, o adecuación de ese contenido. No dependas exclusivamente de respuestas de IA para decisiones críticas (médicas, legales, financieras, etc.).</p>
+        <Section title="6. AI-generated content">
+          <p>AI model responses are generated by third parties (OpenAI, Anthropic, Google, etc.). OneChater is not responsible for the accuracy, completeness, or suitability of that content. Do not rely solely on AI responses for critical decisions (medical, legal, financial, etc.).</p>
         </Section>
 
-        <Section title="7. Propiedad intelectual">
-          <p>El código fuente de OneChat está disponible bajo licencia MIT. Los logos, marcas y diseños son propiedad de Fabricio Varela. No podés usar la marca "OneChat" sin permiso expreso.</p>
+        <Section title="7. Intellectual property">
+          <p>The logos, trademarks and designs are the property of Fabricio Varela. You may not use the &quot;OneChater&quot; brand without express permission.</p>
         </Section>
 
-        <Section title="8. Limitación de responsabilidad">
-          <p>El Servicio se provee "tal como está", sin garantías de ningún tipo. En la máxima medida permitida por la ley, OneChat y sus operadores no son responsables por daños directos, indirectos, incidentales o consecuentes derivados del uso del Servicio.</p>
+        <Section title="8. Limitation of liability">
+          <p>The Service is provided &quot;as is&quot;, without warranties of any kind. To the maximum extent permitted by law, OneChater and its operators are not liable for direct, indirect, incidental, or consequential damages arising from use of the Service.</p>
         </Section>
 
-        <Section title="9. Modificaciones">
-          <p>Podemos actualizar estos términos en cualquier momento. Si los cambios son significativos, lo notificaremos en el Servicio o por email. El uso continuado del Servicio implica aceptación de los nuevos términos.</p>
+        <Section title="9. Changes">
+          <p>We may update these terms at any time. If the changes are significant, we will notify you within the Service or by email. Continued use of the Service implies acceptance of the new terms.</p>
         </Section>
 
-        <Section title="10. Ley aplicable">
-          <p>Estos términos se rigen por las leyes de la República Argentina. Cualquier disputa será resuelta en los tribunales competentes de la Ciudad Autónoma de Buenos Aires.</p>
+        <Section title="10. Governing law">
+          <p>These terms are governed by the laws of the Argentine Republic. Any dispute will be resolved in the competent courts of the City of Buenos Aires.</p>
         </Section>
 
-        <Section title="11. Contacto">
-          <p>Para consultas sobre estos términos, escribí a <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
+        <Section title="11. Contact">
+          <p>For questions about these terms, write to <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
         </Section>
       </main>
 
       <footer className="border-t border-black/6 px-5 py-8 text-center text-xs text-gray-400">
         <div className="flex justify-center gap-6">
-          <Link href="/privacy" className="hover:text-gray-700 transition-colors">Privacidad</Link>
-          <Link href="/terms" className="hover:text-gray-700 transition-colors">Términos</Link>
-          <Link href="/refunds" className="hover:text-gray-700 transition-colors">Reembolsos</Link>
+          <Link href="/privacy" className="hover:text-gray-700 transition-colors">Privacy</Link>
+          <Link href="/terms" className="hover:text-gray-700 transition-colors">Terms</Link>
+          <Link href="/refunds" className="hover:text-gray-700 transition-colors">Refunds</Link>
         </div>
       </footer>
     </div>

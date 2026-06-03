@@ -18,7 +18,7 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const userId = session.user.id
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } })
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, memoryProfile: true } })
   const plan = user?.plan ?? "free"
   if (plan === "free") return NextResponse.json({ locked: true, plan })
 
@@ -55,13 +55,11 @@ export async function GET() {
     GROUP BY day
     ORDER BY day`
 
-  const memRows = await prisma.$queryRaw<{ category: string | null; n: number }[]>`
-    SELECT category, count(*)::int AS n FROM memories WHERE user_id = ${userId} GROUP BY category`
+  // Memory is now a single free-form profile per user; report its size.
+  const memoryProfile = user?.memoryProfile ?? ""
+  const memoryChars = memoryProfile.trim().length
 
-  const [sessionsCount, memoryCount] = await Promise.all([
-    prisma.chatSession.count({ where: { userId } }),
-    prisma.memory.count({ where: { userId } }),
-  ])
+  const sessionsCount = await prisma.chatSession.count({ where: { userId } })
 
   const totals = totalsRows[0] ?? { turns: 0, fusion_turns: 0, in_chars: 0 }
   const totalResponses = byProvider.reduce((s, r) => s + r.responses, 0)
@@ -89,11 +87,11 @@ export async function GET() {
       sessions: sessionsCount,
       responses: totalResponses,
       fusionTurns: totals.fusion_turns,
-      memories: memoryCount,
+      memoryChars,
       estimatedSpend,
     },
     providers,
     daily: dailyRows.map((d) => ({ day: new Date(d.day).getTime(), turns: d.turns })),
-    memoryByCategory: memRows.map((m) => ({ category: m.category ?? "other", n: m.n })),
+    memoryProfile,
   })
 }

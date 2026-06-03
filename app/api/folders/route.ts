@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const folder = await prisma.folder.create({
     data: {
       userId: session.user.id,
-      name: (typeof name === "string" && name.trim()) ? name.trim().slice(0, 60) : "Nueva carpeta",
+      name: (typeof name === "string" && name.trim()) ? name.trim().slice(0, 60) : "New folder",
       color: typeof color === "string" ? color.slice(0, 16) : null,
     },
     select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },

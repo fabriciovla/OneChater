@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Política de reembolsos · OneChat",
-  description: "Política de reembolsos de OneChat.",
+  title: "Refund policy",
+  description: "OneChater's refund policy.",
 };
 
 export default function RefundsPage() {
@@ -12,63 +12,63 @@ export default function RefundsPage() {
       {/* Nav */}
       <header className="border-b border-black/6 px-5 md:px-10 h-14 flex items-center justify-between">
         <Link href="/" className="text-[15px] font-semibold text-gray-900 hover:opacity-70 transition-opacity">
-          ← OneChat
+          ← OneChater
         </Link>
-        <span className="text-xs text-gray-400">Actualizado: junio 2026</span>
+        <span className="text-xs text-gray-400">Updated: June 2026</span>
       </header>
 
       <main className="max-w-2xl mx-auto px-5 py-14">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Política de reembolsos</h1>
-        <p className="text-gray-500 mb-10">Transparencia total sobre cómo manejamos los pagos y reembolsos.</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Refund policy</h1>
+        <p className="text-gray-500 mb-10">Full transparency on how we handle payments and refunds.</p>
 
-        <Section title="1. Plan gratuito">
-          <p>OneChat ofrece actualmente un plan gratuito sin costo. No se requiere tarjeta de crédito para registrarse ni para usar las funcionalidades básicas del Servicio.</p>
+        <Section title="1. Free plan">
+          <p>OneChater currently offers a free plan at no cost. No credit card is required to sign up or to use the Service&apos;s basic features.</p>
         </Section>
 
-        <Section title="2. Modelo BYOK (Bring Your Own Key)">
-          <p>OneChat funciona con el modelo BYOK: vos proveés tus propias API keys de los proveedores de IA (OpenAI, Anthropic, Google, etc.). <strong>OneChat no cobra por el acceso a los modelos de IA.</strong> Los costos de uso de las APIs son facturados directamente por cada proveedor a vos, según sus propios términos y precios.</p>
-          <p>Para consultas sobre cargos de los proveedores de IA, debés contactar directamente a cada proveedor.</p>
+        <Section title="2. BYOK model (Bring Your Own Key)">
+          <p>OneChater runs on the BYOK model: you provide your own API keys from the AI providers (OpenAI, Anthropic, Google, etc.). <strong>OneChater does not charge for access to the AI models.</strong> API usage costs are billed directly to you by each provider, according to their own terms and pricing.</p>
+          <p>For questions about charges from the AI providers, you must contact each provider directly.</p>
         </Section>
 
-        <Section title="3. Planes pagos (próximamente)">
-          <p>En el futuro, OneChat podría ofrecer planes de suscripción pagos con funcionalidades adicionales. Cuando eso ocurra, esta política se actualizará con los detalles correspondientes.</p>
-          <p>Para cualquier plan pago futuro, la política de reembolsos será:</p>
+        <Section title="3. Paid plans (coming soon)">
+          <p>In the future, OneChater may offer paid subscription plans with additional features. When that happens, this policy will be updated with the relevant details.</p>
+          <p>For any future paid plan, the refund policy will be:</p>
           <ul>
-            <li><strong>Período de prueba:</strong> reembolso completo dentro de los primeros 7 días sin preguntas.</li>
-            <li><strong>Cancelación:</strong> podés cancelar en cualquier momento. El acceso continúa hasta el fin del período facturado. No se ofrecen reembolsos proporcionales por períodos parciales, salvo en casos donde la ley aplicable lo exija.</li>
-            <li><strong>Falla del servicio:</strong> si OneChat sufre una interrupción significativa (más de 24 horas), podemos ofrecer crédito o reembolso proporcional a criterio del equipo.</li>
+            <li><strong>Trial period:</strong> full refund within the first 7 days, no questions asked.</li>
+            <li><strong>Cancellation:</strong> you can cancel at any time. Access continues until the end of the billed period. We don&apos;t offer prorated refunds for partial periods, except where required by applicable law.</li>
+            <li><strong>Service failure:</strong> if OneChater suffers a significant outage (more than 24 hours), we may offer a credit or a prorated refund at the team&apos;s discretion.</li>
           </ul>
         </Section>
 
-        <Section title="4. Cómo solicitar un reembolso">
-          <p>Para solicitar un reembolso (cuando aplique), escribí a <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a> con el asunto <strong>"Solicitud de reembolso"</strong> e incluí:</p>
+        <Section title="4. How to request a refund">
+          <p>To request a refund (where applicable), write to <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a> with the subject <strong>&quot;Refund request&quot;</strong> and include:</p>
           <ul>
-            <li>Tu email de cuenta registrado en OneChat.</li>
-            <li>Motivo de la solicitud.</li>
-            <li>Fecha y monto del cargo (si aplica).</li>
+            <li>The account email registered with OneChater.</li>
+            <li>The reason for the request.</li>
+            <li>The date and amount of the charge (if applicable).</li>
           </ul>
-          <p>Responderemos dentro de los 5 días hábiles.</p>
+          <p>We&apos;ll respond within 5 business days.</p>
         </Section>
 
-        <Section title="5. Excepciones">
-          <p>No se procesarán reembolsos en casos de:</p>
+        <Section title="5. Exceptions">
+          <p>Refunds will not be processed in cases of:</p>
           <ul>
-            <li>Violación de los Términos de uso que resultó en suspensión de la cuenta.</li>
-            <li>Uso fraudulento o abuso del Servicio.</li>
-            <li>Cargos de terceros proveedores de IA (esos corresponden a cada proveedor).</li>
+            <li>Violation of the Terms of use that resulted in account suspension.</li>
+            <li>Fraudulent use or abuse of the Service.</li>
+            <li>Charges from third-party AI providers (those are handled by each provider).</li>
           </ul>
         </Section>
 
-        <Section title="6. Contacto">
-          <p>¿Tenés alguna duda? Escribinos a <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
+        <Section title="6. Contact">
+          <p>Have a question? Write to <a href="mailto:fabriciouala1@gmail.com" className="underline text-gray-700 hover:text-gray-900">fabriciouala1@gmail.com</a>.</p>
         </Section>
       </main>
 
       <footer className="border-t border-black/6 px-5 py-8 text-center text-xs text-gray-400">
         <div className="flex justify-center gap-6">
-          <Link href="/privacy" className="hover:text-gray-700 transition-colors">Privacidad</Link>
-          <Link href="/terms" className="hover:text-gray-700 transition-colors">Términos</Link>
-          <Link href="/refunds" className="hover:text-gray-700 transition-colors">Reembolsos</Link>
+          <Link href="/privacy" className="hover:text-gray-700 transition-colors">Privacy</Link>
+          <Link href="/terms" className="hover:text-gray-700 transition-colors">Terms</Link>
+          <Link href="/refunds" className="hover:text-gray-700 transition-colors">Refunds</Link>
         </div>
       </footer>
     </div>

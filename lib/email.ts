@@ -12,11 +12,11 @@ export async function sendOTPEmail({
   const digits = code.split("")
 
   const html = `<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tu código de acceso — OneChater</title>
+  <title>Your access code — OneChater</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 
@@ -58,11 +58,11 @@ export async function sendOTPEmail({
 
               <!-- Title -->
               <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0E0F12;letter-spacing:-0.4px;text-align:center;">
-                Tu código de acceso
+                Your access code
               </p>
               <p style="margin:0 0 32px;font-size:14px;color:#6b7280;text-align:center;line-height:1.5;">
-                Ingresá este código en OneChater para iniciar sesión.<br/>
-                No lo compartas con nadie.
+                Enter this code in OneChater to sign in.<br/>
+                Don't share it with anyone.
               </p>
 
               <!-- OTP code block -->
@@ -100,7 +100,7 @@ export async function sendOTPEmail({
                 <tr>
                   <td style="background:#fef9f0;border:1px solid #fed7aa;border-radius:10px;padding:12px 16px;text-align:center;">
                     <p style="margin:0;font-size:13px;color:#92400e;">
-                      ⏱ Expira en <strong>${expiresMinutes} minutos</strong>
+                      ⏱ Expires in <strong>${expiresMinutes} minutes</strong>
                     </p>
                   </td>
                 </tr>
@@ -111,8 +111,8 @@ export async function sendOTPEmail({
 
               <!-- Security note -->
               <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.6;">
-                Si no solicitaste este código, podés ignorar este correo con seguridad.<br/>
-                Tu cuenta permanece protegida.
+                If you didn't request this code, you can safely ignore this email.<br/>
+                Your account stays protected.
               </p>
             </td>
           </tr>
@@ -121,10 +121,10 @@ export async function sendOTPEmail({
           <tr>
             <td style="padding-top:24px;text-align:center;">
               <p style="margin:0;font-size:11px;color:#9ca3af;">
-                OneChater · El chat con todas las IAs en un solo lugar
+                OneChater · Every AI chat in one place
               </p>
               <p style="margin:4px 0 0;font-size:11px;color:#d1d5db;">
-                Este es un correo automático, por favor no respondas a este mensaje.
+                This is an automated email, please don't reply to this message.
               </p>
             </td>
           </tr>
@@ -137,13 +137,13 @@ export async function sendOTPEmail({
 </html>`
 
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) throw new Error("RESEND_API_KEY no configurada")
+  if (!apiKey) throw new Error("RESEND_API_KEY not configured")
 
   const resend = new Resend(apiKey)
   await resend.emails.send({
     from: "OneChater <onboarding@resend.dev>",
     to,
-    subject: `${code} es tu código de acceso a OneChater`,
+    subject: `${code} is your OneChater access code`,
     html,
   })
 }

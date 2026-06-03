@@ -38,8 +38,8 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
   return (
     <button
       onClick={toggle}
-      aria-label={dark ? "Activar modo claro" : "Activar modo oscuro"}
-      title={dark ? "Modo claro" : "Modo oscuro"}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      title={dark ? "Light mode" : "Dark mode"}
       className={`relative w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:shadow-sm active:scale-95 ${className}`}
       style={{ color: "var(--text-2)", background: "var(--surface)", border: "1px solid var(--border)" }}
     >

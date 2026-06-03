@@ -2,6 +2,60 @@
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react"
 import { signIn } from "next-auth/react"
+import { LangToggle, useT } from "@/lib/i18n"
+
+const LOGIN_COPY = {
+  en: {
+    welcomeBack: "Welcome back",
+    checkEmail: "Check your email",
+    enterEmail: "Enter your email and we'll send you an access code.",
+    sentTo: "We sent a 6-digit code to",
+    continueGoogle: "Continue with Google",
+    continueGitHub: "Continue with GitHub",
+    orWithEmail: "or with email",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
+    sending: "Sending…",
+    sendCode: "Send code",
+    verifying: "Verifying…",
+    signIn: "Sign in",
+    changeEmail: "← Change email",
+    resendIn: "Resend in",
+    resendCode: "Resend code",
+    terms: "By continuing you agree to our",
+    termsLink: "Terms of service",
+    and: "and",
+    privacyLink: "Privacy policy",
+    failedSend: "Failed to send the code",
+    failedVerify: "Failed to verify the code",
+    incorrectCode: "Incorrect or expired code",
+  },
+  es: {
+    welcomeBack: "Bienvenido de vuelta",
+    checkEmail: "Revisá tu email",
+    enterEmail: "Ingresá tu email y te mandamos un código de acceso.",
+    sentTo: "Enviamos un código de 6 dígitos a",
+    continueGoogle: "Continuar con Google",
+    continueGitHub: "Continuar con GitHub",
+    orWithEmail: "o con email",
+    emailLabel: "Email",
+    emailPlaceholder: "vos@ejemplo.com",
+    sending: "Enviando…",
+    sendCode: "Enviar código",
+    verifying: "Verificando…",
+    signIn: "Iniciar sesión",
+    changeEmail: "← Cambiar email",
+    resendIn: "Reenviar en",
+    resendCode: "Reenviar código",
+    terms: "Al continuar aceptás nuestros",
+    termsLink: "Términos de uso",
+    and: "y la",
+    privacyLink: "Política de privacidad",
+    failedSend: "Error al enviar el código",
+    failedVerify: "Error al verificar el código",
+    incorrectCode: "Código incorrecto o expirado",
+  },
+}
 
 function IconGoogle() {
   return (
@@ -34,6 +88,7 @@ function safeNext(): string {
 }
 
 export default function LoginPage() {
+  const t = useT(LOGIN_COPY)
   const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState(["", "", "", "", "", ""])
@@ -70,7 +125,7 @@ export default function LoginPage() {
       setStep("otp")
       setResendCountdown(60)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error al enviar el código")
+      setError(err instanceof Error ? err.message : t.failedSend)
     } finally {
       setLoading(false)
     }
@@ -81,10 +136,10 @@ export default function LoginPage() {
     setError("")
     try {
       const res = await signIn("otp", { email: email.trim(), code, redirect: false })
-      if (res?.error) throw new Error("Código incorrecto o expirado")
+      if (res?.error) throw new Error(t.incorrectCode)
       window.location.href = safeNext()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error al verificar el código")
+      setError(err instanceof Error ? err.message : t.failedVerify)
       setOtp(["", "", "", "", "", ""])
       setTimeout(() => otpRefs.current[0]?.focus(), 50)
     } finally {
@@ -203,7 +258,7 @@ export default function LoginPage() {
 
           <div className="max-w-md">
             <h2 className="display text-white text-4xl xl:text-5xl font-semibold tracking-tight leading-[1.05]">
-              Una memoria.<br />
+              One memory.<br />
               <span
                 className="inline-block"
                 style={{
@@ -213,11 +268,11 @@ export default function LoginPage() {
                   backgroundClip: "text",
                 }}
               >
-                Todos los modelos.
+                Every model.
               </span>
             </h2>
             <p className="mt-5 text-white/60 text-lg leading-relaxed">
-              GPT, Claude, Gemini. Chateá con todos sin perder el contexto.
+              GPT, Claude, Gemini. Chat with all of them without losing context.
             </p>
           </div>
         </div>
@@ -228,20 +283,20 @@ export default function LoginPage() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Sesión segura
+            Secure session
           </span>
           <span className="flex items-center gap-1.5">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
               <circle cx="12" cy="12" r="10" />
               <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Código abierto
+            Bring your keys
           </span>
           <span className="flex items-center gap-1.5">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Sin lock-in
+            No lock-in
           </span>
         </div>
 
@@ -266,9 +321,13 @@ export default function LoginPage() {
         className="relative flex flex-col items-center justify-center px-6 py-12 lg:px-12"
         style={{ background: "var(--bg-secondary)" }}
       >
+        {/* Desktop lang toggle */}
+        <div className="hidden lg:block absolute top-6 right-6">
+          <LangToggle />
+        </div>
 
         {/* Mobile logo (visible only when left panel hidden) */}
-        <div className="lg:hidden flex justify-center mb-8">
+        <div className="lg:hidden flex justify-between items-center mb-8 w-full">
           <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl" style={{ background: "#0E0F12" }}>
             <svg viewBox="0 0 100 100" className="w-7 h-7">
               <path d="M 32 22 Q 18 26 18 40 Q 20 54 34 54 Q 48 52 46 38 Q 44 24 32 22 Z" fill="white" />
@@ -277,18 +336,19 @@ export default function LoginPage() {
             </svg>
             <span className="text-white font-bold text-[17px] tracking-tight">OneChater</span>
           </div>
+          <LangToggle />
         </div>
 
         <div className="w-full max-w-[420px]">
           {/* Header */}
           <div className="mb-8 text-center">
             <h1 className="display text-[28px] lg:text-[32px] font-semibold text-gray-900 tracking-tight leading-tight">
-              {step === "email" ? "Bienvenido de vuelta" : "Revisá tu correo"}
+              {step === "email" ? t.welcomeBack : t.checkEmail}
             </h1>
             <p className="text-[14px] text-gray-500 mt-2 leading-relaxed">
               {step === "email"
-                ? "Ingresá tu correo y te enviamos un código de acceso."
-                : <>Enviamos un código de 6 dígitos a <span className="font-semibold text-gray-700">{email}</span></>}
+                ? t.enterEmail
+                : <>{t.sentTo} <span className="font-semibold text-gray-700">{email}</span></>}
             </p>
           </div>
 
@@ -307,30 +367,30 @@ export default function LoginPage() {
                 className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl text-[14px] font-medium transition-all hover:bg-gray-50 active:scale-[0.98] cursor-pointer"
                 style={{ border: "1.5px solid var(--border)", color: "#374151" }}
               >
-                <IconGoogle /> Continuar con Google
+                <IconGoogle /> {t.continueGoogle}
               </button>
               <button
                 onClick={() => signIn("github", { callbackUrl: safeNext() })}
                 className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl text-[14px] font-medium transition-all hover:bg-gray-50 active:scale-[0.98] cursor-pointer"
                 style={{ border: "1.5px solid var(--border)", color: "#374151" }}
               >
-                <IconGitHub /> Continuar con GitHub
+                <IconGitHub /> {t.continueGitHub}
               </button>
             </div>
 
             <div className="flex items-center gap-3 mb-5">
               <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
-              <span className="text-[11px] font-medium" style={{ color: "var(--text-4)" }}>o con correo</span>
+              <span className="text-[11px] font-medium" style={{ color: "var(--text-4)" }}>{t.orWithEmail}</span>
               <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
             </div>
 
             {step === "email" ? (
               <form onSubmit={handleSendOTP} className="space-y-3">
-                <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">Correo electrónico</label>
+                <label className="block text-[12px] font-semibold text-gray-700 mb-1.5">{t.emailLabel}</label>
                 <input
                   ref={emailRef}
                   type="email"
-                  placeholder="tucorreo@ejemplo.com"
+                  placeholder={t.emailPlaceholder}
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError("") }}
                   disabled={loading}
@@ -349,26 +409,28 @@ export default function LoginPage() {
                     background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)",
                     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px -8px rgba(14,15,18,0.35)",
                   }}>
-                  {loading ? "Enviando…" : "Enviar código"}
+                  {loading ? t.sending : t.sendCode}
                 </button>
               </form>
 
             ) : (
               <div className="space-y-5">
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center gap-1.5 sm:gap-2">
                   {otp.map((digit, idx) => (
                     <input
                       key={idx}
                       ref={(el) => { otpRefs.current[idx] = el }}
                       type="text"
                       inputMode="numeric"
+                      pattern="[0-9]*"
                       maxLength={1}
                       value={digit}
+                      autoComplete={idx === 0 ? "one-time-code" : "off"}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleOtpKey(idx, e)}
-                      onPaste={idx === 0 ? handleOtpPaste : undefined}
+                      onPaste={handleOtpPaste}
                       disabled={loading}
-                      className="w-11 h-14 text-center text-[22px] font-bold text-gray-900 rounded-xl focus:outline-none transition-all disabled:opacity-40"
+                      className="w-9 h-12 sm:w-11 sm:h-14 text-center text-[18px] sm:text-[22px] font-bold text-gray-900 rounded-xl focus:outline-none transition-all disabled:opacity-40"
                       style={{
                         background: "var(--surface-2)",
                         border: digit ? "2px solid var(--text-1)" : "2px solid var(--border-strong)",
@@ -388,23 +450,23 @@ export default function LoginPage() {
                     background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)",
                     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px -8px rgba(14,15,18,0.35)",
                   }}>
-                  {loading ? "Verificando…" : "Ingresar"}
+                  {loading ? t.verifying : t.signIn}
                 </button>
 
                 <div className="flex items-center justify-between text-xs text-gray-400">
                   <button
                     onClick={() => { setStep("email"); setOtp(["", "", "", "", "", ""]); setError("") }}
                     className="hover:text-gray-600 transition-colors cursor-pointer">
-                    ← Cambiar correo
+                    {t.changeEmail}
                   </button>
                   {resendCountdown > 0 ? (
-                    <span>Reenviar en {resendCountdown}s</span>
+                    <span>{t.resendIn} {resendCountdown}s</span>
                   ) : (
                     <button
                       onClick={() => handleSendOTP()}
                       disabled={loading}
                       className="hover:text-gray-600 transition-colors cursor-pointer disabled:opacity-40">
-                      Reenviar código
+                      {t.resendCode}
                     </button>
                   )}
                 </div>
@@ -413,10 +475,10 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-[11px] text-gray-400 mt-6 leading-relaxed">
-            Al continuar aceptás nuestros{" "}
-            <a href="/terms" className="underline underline-offset-2 cursor-pointer hover:text-gray-600">Términos de servicio</a>
-            {" "}y{" "}
-            <a href="/privacy" className="underline underline-offset-2 cursor-pointer hover:text-gray-600">Política de privacidad</a>
+            {t.terms}{" "}
+            <a href="/terms" className="underline underline-offset-2 cursor-pointer hover:text-gray-600">{t.termsLink}</a>
+            {" "}{t.and}{" "}
+            <a href="/privacy" className="underline underline-offset-2 cursor-pointer hover:text-gray-600">{t.privacyLink}</a>
           </p>
         </div>
       </div>

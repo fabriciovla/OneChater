@@ -45,17 +45,16 @@ interface Folder {
   updatedAt: number
 }
 
-// A durable fact the AI remembers about the user across ALL conversations.
-interface Memory {
-  id: string
-  content: string
-  category?: string | null
-  createdAt: number
-}
-
 // ─── Provider configs ─────────────────────────────────────────────────────────
 
 const PROVIDERS: Provider[] = ["openai", "anthropic", "google", "groq", "openrouter", "xai", "mistral", "deepseek"]
+
+// Providers whose free tier / free models let you use them at no cost (you only
+// pay if you opt into bigger paid models). The Free plan can bring keys for
+// these; the rest require a paid plan. Demo keys are always exempt.
+const FREE_PROVIDERS: Provider[] = ["groq", "openrouter", "mistral", "google"]
+const providerLocked = (p: Provider, plan: string, key?: string) =>
+  plan === "free" && key !== "demo" && !FREE_PROVIDERS.includes(p)
 
 const CFG = {
   openai: {
@@ -225,27 +224,27 @@ const CFG = {
 
 // Short, human descriptions shown under each model in the picker (menu style).
 const MODEL_DESC: Record<string, string> = {
-  "gpt-5.5": "Lo más capaz de OpenAI",
-  "gpt-5.4": "Equilibrio entre calidad y costo",
-  "gpt-5.4-mini": "Rápido y económico",
-  "claude-opus-4-8": "Máxima capacidad de Claude",
-  "claude-sonnet-4-6": "Balance ideal para el día a día",
-  "claude-haiku-4-5-20251001": "El más rápido para respuestas cortas",
-  "gemini-3-pro-preview": "Razonamiento avanzado de Google",
-  "gemini-2.5-pro": "Potente para tareas complejas",
-  "gemini-2.5-flash": "Rápido y multimodal",
-  "llama-3.3-70b-versatile": "Versátil, muy veloz en Groq",
-  "openai/gpt-oss-120b": "Modelo abierto grande",
-  "llama-3.1-8b-instant": "Ultrarrápido para tareas simples",
-  "grok-4.3": "Lo último de xAI",
-  "grok-4-0709": "Grok 4 estándar",
-  "grok-3": "Generación anterior, económico",
-  "mistral-large-latest": "El más capaz de Mistral",
-  "mistral-medium-latest": "Equilibrado",
-  "mistral-small-latest": "Liviano y rápido",
-  "codestral-latest": "Especializado en código",
-  "deepseek-chat": "Conversación general",
-  "deepseek-reasoner": "Razonamiento profundo paso a paso",
+  "gpt-5.5": "OpenAI's most capable model",
+  "gpt-5.4": "Balance of quality and cost",
+  "gpt-5.4-mini": "Fast and affordable",
+  "claude-opus-4-8": "Claude's maximum capability",
+  "claude-sonnet-4-6": "The ideal everyday balance",
+  "claude-haiku-4-5-20251001": "Fastest for short answers",
+  "gemini-3-pro-preview": "Google's advanced reasoning",
+  "gemini-2.5-pro": "Powerful for complex tasks",
+  "gemini-2.5-flash": "Fast and multimodal",
+  "llama-3.3-70b-versatile": "Versatile, very fast on Groq",
+  "openai/gpt-oss-120b": "Large open model",
+  "llama-3.1-8b-instant": "Ultra-fast for simple tasks",
+  "grok-4.3": "The latest from xAI",
+  "grok-4-0709": "Grok 4 standard",
+  "grok-3": "Previous generation, affordable",
+  "mistral-large-latest": "Mistral's most capable model",
+  "mistral-medium-latest": "Balanced",
+  "mistral-small-latest": "Light and fast",
+  "codestral-latest": "Specialized in code",
+  "deepseek-chat": "General conversation",
+  "deepseek-reasoner": "Deep step-by-step reasoning",
 }
 
 // ─── Image generation ──────────────────────────────────────────────────────────
@@ -312,60 +311,55 @@ const MEMORY_MODELS: Partial<Record<Provider, string>> = {
   openrouter: "nvidia/nemotron-3-super-120b-a12b:free",
 }
 
-// Instructions for the extractor model. `known` are facts we already store,
-// passed so the model doesn't return duplicates.
-function buildExtractPrompt(known: string[]): string {
-  return `Sos un extractor de memoria de largo plazo para un asistente de IA. A partir del intercambio, extraé SOLO hechos durables sobre el USUARIO que convenga recordar en futuras conversaciones: su stack/tecnologías, proyectos y clientes, preferencias de trabajo, decisiones tomadas, tono/estilo, y datos personales relevantes para sus tareas.
+// Max characters we keep for a memory profile client-side (the API also clamps
+// per plan). Big enough for a rich profile, small enough to stay cheap to inject.
+const MEMORY_PROFILE_MAX = 8000
 
-NO incluyas: preguntas puntuales, contenido efímero, obviedades, ni nada que ya sé.
+// Instructions for the updater model. Memory is a single free-form PROMPT
+// (organized in sections) rather than a list of discrete facts. The model is
+// asked to return the FULL updated profile so we can store it verbatim.
+function buildMemoryUpdatePrompt(currentProfile: string): string {
+  return `You maintain a long-term MEMORY PROFILE about a user for an AI assistant. The profile is a short, free-form prompt organized in sections — for example "Work context", "Personal context", "Preferences", "Top of mind". It is shared across every model and conversation, so any assistant reading it instantly knows the user.
 
-Ya sé esto (NO lo repitas ni lo reformules):
-${known.length ? known.map((k) => `- ${k}`).join("\n") : "(nada todavía)"}
+Here is the user's CURRENT profile (may be empty):
+"""
+${currentProfile.trim() || "(empty)"}
+"""
 
-Devolvé EXCLUSIVAMENTE un array JSON válido, con 0 a 5 objetos:
-[{"content":"hecho corto en español","category":"stack|project|preference|decision|tone|other"}]
+From the exchange below, produce an UPDATED profile:
+- Add durable, genuinely useful facts about the USER: their work, stack/technologies, projects and clients, goals, preferences, writing tone, and relevant personal context.
+- Merge with what's already there — never duplicate, never lose information that is still true, never invent anything.
+- Keep it concise and well-structured under clear section headings. Write in the same language the user writes in.
+- Ignore one-off questions, ephemeral details and trivia.
 
-REGLA DE FORMATO ESTRICTA: tu respuesta tiene que EMPEZAR con "[" y TERMINAR con "]". Nada de texto antes o después, nada de explicaciones, nada de markdown ni \`\`\`. Si no hay nada nuevo que valga la pena, devolvé exactamente: []`
+Return ONLY the full updated profile text. No preamble, no commentary, no quotes, no markdown code fences. If nothing meaningful changed, return the current profile unchanged.`
 }
 
-// Pull a JSON fact array out of an LLM response (which may wrap it in prose
-// or a ```json fence). Returns clamped, validated facts.
-function parseFacts(raw: string): { content: string; category: string | null }[] {
-  try {
-    const m = raw.match(/\[[\s\S]*\]/)
-    if (!m) return []
-    const arr = JSON.parse(m[0])
-    if (!Array.isArray(arr)) return []
-    return arr
-      .filter((x) => x && typeof x.content === "string" && x.content.trim().length > 2)
-      .slice(0, 5)
-      .map((x) => ({
-        content: String(x.content).trim().slice(0, 400),
-        category: typeof x.category === "string" ? x.category.slice(0, 40) : null,
-      }))
-  } catch {
-    return []
-  }
+// Normalize an updater response into a clean profile string: strip stray code
+// fences / wrapping quotes, trim, and clamp length.
+function cleanProfile(raw: string): string {
+  let s = raw.trim()
+  s = s.replace(/^```[a-zA-Z]*\s*/, "").replace(/```\s*$/, "").trim()
+  if (s.length > 1 && s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1).trim()
+  return s.slice(0, MEMORY_PROFILE_MAX)
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildSystemPrompt(provider: Provider, activeProviders: Provider[], memories: Memory[]): { role: string; content: string } {
+function buildSystemPrompt(provider: Provider, activeProviders: Provider[], memoryProfile: string): { role: string; content: string } {
   const others = activeProviders.filter((p) => p !== provider).map((p) => CFG[p].name)
-  const othersStr = others.length > 0 ? ` junto a ${others.join(" y ")}` : ""
-  const memBlock = memories.length
-    ? `\n\nMEMORIA DEL USUARIO (aprendida en conversaciones anteriores, vale para TODA charla con cualquier modelo):\n${memories
-        .slice(0, 40)
-        .map((m) => `- ${m.content}`)
-        .join("\n")}\n\nUsá esta memoria cuando sea relevante. No la recites entera ni digas "según mi memoria"; simplemente actuá como alguien que ya conoce al usuario y su contexto.`
+  const othersStr = others.length > 0 ? ` alongside ${others.join(" and ")}` : ""
+  const profile = memoryProfile.trim()
+  const memBlock = profile
+    ? `\n\nUSER MEMORY PROFILE (learned from previous conversations; valid for EVERY chat with ANY model):\n"""\n${profile.slice(0, MEMORY_PROFILE_MAX)}\n"""\n\nUse this memory when relevant. Don't recite it back or say "according to my memory"; just act like someone who already knows the user and their context.`
     : ""
   return {
     role: "system",
-    content: `Eres ${CFG[provider].name} en una plataforma de chat multi-modelo${othersStr}.
+    content: `You are ${CFG[provider].name} on a multi-model chat platform${othersStr}.
 
-REGLA CRÍTICA: El historial de conversación contiene respuestas de TODOS los modelos participantes. Cada respuesta de asistente tiene prefijos como [${CFG[provider].name}]:${others.map((n) => ` [${n}]:`).join("")} que indican qué modelo dijo cada cosa. Este historial ES tu memoria compartida.
+CRITICAL RULE: The conversation history contains answers from ALL participating models. Each assistant answer is prefixed like [${CFG[provider].name}]:${others.map((n) => ` [${n}]:`).join("")} to indicate which model said what. This history IS your shared memory.
 
-IMPORTANTE: Respondé DIRECTAMENTE sin incluir ningún prefijo como [${CFG[provider].name}]: al inicio. Nunca copies ese formato en tu respuesta. NUNCA digas que no tienes acceso a lo que dijeron otros modelos. Respondé siempre en el idioma del usuario.${memBlock}`,
+IMPORTANT: Answer DIRECTLY without including any prefix like [${CFG[provider].name}]: at the start. Never copy that format into your answer. NEVER say you don't have access to what other models said. Always answer in the user's language.${memBlock}`,
   }
 }
 
@@ -374,9 +368,9 @@ function buildSharedHistory(
   activeProviders: Provider[],
   newMessage: string,
   provider: Provider,
-  memories: Memory[] = []
+  memoryProfile: string = ""
 ): { role: string; content: string }[] {
-  const msgs: { role: string; content: string }[] = [buildSystemPrompt(provider, activeProviders, memories)]
+  const msgs: { role: string; content: string }[] = [buildSystemPrompt(provider, activeProviders, memoryProfile)]
   for (const turn of turns) {
     msgs.push({ role: "user", content: turn.userMessage })
     if (turn.isFusion && turn.fusedResponse?.done && turn.fusedResponse.content && !turn.fusedResponse.error) {
@@ -422,7 +416,7 @@ function groupSessionsByDate(sessions: ChatSession[]): { label: string; sessions
     else if (s.updatedAt >= startOfMonth) buckets.mes.push(s)
     else buckets.antiguo.push(s)
   }
-  const labels: Record<string, string> = { hoy: "Hoy", ayer: "Ayer", semana: "Últimos 7 días", mes: "Últimos 30 días", antiguo: "Más antiguas" }
+  const labels: Record<string, string> = { hoy: "Today", ayer: "Yesterday", semana: "Last 7 days", mes: "Last 30 days", antiguo: "Older" }
   return (["hoy", "ayer", "semana", "mes", "antiguo"] as const)
     .filter((k) => buckets[k].length > 0)
     .map((k) => ({ label: labels[k], sessions: buckets[k] }))
@@ -430,7 +424,7 @@ function groupSessionsByDate(sessions: ChatSession[]): { label: string; sessions
 
 const SUGGESTED_PROMPTS: { title: string; subtitle: string; from: string; to: string; icon: React.ReactNode }[] = [
   {
-    title: "Idea creativa", subtitle: "Brainstormeá ideas para…",
+    title: "Creative idea", subtitle: "Brainstorm ideas for…",
     from: "from-orange-500", to: "to-amber-500",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
@@ -439,7 +433,7 @@ const SUGGESTED_PROMPTS: { title: string; subtitle: string; from: string; to: st
     ),
   },
   {
-    title: "Explicame", subtitle: "Conceptos complejos en simple",
+    title: "Explain it", subtitle: "Complex concepts made simple",
     from: "from-amber-400", to: "to-yellow-500",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
@@ -448,7 +442,7 @@ const SUGGESTED_PROMPTS: { title: string; subtitle: string; from: string; to: st
     ),
   },
   {
-    title: "Código", subtitle: "Ayudame a debuggear o escribir",
+    title: "Code", subtitle: "Help me debug or write",
     from: "from-blue-500", to: "to-cyan-500",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
@@ -457,7 +451,7 @@ const SUGGESTED_PROMPTS: { title: string; subtitle: string; from: string; to: st
     ),
   },
   {
-    title: "Comparar", subtitle: "Analizá diferencias entre opciones",
+    title: "Compare", subtitle: "Analyze differences between options",
     from: "from-violet-500", to: "to-purple-600",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
@@ -621,16 +615,16 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
               <span className="absolute w-2 h-2 rounded-full animate-ping opacity-50" style={{ background: c.color }} />
               <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
             </span>
-            Generando
+            Generating
           </span>
         )}
         <div className="flex-1" />
         {state.done && !state.error && state.content && isImg && (
-          <a href={state.content} download={`onechat-${provider}.png`}
+          <a href={state.content} download={`onechater-${provider}.png`}
             className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
             style={{ background: "var(--surface)", border: `1px solid ${c.colorBorder}`, color: "var(--text-3)" }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-            Descargar
+            Download
           </a>
         )}
       </div>
@@ -643,7 +637,7 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
           : isImg
           ? <a href={state.content} target="_blank" rel="noopener noreferrer" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={state.content} alt="Imagen generada" className="rounded-xl w-full h-auto transition-transform duration-200 hover:scale-[1.01]"
+              <img src={state.content} alt="Generated image" className="rounded-xl w-full h-auto transition-transform duration-200 hover:scale-[1.01]"
                 style={{ border: "1px solid var(--border-soft)" }} />
             </a>
           : state.content
@@ -659,19 +653,19 @@ function ResponseCard({ provider, state, selectedModel, index = 0, animate = fal
       {/* Action bar — ChatGPT-style: copy, like, dislike, regenerate */}
       {state.done && !state.error && state.content && !isImg && (
         <div className="flex items-center gap-0.5 mt-1.5 ml-3 opacity-60 group-hover:opacity-100 transition-opacity">
-          <ActBtn onClick={handleCopy} title={copied ? "Copiado" : "Copiar"} active={copied}>
+          <ActBtn onClick={handleCopy} title={copied ? "Copied" : "Copy"} active={copied}>
             {copied
               ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12" /></svg>
               : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>}
           </ActBtn>
-          <ActBtn onClick={() => setVote((v) => (v === "up" ? null : "up"))} title="Buena respuesta" active={vote === "up"}>
+          <ActBtn onClick={() => setVote((v) => (v === "up" ? null : "up"))} title="Good response" active={vote === "up"}>
             <svg viewBox="0 0 24 24" fill={vote === "up" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" /></svg>
           </ActBtn>
-          <ActBtn onClick={() => setVote((v) => (v === "down" ? null : "down"))} title="Mala respuesta" active={vote === "down"}>
+          <ActBtn onClick={() => setVote((v) => (v === "down" ? null : "down"))} title="Bad response" active={vote === "down"}>
             <svg viewBox="0 0 24 24" fill={vote === "down" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M17 14V2" /><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z" /></svg>
           </ActBtn>
           {onRegenerate && (
-            <ActBtn onClick={onRegenerate} title="Regenerar respuesta">
+            <ActBtn onClick={onRegenerate} title="Regenerate response">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 21v-5h5" /></svg>
             </ActBtn>
           )}
@@ -722,7 +716,7 @@ function FusionCard({ state, providers, animate = false }: { state: ModelRespons
             )
           })}
         </div>
-        <span className="text-[13px] font-bold text-orange-600">Fusión</span>
+        <span className="text-[13px] font-bold text-orange-600">Fusion</span>
         <span className="text-[11px]" style={{ color: "var(--text-4)" }}>{providers.map((p) => CFG[p].name).join(" · ")}</span>
         {isCollecting && (
           <span className="flex items-center gap-1 text-[10px] font-medium text-orange-500">
@@ -748,9 +742,9 @@ function FusionCard({ state, providers, animate = false }: { state: ModelRespons
             className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-all duration-150"
             style={{ background: "var(--surface)", border: "1px solid rgba(249,115,22,0.25)", color: copied ? "#f97316" : "var(--text-3)" }}>
             {copied ? (
-              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copiado</>
+              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><polyline points="20 6 9 17 4 12" /></svg>Copied</>
             ) : (
-              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copiar</>
+              <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>Copy</>
             )}
           </button>
         )}
@@ -884,12 +878,12 @@ function EmptyState({ hasActive, onActivateDemo, onPromptClick }: {
 
       <div className="space-y-2 max-w-md heading-enter">
         <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-          {hasActive ? "¿Qué querés preguntar?" : "Conectá tu primera IA"}
+          {hasActive ? "What do you want to ask?" : "Connect your first AI"}
         </h2>
         <p className="text-sm text-gray-500 leading-relaxed">
           {hasActive
-            ? "Elegí una pregunta o escribí la tuya. Con más de un modelo activo, las respuestas se fusionan en una sola."
-            : "Seleccioná una IA en el botón inferior e ingresá tu API key, o probá el modo demo sin configurar nada."}
+            ? "Pick a prompt or write your own. With more than one model active, the answers merge into a single one."
+            : "Select an AI from the button below and enter your API key, or try demo mode without setting anything up."}
         </p>
       </div>
 
@@ -934,7 +928,7 @@ function EmptyState({ hasActive, onActivateDemo, onPromptClick }: {
 // ─── Model Dropdown ───────────────────────────────────────────────────────────
 
 function AIChipSelector({
-  apiKeys, setApiKeys, enabled, setEnabled, selectedModels, setSelectedModels, onActivateDemo,
+  apiKeys, setApiKeys, enabled, setEnabled, selectedModels, setSelectedModels, onActivateDemo, plan,
 }: {
   apiKeys: Record<Provider, string>
   setApiKeys: (k: Record<Provider, string>) => void
@@ -943,13 +937,14 @@ function AIChipSelector({
   selectedModels: Record<Provider, string>
   setSelectedModels: (m: Record<Provider, string>) => void
   onActivateDemo: () => void
+  plan: string
 }) {
   const [panelOpen, setPanelOpen] = useState(false)
   const [expanded, setExpanded] = useState<Provider | null>(null)
   const [draftKey, setDraftKey] = useState("")
   const panelRef = useRef<HTMLDivElement>(null)
   const isDemo = PROVIDERS.some((p) => apiKeys[p] === "demo")
-  const activeProviders = PROVIDERS.filter((p) => apiKeys[p].trim() && enabled[p])
+  const activeProviders = PROVIDERS.filter((p) => apiKeys[p].trim() && enabled[p] && !providerLocked(p, plan, apiKeys[p]))
 
   const close = () => { setPanelOpen(false); setExpanded(null); setDraftKey("") }
 
@@ -965,6 +960,7 @@ function AIChipSelector({
   const handleToggle = (p: Provider) => setEnabled({ ...enabled, [p]: !enabled[p] })
 
   const handleRowClick = (p: Provider) => {
+    if (providerLocked(p, plan, apiKeys[p])) return // paid-only on Free plan
     if (expanded === p) { setExpanded(null); setDraftKey("") }
     else { setExpanded(p); setDraftKey(apiKeys[p] === "demo" ? "" : apiKeys[p]) }
   }
@@ -1022,8 +1018,8 @@ function AIChipSelector({
         )}
         <span>
           {activeProviders.length > 0
-            ? `${activeProviders.length} IA${activeProviders.length > 1 ? "s" : ""} activa${activeProviders.length > 1 ? "s" : ""}`
-            : "Seleccionar IA"}
+            ? `${activeProviders.length} AI${activeProviders.length > 1 ? "s" : ""} active`
+            : "Select AI"}
         </span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
           style={{ width: 10, height: 10, transition: "transform 0.15s", transform: panelOpen ? "rotate(180deg)" : "none" }}>
@@ -1054,14 +1050,14 @@ function AIChipSelector({
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--border-soft)" }}>
-            <span className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>Seleccionar IA</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>Select AI</span>
             {isDemo ? (
               <span className="flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full"
                 style={{ color: "#f97316", background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
                 Demo
                 <button onClick={() => setApiKeys({ openai: "", anthropic: "", google: "", groq: "", openrouter: "", xai: "", mistral: "", deepseek: "" })}
-                  className="ml-0.5 hover:opacity-70 cursor-pointer" style={{ color: "var(--text-4)" }} title="Salir del modo demo">×</button>
+                  className="ml-0.5 hover:opacity-70 cursor-pointer" style={{ color: "var(--text-4)" }} title="Exit demo mode">×</button>
               </span>
             ) : (
               <button onClick={() => { onActivateDemo(); close() }}
@@ -1070,7 +1066,7 @@ function AIChipSelector({
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 9, height: 9 }}>
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
-                Modo demo
+                Demo mode
               </button>
             )}
           </div>
@@ -1079,40 +1075,59 @@ function AIChipSelector({
           <div className="overflow-y-auto flex-1">
             {PROVIDERS.map((p, ri) => {
               const c = CFG[p]
+              const locked = providerLocked(p, plan, apiKeys[p])
               const hasKey = !!apiKeys[p].trim() && apiKeys[p] !== "demo"
               const isDemoKey = apiKeys[p] === "demo"
-              const active = (hasKey || isDemoKey) && enabled[p]
-              const isExp = expanded === p
+              const active = (hasKey || isDemoKey) && enabled[p] && !locked
+              const isExp = expanded === p && !locked
               const currentModel = c.models.find(m => m.id === selectedModels[p])?.label ?? selectedModels[p]
 
               return (
-                <div key={p} className="ai-row-enter" style={{ borderBottom: "1px solid var(--border-soft)", animationDelay: `${0.04 + ri * 0.035}s` }}>
+                <div key={p} className="ai-row-enter" style={{ borderBottom: "1px solid var(--border-soft)", animationDelay: `${0.04 + ri * 0.035}s`, opacity: locked ? 0.65 : 1 }}>
                   {/* Row */}
-                  <div className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-black/[0.03]"
+                  <div className={`flex items-center gap-3 px-4 py-3 transition-colors ${locked ? "cursor-default" : "cursor-pointer hover:bg-black/[0.03]"}`}
                     onClick={() => handleRowClick(p)}>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105"
                       style={{ background: active ? c.colorLight : "var(--overlay)", border: `1px solid ${active ? c.colorBorder : "var(--border)"}`, color: active ? c.color : "var(--text-4)" }}>
                       <c.Logo size={17} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-semibold" style={{ color: active ? "var(--text-1)" : "var(--text-2)" }}>{c.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[13px] font-semibold" style={{ color: active ? "var(--text-1)" : "var(--text-2)" }}>{c.name}</span>
+                        {locked && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                            style={{ color: "#8b5cf6", background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)" }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-2.5 h-2.5"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                            Pro
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[11px] truncate" style={{ color: active ? c.color : "var(--text-4)" }}>
-                        {isDemoKey ? "Modo demo" : hasKey ? currentModel : "Sin API key · tocá para agregar"}
+                        {locked ? "Paid plan required" : isDemoKey ? "Demo mode" : hasKey ? currentModel : "No API key · tap to add"}
                       </div>
                     </div>
                     <div className="flex items-center gap-2.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                      {(hasKey || isDemoKey) && (
-                        <button onClick={() => handleToggle(p)}
-                          className="w-9 h-5 rounded-full transition-colors duration-200 relative cursor-pointer flex-shrink-0"
-                          style={{ background: active ? c.color : "var(--border-strong)" }}>
-                          <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200"
-                            style={{ left: active ? "18px" : "2px" }} />
-                        </button>
+                      {locked ? (
+                        <a href="/#pricing" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                          style={{ color: "#8b5cf6", background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                          Upgrade
+                        </a>
+                      ) : (
+                        <>
+                          {(hasKey || isDemoKey) && (
+                            <button onClick={() => handleToggle(p)}
+                              className="w-9 h-5 rounded-full transition-colors duration-200 relative cursor-pointer flex-shrink-0"
+                              style={{ background: active ? c.color : "var(--border-strong)" }}>
+                              <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200"
+                                style={{ left: active ? "18px" : "2px" }} />
+                            </button>
+                          )}
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                            style={{ width: 13, height: 13, color: "var(--text-4)", transition: "transform 0.18s", transform: isExp ? "rotate(180deg)" : "none" }}>
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </>
                       )}
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                        style={{ width: 13, height: 13, color: "var(--text-4)", transition: "transform 0.18s", transform: isExp ? "rotate(180deg)" : "none" }}>
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
                     </div>
                   </div>
 
@@ -1123,7 +1138,7 @@ function AIChipSelector({
                       <div className="flex items-center gap-2">
                         <input
                           type="password"
-                          placeholder={`API key de ${c.label}…`}
+                          placeholder={`${c.label} API key…`}
                           value={draftKey}
                           onChange={(e) => setDraftKey(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Enter") handleSaveKey(p) }}
@@ -1133,7 +1148,7 @@ function AIChipSelector({
                         />
                         <button onClick={() => handleSaveKey(p)} disabled={!draftKey.trim()}
                           className="flex items-center justify-center w-9 h-9 rounded-lg cursor-pointer disabled:opacity-30 hover:opacity-85 flex-shrink-0"
-                          style={{ background: c.color }} title="Guardar">
+                          style={{ background: c.color }} title="Save">
                           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
@@ -1141,7 +1156,7 @@ function AIChipSelector({
                         {hasKey && (
                           <button onClick={() => handleRemoveKey(p)}
                             className="flex items-center justify-center w-9 h-9 rounded-lg cursor-pointer flex-shrink-0"
-                            style={{ border: "1px solid var(--border)", background: "var(--surface)" }} title="Eliminar key">
+                            style={{ border: "1px solid var(--border)", background: "var(--surface)" }} title="Remove key">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, color: "#ef4444" }}>
                               <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
                             </svg>
@@ -1150,7 +1165,7 @@ function AIChipSelector({
                       </div>
                       {/* Model list — menu style: name + description + check */}
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Modelo</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Model</span>
                         <div className="mt-1.5 rounded-xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                           {c.models.map((m, mi) => {
                             const sel = selectedModels[p] === m.id
@@ -1236,7 +1251,7 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0, folders, 
           style={{ color: menuOpen ? "#f97316" : "var(--text-4)" }}
           onMouseEnter={(e) => { if (!menuOpen) e.currentTarget.style.color = "var(--text-2)" }}
           onMouseLeave={(e) => { if (!menuOpen) e.currentTarget.style.color = "var(--text-4)" }}
-          title="Mover a carpeta"
+          title="Move to folder"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
@@ -1248,16 +1263,16 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0, folders, 
             <div className="absolute right-0 top-7 z-50 w-48 rounded-xl py-1 overflow-hidden"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 10px 30px -8px rgba(0,0,0,0.3)" }}
               onClick={(e) => e.stopPropagation()}>
-              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Mover a</div>
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Move to</div>
               {session.folderId && (
                 <button onClick={() => { onMove(null); setMenuOpen(false) }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-black/[0.04]" style={{ color: "var(--text-2)" }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                  Quitar de carpeta
+                  Remove from folder
                 </button>
               )}
               {folders.length === 0 && (
-                <div className="px-3 py-2 text-[12px]" style={{ color: "var(--text-4)" }}>No hay carpetas todavía.</div>
+                <div className="px-3 py-2 text-[12px]" style={{ color: "var(--text-4)" }}>No folders yet.</div>
               )}
               {folders.map((f) => {
                 const here = session.folderId === f.id
@@ -1284,7 +1299,7 @@ function HistoryItem({ session, active, onSelect, onDelete, delay = 0, folders, 
         style={{ color: "var(--text-4)" }}
         onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)" }}
         onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-4)"; e.currentTarget.style.background = "transparent" }}
-        title="Eliminar"
+        title="Delete"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
           <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
@@ -1381,12 +1396,12 @@ function FolderSection({
                 <button onClick={() => { setRenaming(true); setMenuOpen(false) }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-black/[0.04]" style={{ color: "var(--text-2)" }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                  Renombrar
+                  Rename
                 </button>
                 <button onClick={() => { onDeleteFolder(folder.id); setMenuOpen(false) }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-red-500/10" style={{ color: "#ef4444" }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /></svg>
-                  Eliminar carpeta
+                  Delete folder
                 </button>
               </div>
             </>
@@ -1398,7 +1413,7 @@ function FolderSection({
       {!collapsed && (
         <div className="pl-3 pb-1 space-y-0.5">
           {sessions.length === 0 ? (
-            <div className="px-3 py-2 text-[11px] italic" style={{ color: "var(--text-4)" }}>Vacía · arrastrá un chat acá</div>
+            <div className="px-3 py-2 text-[11px] italic" style={{ color: "var(--text-4)" }}>Empty · drag a chat here</div>
           ) : (
             sessions.map((s) => (
               <HistoryItem
@@ -1481,20 +1496,20 @@ function Sidebar({
   const rail = (
     <div className="hidden md:flex flex-col items-center h-full w-[72px] py-3">
       {/* Expand toggle */}
-      <button onClick={onExpand} title="Expandir barra" className={railBtnBase} style={{ color: "var(--text-2)" }}
+      <button onClick={onExpand} title="Expand sidebar" className={railBtnBase} style={{ color: "var(--text-2)" }}
         onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)" }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><rect x="3" y="3" width="18" height="18" rx="2.5" /><path d="M9 3v18" /></svg>
       </button>
       <div className="w-8 h-px my-2 flex-shrink-0" style={{ background: "var(--border-soft)" }} />
       <div className="flex flex-col items-center gap-1">
-        <button onClick={() => onNewSession()} title="Nuevo chat" className={railBtnBase}
+        <button onClick={() => onNewSession()} title="New chat" className={railBtnBase}
           style={{ color: "#fff", background: "linear-gradient(135deg,#2a2b30,#0e0f12)" }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 5v14M5 12h14" /></svg>
         </button>
         {[
-          { t: "Buscar chats", on: openSearch, ic: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></> },
-          { t: "Nueva carpeta", on: onCreateFolder, ic: <><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><path d="M12 11v6M9 14h6" /></> },
+          { t: "Search chats", on: openSearch, ic: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></> },
+          { t: "New folder", on: onCreateFolder, ic: <><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><path d="M12 11v6M9 14h6" /></> },
         ].map((b) => (
           <button key={b.t} onClick={b.on} title={b.t} className={railBtnBase} style={{ color: "var(--text-3)" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; e.currentTarget.style.color = "var(--text-1)" }}
@@ -1516,7 +1531,7 @@ function Sidebar({
       </div>
       <div className="flex-1" />
       <ThemeToggle />
-      <button onClick={onExpand} title="Perfil" className="mt-2"><Avatar /></button>
+      <button onClick={onExpand} title="Profile" className="mt-2"><Avatar /></button>
     </div>
   )
 
@@ -1571,7 +1586,7 @@ function Sidebar({
           </Link>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <button onClick={onClose} title="Colapsar barra"
+            <button onClick={onClose} title="Collapse sidebar"
               className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer transition-colors"
               style={{ color: "var(--text-3)" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--overlay)"; e.currentTarget.style.color = "var(--text-1)" }}
@@ -1583,11 +1598,11 @@ function Sidebar({
 
         {/* Nav block */}
         <div className="px-2 pt-2 pb-1 flex-shrink-0 space-y-0.5">
-          <NavRow label="Nuevo chat" onClick={newSession} accent="var(--text-1)"
+          <NavRow label="New chat" onClick={newSession} accent="var(--text-1)"
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>} />
-          <NavRow label="Buscar chats" onClick={() => { setSearchOpen((v) => !v); setTimeout(() => searchRef.current?.focus(), 60) }}
+          <NavRow label="Search chats" onClick={() => { setSearchOpen((v) => !v); setTimeout(() => searchRef.current?.focus(), 60) }}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>} />
-          <NavRow label="Nueva carpeta" onClick={onCreateFolder}
+          <NavRow label="New folder" onClick={onCreateFolder}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><path d="M12 11v6M9 14h6" /></svg>} />
           <Link href="/dashboard" onClick={closeIfMobile}
             className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium cursor-pointer transition-colors"
@@ -1599,14 +1614,14 @@ function Sidebar({
             </span>
             <span className="flex-1 text-left">Dashboard</span>
           </Link>
-          <NavRow label="Memoria" onClick={openMemory} accent="#7c3aed" badge={memoryCount}
+          <NavRow label="Memory" onClick={openMemory} accent="#7c3aed"
             icon={<svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]"><path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" /><path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" /><path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" /></svg>} />
 
           {/* Search input (revealed) */}
           {searchOpen && (
             <div className="flex items-center gap-2 px-2.5 py-1.5 mt-1 rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-4)" }}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-              <input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar conversaciones…"
+              <input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations…"
                 className="flex-1 min-w-0 bg-transparent text-[12.5px] outline-none" style={{ color: "var(--text-1)" }}
                 onKeyDown={(e) => { if (e.key === "Escape") { setSearch(""); setSearchOpen(false) } }} />
               {search && <button onClick={() => setSearch("")} className="flex-shrink-0 cursor-pointer" style={{ color: "var(--text-4)" }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M18 6L6 18M6 6l12 12" /></svg></button>}
@@ -1626,7 +1641,7 @@ function Sidebar({
 
           {searchResults ? (
             searchResults.length === 0 ? (
-              <div className="px-3 py-6 text-center text-[12px]" style={{ color: "var(--text-4)" }}>Sin coincidencias para “{search}”.</div>
+              <div className="px-3 py-6 text-center text-[12px]" style={{ color: "var(--text-4)" }}>No matches for “{search}”.</div>
             ) : (
               <div className="space-y-0.5">
                 {searchResults.map((s) => (
@@ -1646,7 +1661,7 @@ function Sidebar({
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
                   </div>
-                  <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-4)" }}>Sin conversaciones aún.<br />Empezá a chatear para verlas acá.</p>
+                  <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-4)" }}>No conversations yet.<br />Start chatting to see them here.</p>
                 </div>
               )}
 
@@ -1726,44 +1741,32 @@ function Sidebar({
 
 // ─── Memory drawer ────────────────────────────────────────────────────────────
 
-const CATEGORY_META: Record<string, { label: string; color: string }> = {
-  stack:      { label: "Stack",       color: "#3b82f6" },
-  project:    { label: "Proyecto",    color: "#10b981" },
-  preference: { label: "Preferencia", color: "#f97316" },
-  decision:   { label: "Decisión",    color: "#8b5cf6" },
-  tone:       { label: "Tono",        color: "#ec4899" },
-  other:      { label: "Otro",        color: "var(--text-3)" },
-}
-
-function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
-  memories: Memory[]
+function MemoryDrawer({ profile, onClose, onSave }: {
+  profile: string
   onClose: () => void
-  onDelete: (id: string) => void
-  onEdit: (id: string, content: string) => void
-  onAdd: (content: string, category: string) => void
+  onSave: (profile: string) => void
 }) {
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editText, setEditText] = useState("")
-  const [adding, setAdding] = useState(false)
-  const [newText, setNewText] = useState("")
-  const [newCategory, setNewCategory] = useState("other")
+  // Initialized once per open (the drawer remounts each time it opens, so a
+  // background update that lands while it's closed shows up on next open).
+  const [draft, setDraft] = useState(profile)
+  const dirty = draft !== profile
 
-  const startEdit = (m: Memory) => { setEditingId(m.id); setEditText(m.content) }
-  const cancelEdit = () => { setEditingId(null); setEditText("") }
-  const commitEdit = () => {
-    if (editingId && editText.trim().length >= 3) onEdit(editingId, editText)
-    cancelEdit()
-  }
-  const cancelAdd = () => { setAdding(false); setNewText(""); setNewCategory("other") }
-  const commitAdd = () => {
-    if (newText.trim().length >= 3) onAdd(newText, newCategory)
-    cancelAdd()
-  }
+  const PLACEHOLDER = `Work context
+What you do, your stack and current projects…
+
+Personal context
+Language, interests, relevant personal details…
+
+Preferences
+Tone, answer length, conventions you like…
+
+Top of mind
+What you're focused on right now…`
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} style={{ animation: "memFadeIn 0.2s ease both" }} />
-      <div className="relative h-full w-full max-w-[420px] flex flex-col bg-white shadow-2xl"
+      <div className="relative h-full w-full max-w-[460px] flex flex-col bg-white shadow-2xl"
         style={{ borderLeft: "1px solid var(--border)", animation: "memDrawerIn 0.32s cubic-bezier(0.22,1,0.36,1) both" }}>
 
         {/* Header */}
@@ -1777,144 +1780,42 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[15px] font-semibold text-gray-900 leading-tight">Memoria</div>
+            <div className="text-[15px] font-semibold text-gray-900 leading-tight">Memory</div>
             <div className="text-[12px] text-gray-500 mt-0.5 leading-snug">
-              {memories.length > 0
-                ? `${memories.length} ${memories.length === 1 ? "hecho que las IAs recuerdan" : "hechos que las IAs recuerdan"} de vos, en todos tus chats y modelos.`
-                : "Lo que las IAs aprendan de vos aparecerá acá y te acompaña en cada chat y modelo."}
+              A single profile every AI reads before answering — across all your chats and models. It updates itself as you chat; edit it freely.
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-black/[0.05] transition-all cursor-pointer flex-shrink-0" title="Cerrar">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-black/[0.05] transition-all cursor-pointer flex-shrink-0" title="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
 
-        {/* Add a fact by hand */}
-        <div className="px-4 pt-3 flex-shrink-0">
-          {adding ? (
-            <div className="rounded-xl p-3" style={{ background: "var(--surface-2)", border: "1px solid rgba(124,58,237,0.18)" }}>
-              <textarea
-                value={newText}
-                onChange={(e) => setNewText(e.target.value)}
-                autoFocus
-                rows={2}
-                placeholder="Ej: Trabajo con Next.js y Postgres en Neon…"
-                className="w-full resize-none bg-transparent text-[13px] text-gray-800 outline-none placeholder:text-gray-400 leading-relaxed"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitAdd()
-                  if (e.key === "Escape") cancelAdd()
-                }}
-              />
-              <div className="flex items-center justify-between mt-2 gap-2">
-                <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
-                  className="text-[11px] font-medium text-gray-600 bg-white rounded-lg px-2 py-1 cursor-pointer outline-none"
-                  style={{ border: "1px solid rgba(0,0,0,0.1)" }}>
-                  {Object.entries(CATEGORY_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
-                <div className="flex items-center gap-1.5">
-                  <button onClick={cancelAdd}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-gray-500 hover:bg-black/[0.04] transition-colors cursor-pointer">Cancelar</button>
-                  <button onClick={commitAdd} disabled={newText.trim().length < 3}
-                    className="px-3 py-1 rounded-lg text-[11px] font-semibold text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>Guardar</button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <button onClick={() => setAdding(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12.5px] font-medium text-gray-600 transition-all hover:text-gray-900 hover:border-violet-300 cursor-pointer"
-              style={{ background: "var(--surface-2)", border: "1px dashed rgba(0,0,0,0.15)" }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M12 5v14M5 12h14" /></svg>
-              Agregar un hecho manualmente
-            </button>
-          )}
-        </div>
-
-        {/* List */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-          {memories.length === 0 ? (
-            <div className="flex flex-col items-center text-center gap-3 px-6 py-20">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.15)" }}>
-                <svg viewBox="0 0 24 24" fill="#7c3aed" className="w-5 h-5" style={{ opacity: 0.7 }}>
-                  <path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" />
-                  <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
-                  <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
-                </svg>
-              </div>
-              <p className="text-[12.5px] text-gray-500 leading-relaxed max-w-[260px]">
-                Todavía no aprendí nada de vos. Chateá con tu API key y voy guardando tu stack, proyectos y preferencias automáticamente.
-              </p>
-            </div>
-          ) : (
-            memories.map((m) => {
-              const meta = CATEGORY_META[m.category ?? "other"] ?? CATEGORY_META.other
-              const isEditing = editingId === m.id
-              const tint = (pct: number) => `color-mix(in srgb, ${meta.color} ${pct}%, transparent)`
-              return (
-                <div key={m.id} className="group relative rounded-xl p-3 transition-all duration-200 hover:-translate-y-px"
-                  style={{ background: "var(--surface-2)", border: "1px solid var(--border-soft)" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = tint(35); e.currentTarget.style.boxShadow = "0 4px 14px -8px rgba(0,0,0,0.25)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-soft)"; e.currentTarget.style.boxShadow = "none" }}>
-                  {isEditing ? (
-                    <>
-                      <textarea
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        autoFocus
-                        rows={2}
-                        className="w-full resize-none rounded-lg px-2.5 py-2 text-[13px] leading-relaxed outline-none"
-                        style={{ border: "1px solid rgba(124,58,237,0.35)", background: "var(--surface)", color: "var(--text-1)" }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitEdit()
-                          if (e.key === "Escape") cancelEdit()
-                        }}
-                      />
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <button onClick={commitEdit} disabled={editText.trim().length < 3}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                          style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>Guardar</button>
-                        <button onClick={cancelEdit}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium hover:bg-black/[0.04] transition-colors cursor-pointer" style={{ color: "var(--text-3)" }}>Cancelar</button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Top row: category chip + hover actions */}
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
-                          style={{ background: tint(12), color: meta.color, border: `1px solid ${tint(28)}` }}>
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />
-                          {meta.label}
-                        </span>
-                        <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => startEdit(m)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer hover:text-violet-600 hover:bg-violet-500/10"
-                            style={{ color: "var(--text-4)" }} title="Editar este hecho">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-                              <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                            </svg>
-                          </button>
-                          <button onClick={() => onDelete(m.id)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer hover:text-red-500 hover:bg-red-500/10"
-                            style={{ color: "var(--text-4)" }} title="Olvidar este hecho">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-                              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-1)" }}>{m.content}</p>
-                    </>
-                  )}
-                </div>
-              )
-            })
-          )}
+        {/* Editor */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.slice(0, MEMORY_PROFILE_MAX))}
+            placeholder={PLACEHOLDER}
+            spellCheck={false}
+            className="w-full h-full min-h-[340px] resize-none rounded-xl p-3.5 text-[13px] leading-relaxed outline-none"
+            style={{ background: "var(--surface-2)", border: "1px solid var(--border-soft)", color: "var(--text-1)", fontFamily: "inherit" }}
+          />
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 flex-shrink-0 text-[11px] text-gray-400 leading-snug" style={{ borderTop: "1px solid var(--border-soft)" }}>
-          Se captura sola al chatear y viaja con vos entre modelos. Borrá lo que no quieras que recuerden.
+        <div className="px-4 py-3 flex-shrink-0 flex items-center justify-between gap-3" style={{ borderTop: "1px solid var(--border-soft)" }}>
+          <span className="text-[11px] text-gray-400 tabular-nums">{draft.length.toLocaleString()} / {MEMORY_PROFILE_MAX.toLocaleString()}</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => onSave("")} disabled={!profile.trim()}
+              className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:bg-black/[0.04]" style={{ color: "var(--text-3)" }}>
+              Clear
+            </button>
+            <button onClick={() => onSave(draft)} disabled={!dirty}
+              className="px-4 py-1.5 rounded-lg text-[12px] font-semibold text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1924,16 +1825,16 @@ function MemoryDrawer({ memories, onClose, onDelete, onEdit, onAdd }: {
 // ─── Slash commands ───────────────────────────────────────────────────────────
 
 const SLASH_COMMANDS = [
-  { id: "clear",   label: "/clear",   desc: "Borrar conversación actual" },
-  { id: "new",     label: "/new",     desc: "Nueva conversación" },
-  { id: "fusion",  label: "/fusion",  desc: "Activar todos los modelos con key" },
-  { id: "solo",    label: "/solo",    desc: "Usar solo el primer modelo activo" },
-  { id: "models",  label: "/models",  desc: "Ver modelos activos" },
-  { id: "sidebar", label: "/sidebar", desc: "Abrir/cerrar sidebar" },
-  { id: "retry",   label: "/retry",   desc: "Reenviar último mensaje" },
-  { id: "copy",    label: "/copy",    desc: "Copiar última respuesta" },
-  { id: "demo",    label: "/demo",    desc: "Activar modo demo" },
-  { id: "help",    label: "/help",    desc: "Ver todos los comandos" },
+  { id: "clear",   label: "/clear",   desc: "Clear current conversation" },
+  { id: "new",     label: "/new",     desc: "New conversation" },
+  { id: "fusion",  label: "/fusion",  desc: "Enable every model with a key" },
+  { id: "solo",    label: "/solo",    desc: "Use only the first active model" },
+  { id: "models",  label: "/models",  desc: "Show active models" },
+  { id: "sidebar", label: "/sidebar", desc: "Toggle sidebar" },
+  { id: "retry",   label: "/retry",   desc: "Resend last message" },
+  { id: "copy",    label: "/copy",    desc: "Copy last answer" },
+  { id: "demo",    label: "/demo",    desc: "Enable demo mode" },
+  { id: "help",    label: "/help",    desc: "Show all commands" },
 ]
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -1950,6 +1851,9 @@ export default function ChatPage() {
   const [turns, setTurnsState] = useState<ConversationTurn[]>([])
   const persistingRef = useRef<Set<string>>(new Set())
   const { data: session } = useSession()
+  // Billing plan gates which providers can bring their own key (Free → only
+  // free-AI providers). Defaults to "free" until the session resolves.
+  const plan: string = (session?.user as { plan?: string } | undefined)?.plan ?? "free"
 
   const [input, setInput] = useState("")
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -1980,10 +1884,11 @@ export default function ChatPage() {
     })
   }, [attachments.length])
 
-  // Cross-conversation memory: facts the AI knows about the user everywhere.
-  const [memories, setMemories] = useState<Memory[]>([])
-  const memoriesRef = useRef<Memory[]>([])
-  useEffect(() => { memoriesRef.current = memories }, [memories])
+  // Cross-conversation memory: a single free-form profile the AI knows about
+  // the user everywhere. Editable by hand, auto-updated after each turn.
+  const [memoryProfile, setMemoryProfile] = useState<string>("")
+  const memoryProfileRef = useRef<string>("")
+  useEffect(() => { memoryProfileRef.current = memoryProfile }, [memoryProfile])
   const [memoryOpen, setMemoryOpen] = useState(false)
   const extractedRef = useRef<Set<string>>(new Set())
 
@@ -2023,7 +1928,10 @@ export default function ChatPage() {
     if (!session?.user?.id) return
     fetch("/api/memory")
       .then((r) => r.json())
-      .then((d: Memory[]) => { if (Array.isArray(d)) { setMemories(d); memoriesRef.current = d } })
+      .then((d: { profile?: string }) => {
+        const p = typeof d?.profile === "string" ? d.profile : ""
+        setMemoryProfile(p); memoryProfileRef.current = p
+      })
       .catch(() => {})
   }, [session?.user?.id])
 
@@ -2140,7 +2048,7 @@ export default function ChatPage() {
     const res = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Nueva conversación" }),
+      body: JSON.stringify({ title: "New conversation" }),
     })
     const newSession: ChatSession = await res.json()
     activeSessionIdRef.current = newSession.id
@@ -2157,7 +2065,7 @@ export default function ChatPage() {
     const res = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Nueva conversación" }),
+      body: JSON.stringify({ title: "New conversation" }),
     })
     const newSession: ChatSession = await res.json()
     setSessions((prev) => {
@@ -2201,7 +2109,7 @@ export default function ChatPage() {
       const res = await fetch("/api/folders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Nueva carpeta" }),
+        body: JSON.stringify({ name: "New folder" }),
       })
       if (!res.ok) return
       const folder: Folder = await res.json()
@@ -2256,7 +2164,11 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [turns])
 
-  const activeProviders = PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim())
+  // A locked provider (paid-only on the Free plan) is never sent to, even if a
+  // stale key lingers in localStorage from a previous paid period.
+  const activeProviders = PROVIDERS.filter(
+    (p) => enabled[p] && apiKeys[p].trim() && !providerLocked(p, plan, apiKeys[p])
+  )
   const fusionMode = activeProviders.length > 1
 
   const streamProvider = useCallback(
@@ -2312,7 +2224,7 @@ export default function ChatPage() {
     setTurns((prev) => prev.map((t) =>
       t.id === turnId ? { ...t, responses: { ...t.responses, [provider]: { content: "", loading: true, done: false } } } : t
     ))
-    await streamProvider(provider, buildSharedHistory(prevTurns, providersInTurn, turn.userMessage, provider, memoriesRef.current), turnId)
+    await streamProvider(provider, buildSharedHistory(prevTurns, providersInTurn, turn.userMessage, provider, memoryProfileRef.current), turnId)
   }, [turns, apiKeys, streamProvider, setTurns])
 
   const collectFull = useCallback(async (provider: Provider, messages: { role: string; content: string }[], modelOverride?: string, images?: string[]): Promise<string> => {
@@ -2369,44 +2281,39 @@ export default function ChatPage() {
     setTimeout(() => setToast(""), 2000)
   }, [])
 
-  // Background memory capture: after a turn finishes, the cheapest active model
-  // distills durable facts about the user and stores them. Reuses /api/chat
-  // (BYOK) so there's no new provider code. Best-effort — never blocks chat.
-  const runExtraction = useCallback(
+  // Background memory update: after a turn finishes, the cheapest active model
+  // rewrites the user's memory profile, folding in any durable new facts.
+  // Reuses /api/chat (BYOK) so there's no new provider code. Best-effort —
+  // never blocks chat.
+  const runMemoryUpdate = useCallback(
     async (userMsg: string, assistantText: string, provider: Provider) => {
       try {
-        const known = memoriesRef.current.slice(0, 60).map((m) => m.content)
+        const current = memoryProfileRef.current
         const messages = [
-          { role: "system", content: buildExtractPrompt(known) },
-          { role: "user", content: `Usuario: ${userMsg}\n\nRespuesta(s) de IA:\n${assistantText.slice(0, 4000)}` },
+          { role: "system", content: buildMemoryUpdatePrompt(current) },
+          { role: "user", content: `User: ${userMsg}\n\nAI answer(s):\n${assistantText.slice(0, 4000)}` },
         ]
         const raw = await collectFull(provider, messages, MEMORY_MODELS[provider])
-        const facts = parseFacts(raw)
-        if (facts.length === 0) {
-          console.debug("[memoria] sin hechos nuevos. Respuesta cruda del modelo:", raw.slice(0, 600))
+        const updated = cleanProfile(raw)
+        if (!updated || updated === current.trim()) {
+          console.debug("[memory] no profile change.")
           return
         }
         const res = await fetch("/api/memory", {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ facts }),
+          body: JSON.stringify({ profile: updated }),
         })
         if (!res.ok) {
-          console.warn("[memoria] POST /api/memory falló:", res.status, await res.text().catch(() => ""))
+          console.warn("[memory] PUT /api/memory failed:", res.status, await res.text().catch(() => ""))
           return
         }
-        const created: Memory[] = await res.json()
-        console.debug(`[memoria] extraídos ${facts.length}, guardados ${created.length}`, created)
-        if (Array.isArray(created) && created.length > 0) {
-          setMemories((prev) => {
-            const next = [...created, ...prev]
-            memoriesRef.current = next
-            return next
-          })
-          showToast(`Memoria actualizada · +${created.length}`)
-        }
+        const data: { profile?: string } = await res.json()
+        const saved = typeof data?.profile === "string" ? data.profile : updated
+        setMemoryProfile(saved); memoryProfileRef.current = saved
+        showToast("Memory updated")
       } catch (e) {
-        console.warn("[memoria] extracción falló:", e)
+        console.warn("[memory] update failed:", e)
       }
     },
     [collectFull, showToast]
@@ -2435,58 +2342,25 @@ export default function ChatPage() {
           .join("\n\n")
       }
       if (!assistantText.trim()) return
-      void runExtraction(turn.userMessage, assistantText, realActive[0])
+      void runMemoryUpdate(turn.userMessage, assistantText, realActive[0])
     })
-  }, [turns, enabled, apiKeys, runExtraction])
+  }, [turns, enabled, apiKeys, runMemoryUpdate])
 
-  const handleDeleteMemory = useCallback(async (id: string) => {
-    setMemories((prev) => {
-      const next = prev.filter((m) => m.id !== id)
-      memoriesRef.current = next
-      return next
-    })
-    await fetch(`/api/memory/${id}`, { method: "DELETE" }).catch(() => {})
-  }, [])
-
-  // Edit a fact's text — the "perfil editable" promise. Optimistic; PATCH is
-  // scoped to the owner server-side.
-  const handleEditMemory = useCallback(async (id: string, content: string) => {
-    const clean = content.trim().slice(0, 400)
-    if (clean.length < 3) return
-    setMemories((prev) => {
-      const next = prev.map((m) => (m.id === id ? { ...m, content: clean } : m))
-      memoriesRef.current = next
-      return next
-    })
-    await fetch(`/api/memory/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: clean }),
-    }).catch(() => {})
-  }, [])
-
-  // Add a fact by hand. Server dedupes (case-insensitive); an empty array back
-  // means it was already known.
-  const handleAddMemory = useCallback(async (content: string, category: string) => {
-    const clean = content.trim().slice(0, 400)
-    if (clean.length < 3) return
+  // Save the whole memory profile by hand (the "editable profile" promise).
+  // Optimistic; PUT is scoped to the owner and clamped per plan server-side.
+  const handleSaveProfile = useCallback(async (profile: string) => {
+    const clean = profile.slice(0, MEMORY_PROFILE_MAX)
+    setMemoryProfile(clean); memoryProfileRef.current = clean
     try {
       const res = await fetch("/api/memory", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: clean, category }),
+        body: JSON.stringify({ profile: clean }),
       })
-      if (!res.ok) return
-      const created: Memory[] = await res.json()
-      if (Array.isArray(created) && created.length > 0) {
-        setMemories((prev) => {
-          const next = [...created, ...prev]
-          memoriesRef.current = next
-          return next
-        })
-        showToast(`Memoria actualizada · +${created.length}`)
-      } else {
-        showToast("Ya lo recordaba")
+      if (res.ok) {
+        const data: { profile?: string } = await res.json().catch(() => ({}))
+        if (typeof data?.profile === "string") { setMemoryProfile(data.profile); memoryProfileRef.current = data.profile }
+        showToast(clean.trim() ? "Memory saved" : "Memory cleared")
       }
     } catch {}
   }, [showToast])
@@ -2502,11 +2376,11 @@ export default function ChatPage() {
     } else if (id === "fusion") {
       const withKeys = PROVIDERS.filter((p) => apiKeys[p] && apiKeys[p] !== "demo")
       if (withKeys.length === 0) {
-        setTurns((prev) => [...prev, { id: crypto.randomUUID(), userMessage: "/fusion", responses: { openai: { content: "No hay modelos con API key configurada.", loading: false, done: true } } }])
+        setTurns((prev) => [...prev, { id: crypto.randomUUID(), userMessage: "/fusion", responses: { openai: { content: "No models with an API key configured.", loading: false, done: true } } }])
       } else {
         const next = Object.fromEntries(PROVIDERS.map((p) => [p, withKeys.includes(p)])) as Record<Provider, boolean>
         setEnabled(next)
-        showToast(`Fusión activa — ${withKeys.map((p) => CFG[p].name).join(", ")}`)
+        showToast(`Fusion active — ${withKeys.map((p) => CFG[p].name).join(", ")}`)
       }
       textareaRef.current?.focus()
     } else if (id === "solo") {
@@ -2514,7 +2388,7 @@ export default function ChatPage() {
       if (active.length > 0) {
         const next = Object.fromEntries(PROVIDERS.map((p) => [p, p === active[0]])) as Record<Provider, boolean>
         setEnabled(next)
-        showToast(`Solo ${CFG[active[0]].name} activo`)
+        showToast(`Only ${CFG[active[0]].name} active`)
       }
       textareaRef.current?.focus()
     } else if (id === "retry") {
@@ -2530,7 +2404,7 @@ export default function ChatPage() {
               .map(([p, r]) => r?.content ? `[${CFG[p].name}]:\n${r.content}` : null)
               .filter((x): x is string => x !== null)
               .join("\n\n---\n\n")
-        navigator.clipboard.writeText(text).then(() => showToast("Copiado al portapapeles")).catch(() => {})
+        navigator.clipboard.writeText(text).then(() => showToast("Copied to clipboard")).catch(() => {})
       }
       textareaRef.current?.focus()
     } else if (id === "demo") {
@@ -2539,7 +2413,7 @@ export default function ChatPage() {
       textareaRef.current?.focus()
     } else if (id === "models") {
       const active = PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim())
-      const msg = active.length > 0 ? `Modelos activos: ${active.map((p) => CFG[p].name).join(", ")}` : "No hay modelos activos."
+      const msg = active.length > 0 ? `Active models: ${active.map((p) => CFG[p].name).join(", ")}` : "No active models."
       setTurns((prev) => [...prev, { id: crypto.randomUUID(), userMessage: "/models", responses: { openai: { content: msg, loading: false, done: true } } }])
     } else if (id === "help") {
       const msg = SLASH_COMMANDS.map((c) => `${c.label} · ${c.desc}`).join("\n")
@@ -2558,11 +2432,11 @@ export default function ChatPage() {
 
     const imgProviders = activeProviders.filter((p) => IMAGE_CAPABLE.includes(p))
     if (imageMode && imgProviders.length === 0) {
-      showToast("Activá OpenAI, Google o xAI para generar imágenes")
+      showToast("Enable OpenAI, Google or xAI to generate images")
       return
     }
     if (imgs.length > 0 && !activeProviders.some((p) => VISION_CAPABLE.includes(p))) {
-      showToast("Activá OpenAI, Claude, Gemini o Grok para enviar imágenes")
+      showToast("Enable OpenAI, Claude, Gemini or Grok to send images")
       return
     }
 
@@ -2576,7 +2450,7 @@ export default function ChatPage() {
     const turnId = crypto.randomUUID()
     const currentTurns = turns
     // Text shown/sent for this turn; vision-only sends get a default prompt.
-    const sendText = msg || (imgs.length ? "¿Qué ves en esta imagen?" : "")
+    const sendText = msg || (imgs.length ? "What do you see in this image?" : "")
 
     if (imageMode) {
       const initialResponses: Partial<Record<Provider, ModelResponseState>> = {}
@@ -2590,7 +2464,7 @@ export default function ChatPage() {
         id: turnId, userMessage: sendText, images: imgs, responses: {}, isFusion: true,
         fusedResponse: { content: "", loading: true, done: false, phase: "collecting" },
       }])
-      const results = await Promise.allSettled(activeProviders.map((p) => collectFull(p, buildSharedHistory(currentTurns, activeProviders, sendText, p, memoriesRef.current), undefined, VISION_CAPABLE.includes(p) ? imgs : [])))
+      const results = await Promise.allSettled(activeProviders.map((p) => collectFull(p, buildSharedHistory(currentTurns, activeProviders, sendText, p, memoryProfileRef.current), undefined, VISION_CAPABLE.includes(p) ? imgs : [])))
       const parts = activeProviders
         .map((p, i) => {
           const r = results[i]
@@ -2599,14 +2473,14 @@ export default function ChatPage() {
         })
         .filter((x): x is string => x !== null)
       if (parts.length === 0) {
-        setTurns((prev) => prev.map((t) => t.id === turnId ? { ...t, fusedResponse: { content: "", loading: false, done: true, error: "Ningún modelo respondió" } } : t))
+        setTurns((prev) => prev.map((t) => t.id === turnId ? { ...t, fusedResponse: { content: "", loading: false, done: true, error: "No model responded" } } : t))
         setIsLoading(false)
         return
       }
       const synthesisMsg =
-        `A continuación están las respuestas de distintos modelos de IA a la pregunta del usuario: "${sendText}"\n\n` +
+        `Below are the answers from different AI models to the user's question: "${sendText}"\n\n` +
         parts.join("\n\n---\n\n") +
-        `\n\nSintetizá estas respuestas en UNA SOLA respuesta unificada, clara y completa. Tomá los mejores insights de cada modelo, eliminá redundancias y presentá la información de forma coherente. Respondé directamente y naturalmente, sin mencionar que estás sintetizando ni referenciar los modelos por nombre.`
+        `\n\nSynthesize these answers into ONE single unified, clear and complete answer. Take the best insights from each model, remove redundancies and present the information coherently. Answer directly and naturally, without mentioning that you're synthesizing or referencing the models by name. Always answer in the user's language.`
       const synthProvider = activeProviders[0]
       const synthHistory = [
         ...currentTurns.flatMap((t): { role: string; content: string }[] => {
@@ -2621,7 +2495,7 @@ export default function ChatPage() {
       const initialResponses: Partial<Record<Provider, ModelResponseState>> = {}
       activeProviders.forEach((p) => { initialResponses[p] = { content: "", loading: true, done: false } })
       setTurns((prev) => [...prev, { id: turnId, userMessage: sendText, images: imgs, responses: initialResponses }])
-      await Promise.all(activeProviders.map((p) => streamProvider(p, buildSharedHistory(currentTurns, activeProviders, sendText, p, memoriesRef.current), turnId, { images: VISION_CAPABLE.includes(p) ? imgs : [] })))
+      await Promise.all(activeProviders.map((p) => streamProvider(p, buildSharedHistory(currentTurns, activeProviders, sendText, p, memoryProfileRef.current), turnId, { images: VISION_CAPABLE.includes(p) ? imgs : [] })))
     }
 
     setIsLoading(false)
@@ -2657,7 +2531,7 @@ export default function ChatPage() {
       {/* Edge hint: a thin tappable strip so a swipe/tap on the far-left
           screen edge also opens the drawer on mobile. */}
       <button
-        aria-label="Abrir conversaciones"
+        aria-label="Open conversations"
         onClick={() => setSidebarOpen(true)}
         className="md:hidden fixed top-0 bottom-0 left-0 w-2 z-20"
         style={{ background: "transparent", opacity: sidebarOpen ? 0 : 1, pointerEvents: sidebarOpen ? "none" : "auto" }}
@@ -2666,11 +2540,9 @@ export default function ChatPage() {
       {/* ── Memory drawer ─────────────────────────────────────────────── */}
       {memoryOpen && (
         <MemoryDrawer
-          memories={memories}
+          profile={memoryProfile}
           onClose={() => setMemoryOpen(false)}
-          onDelete={handleDeleteMemory}
-          onEdit={handleEditMemory}
-          onAdd={handleAddMemory}
+          onSave={handleSaveProfile}
         />
       )}
 
@@ -2687,7 +2559,7 @@ export default function ChatPage() {
           onDeleteSession={handleDeleteSession}
           onNewSession={handleNewSession}
           onOpenMemory={() => setMemoryOpen(true)}
-          memoryCount={memories.length}
+          memoryCount={memoryProfile.trim() ? 1 : 0}
           userName={session?.user?.name}
           userEmail={session?.user?.email}
           folders={folders}
@@ -2717,7 +2589,7 @@ export default function ChatPage() {
             {/* Left — open conversations drawer */}
             <button
               onClick={() => setSidebarOpen(true)}
-              aria-label="Ver conversaciones"
+              aria-label="View conversations"
               className="h-9 w-9 rounded-lg flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
               style={{ color: "var(--text-2)" }}
             >
@@ -2736,7 +2608,7 @@ export default function ChatPage() {
             {/* Right — new chat */}
             <button
               onClick={handleNewSession}
-              aria-label="Nuevo chat"
+              aria-label="New chat"
               className="h-9 w-9 rounded-lg flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
               style={{ color: "var(--text-2)" }}
             >
@@ -2823,7 +2695,7 @@ export default function ChatPage() {
                         onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
                         className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center cursor-pointer"
                         style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
-                        title="Quitar imagen">
+                        title="Remove image">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-3 h-3"><path d="M18 6L6 18M6 6l12 12" /></svg>
                       </button>
                     </div>
@@ -2852,10 +2724,10 @@ export default function ChatPage() {
                   onKeyDown={handleKey}
                   placeholder={
                     activeCount === 0
-                      ? "Seleccioná una IA para empezar…"
+                      ? "Select an AI to get started…"
                       : imageMode
-                      ? "Describí la imagen que querés generar…"
-                      : `Preguntale a ${activeProviders.map((p) => CFG[p].name).join(", ")}…`
+                      ? "Describe the image you want to generate…"
+                      : `Ask ${activeProviders.map((p) => CFG[p].name).join(", ")}…`
                   }
                   disabled={activeCount === 0 || isLoading}
                   rows={1}
@@ -2878,6 +2750,7 @@ export default function ChatPage() {
                   selectedModels={selectedModels}
                   setSelectedModels={setSelectedModels}
                   onActivateDemo={activateDemo}
+                  plan={plan}
                 />
                 <div className="flex-1" />
                 {/* Attach image (vision) — hidden in image-generation mode */}
@@ -2894,7 +2767,7 @@ export default function ChatPage() {
                     <button
                       onClick={() => imageInputRef.current?.click()}
                       disabled={activeCount === 0 || isLoading || attachments.length >= 4}
-                      title={attachments.length >= 4 ? "Máximo 4 imágenes" : "Adjuntar imagen"}
+                      title={attachments.length >= 4 ? "Maximum 4 images" : "Attach image"}
                       className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{ background: "rgba(0,0,0,0.05)", color: "#6b7280", border: "1px solid rgba(0,0,0,0.1)" }}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
@@ -2905,7 +2778,7 @@ export default function ChatPage() {
                 )}
                 <button
                   onClick={() => setImageMode((v) => !v)}
-                  title={imageMode ? "Modo imagen activo" : "Generar imágenes"}
+                  title={imageMode ? "Image mode active" : "Generate images"}
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer transition-all duration-150 active:scale-95"
                   style={{
                     background: imageMode ? "linear-gradient(135deg, #f97316, #ea580c)" : "rgba(0,0,0,0.05)",
@@ -2942,10 +2815,10 @@ export default function ChatPage() {
 
             <p className="text-center text-[11px] text-gray-500 mt-1.5 truncate px-2">
               {imageMode
-                ? "Modo imagen · OpenAI, Google, xAI generan su imagen"
+                ? "Image mode · OpenAI, Google, xAI each generate their image"
                 : fusionMode
-                ? "Fusión · los modelos sintetizan una sola respuesta"
-                : "Enter para enviar · Shift+Enter nueva línea"}
+                ? "Fusion · the models synthesize a single answer"
+                : "Enter to send · Shift+Enter for a new line"}
             </p>
           </div>
         </div>

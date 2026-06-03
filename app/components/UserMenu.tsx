@@ -49,7 +49,7 @@ export default function UserMenu() {
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 px-2 py-1.5 rounded-full transition-all hover:bg-black/[0.06] cursor-pointer"
-        aria-label="Menú de usuario"
+        aria-label="User menu"
       >
         <Avatar user={user} size={28} />
         <span className="text-[13px] font-medium text-gray-700 max-w-[120px] truncate hidden sm:block">{user.name ?? user.email}</span>
@@ -95,7 +95,7 @@ export default function UserMenu() {
               className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors cursor-pointer hover:bg-red-50 text-red-500"
             >
               <IconSignOut />
-              Cerrar sesión
+              Sign out
             </button>
           </div>
         </div>

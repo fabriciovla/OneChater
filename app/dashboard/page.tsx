@@ -14,12 +14,11 @@ type Totals = {
   sessions: number
   responses: number
   fusionTurns: number
-  memories: number
+  memoryChars: number
   estimatedSpend: number
 }
 type ProviderStat = { provider: string; responses: number; tokens: number; cost: number }
 type DayPoint = { day: number; turns: number }
-type CatPoint = { category: string; n: number }
 
 type DashboardData =
   | { locked: true; plan: string }
@@ -29,7 +28,7 @@ type DashboardData =
       totals: Totals
       providers: ProviderStat[]
       daily: DayPoint[]
-      memoryByCategory: CatPoint[]
+      memoryProfile: string
     }
 
 // ─── Provider + category meta (colors match the chat app) ───────────────────────
@@ -46,20 +45,11 @@ const PROVIDER_META: Record<string, { name: string; color: string }> = {
 }
 const pmeta = (p: string) => PROVIDER_META[p] ?? { name: p, color: "#6b7280" }
 
-const CATEGORY_META: Record<string, { label: string; color: string }> = {
-  stack: { label: "Stack", color: "#3b82f6" },
-  project: { label: "Proyecto", color: "#10b981" },
-  preference: { label: "Preferencia", color: "#f97316" },
-  decision: { label: "Decisión", color: "#8b5cf6" },
-  tone: { label: "Tono", color: "#ec4899" },
-  other: { label: "Otro", color: "#6b7280" },
-}
-
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
 const fmtUSD = (n: number) =>
   n >= 1 ? `$${n.toFixed(2)}` : n > 0 ? `$${n.toFixed(3)}` : "$0.00"
-const fmtNum = (n: number) => n.toLocaleString("es-AR")
+const fmtNum = (n: number) => n.toLocaleString("en-US")
 
 // Build a continuous 30-day axis (UTC keys to match date_trunc in the DB).
 function build30Days(daily: DayPoint[]) {
@@ -149,8 +139,8 @@ function ActivityChart({ daily }: { daily: DayPoint[] }) {
   const line = days.map((d, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(d.turns).toFixed(1)}`).join(" ")
   const area = `${line} L ${x(n - 1).toFixed(1)} ${H - pad} L ${x(0).toFixed(1)} ${H - pad} Z`
   const ticks = [0, 9, 19, 29]
-  const fmtTick = (ts: number) => new Date(ts).toLocaleDateString("es-AR", { day: "numeric", month: "short" })
-  const fmtFull = (ts: number) => new Date(ts).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
+  const fmtTick = (ts: number) => new Date(ts).toLocaleDateString("en-US", { day: "numeric", month: "short" })
+  const fmtFull = (ts: number) => new Date(ts).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })
 
   // Hover interaction: map the cursor's horizontal position to the nearest day.
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -165,14 +155,14 @@ function ActivityChart({ daily }: { daily: DayPoint[] }) {
   const lp = (i: number) => `${(x(i) / W) * 100}%`
 
   if (total === 0) {
-    return <div className="flex items-center justify-center h-[200px] text-[13px] text-gray-400">Sin actividad en los últimos 30 días.</div>
+    return <div className="flex items-center justify-center h-[200px] text-[13px] text-gray-400">No activity in the last 30 days.</div>
   }
   const hd = hover != null ? days[hover] : null
   return (
     <div>
       <div className="flex items-baseline gap-2 mb-2">
         <span className="display text-[22px] font-semibold text-gray-900">{fmtNum(total)}</span>
-        <span className="text-[12px] text-gray-500">mensajes en 30 días</span>
+        <span className="text-[12px] text-gray-500">messages in 30 days</span>
       </div>
       <div ref={wrapRef} className="relative" style={{ height: 200 }}
         onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
@@ -207,7 +197,7 @@ function ActivityChart({ daily }: { daily: DayPoint[] }) {
                 transform: `translateX(${hover! < n / 2 ? "8px" : "calc(-100% - 8px)"})`,
                 background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 6px 20px -6px rgba(0,0,0,0.25)",
               }}>
-              <div className="text-[11px] font-semibold" style={{ color: "var(--text-1)" }}>{fmtNum(hd.turns)} {hd.turns === 1 ? "mensaje" : "mensajes"}</div>
+              <div className="text-[11px] font-semibold" style={{ color: "var(--text-1)" }}>{fmtNum(hd.turns)} {hd.turns === 1 ? "message" : "messages"}</div>
               <div className="text-[10px] capitalize" style={{ color: "var(--text-4)" }}>{fmtFull(hd.ts)}</div>
             </div>
           </>
@@ -222,12 +212,12 @@ function ActivityChart({ daily }: { daily: DayPoint[] }) {
 
 function SpendBars({ providers, total }: { providers: ProviderStat[]; total: number }) {
   const max = Math.max(...providers.map((p) => p.cost), 0.000001)
-  if (providers.length === 0) return <div className="text-[13px] text-gray-400 py-8 text-center">Todavía no hay uso para estimar.</div>
+  if (providers.length === 0) return <div className="text-[13px] text-gray-400 py-8 text-center">No usage to estimate yet.</div>
   return (
     <div>
       <div className="flex items-baseline gap-2 mb-4">
         <span className="display text-[26px] font-semibold text-gray-900">{fmtUSD(total)}</span>
-        <span className="text-[12px] text-gray-500">estimado</span>
+        <span className="text-[12px] text-gray-500">estimated</span>
       </div>
       <div className="space-y-3">
         {providers.map((p) => {
@@ -278,11 +268,11 @@ function UsageDonut({ providers, responses, fusionPct }: { providers: ProviderSt
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="display text-[22px] font-semibold text-gray-900 leading-none">{fmtNum(responses)}</span>
-          <span className="text-[10px] text-gray-500 mt-0.5">respuestas</span>
+          <span className="text-[10px] text-gray-500 mt-0.5">responses</span>
         </div>
       </div>
       <div className="flex-1 min-w-0 space-y-1.5">
-        {segs.length === 0 && <div className="text-[13px] text-gray-400">Sin respuestas todavía.</div>}
+        {segs.length === 0 && <div className="text-[13px] text-gray-400">No responses yet.</div>}
         {segs.map((s) => {
           const m = pmeta(s.provider)
           return (
@@ -297,7 +287,7 @@ function UsageDonut({ providers, responses, fusionPct }: { providers: ProviderSt
         })}
         {responses > 0 && (
           <div className="pt-1.5 mt-1.5 text-[11px] text-gray-400" style={{ borderTop: "1px solid var(--border-soft)" }}>
-            {fusionPct}% en modo fusión
+            {fusionPct}% in fusion mode
           </div>
         )}
       </div>
@@ -305,25 +295,16 @@ function UsageDonut({ providers, responses, fusionPct }: { providers: ProviderSt
   )
 }
 
-function MemoryBars({ cats, total }: { cats: CatPoint[]; total: number }) {
-  if (total === 0) return <div className="text-[13px] text-gray-400 py-8 text-center">La memoria está vacía.</div>
-  const sorted = [...cats].sort((a, b) => b.n - a.n)
-  const max = Math.max(...sorted.map((c) => c.n), 1)
+function MemoryProfile({ profile }: { profile: string }) {
+  const text = profile.trim()
+  if (!text) {
+    return <div className="text-[13px] text-gray-400 py-8 text-center">Your memory profile is empty. It fills in as you chat.</div>
+  }
   return (
-    <div className="space-y-2.5">
-      {sorted.map((c) => {
-        const meta = CATEGORY_META[c.category] ?? CATEGORY_META.other
-        return (
-          <div key={c.category} className="flex items-center gap-3">
-            <span className="text-[12px] text-gray-600 w-20 flex-shrink-0">{meta.label}</span>
-            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--border-soft)" }}>
-              <div className="h-full rounded-full" style={{ width: `${Math.max(6, (c.n / max) * 100)}%`, background: meta.color, transition: "width .7s ease" }} />
-            </div>
-            <span className="text-[12px] font-semibold text-gray-900 w-6 text-right tabular-nums">{c.n}</span>
-          </div>
-        )
-      })}
-    </div>
+    <pre className="text-[12.5px] leading-relaxed whitespace-pre-wrap break-words max-h-[260px] overflow-y-auto"
+      style={{ color: "var(--text-2)", fontFamily: "inherit" }}>
+      {text}
+    </pre>
   )
 }
 
@@ -344,7 +325,7 @@ function Topbar() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
           <path d="M15 18l-6-6 6-6" />
         </svg>
-        Volver al chat
+        Back to chat
       </Link>
     </header>
   )
@@ -370,10 +351,10 @@ function Skeleton() {
 
 function LockedUpsell() {
   const perks = [
-    "Gasto estimado por modelo, en vivo",
-    "Actividad de los últimos 30 días",
-    "Distribución de uso entre proveedores",
-    "Memoria por categoría",
+    "Live estimated spend per model",
+    "Activity over the last 30 days",
+    "Usage distribution across providers",
+    "Your full memory profile",
   ]
   return (
     <Reveal>
@@ -388,9 +369,9 @@ function LockedUpsell() {
               <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </div>
-          <h2 className="display text-2xl font-semibold text-gray-900 mb-2">El dashboard es Pro</h2>
+          <h2 className="display text-2xl font-semibold text-gray-900 mb-2">The dashboard is Pro</h2>
           <p className="text-[14px] text-gray-500 leading-relaxed mb-6">
-            Visualizá tu uso y tu gasto estimado entre todos los modelos. Actualizá a Pro para desbloquearlo.
+            See your usage and estimated spend across every model. Upgrade to Pro to unlock it.
           </p>
           <div className="text-left space-y-2.5 mb-7 max-w-xs mx-auto">
             {perks.map((p) => (
@@ -407,7 +388,7 @@ function LockedUpsell() {
           <Link href="/#pricing"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-white text-[14px] font-semibold transition-all cursor-pointer hover:shadow-lg active:scale-95"
             style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)", boxShadow: "0 8px 24px -6px rgba(124,58,237,0.5)" }}>
-            Actualizá a Pro
+            Upgrade to Pro
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
@@ -443,7 +424,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
         <Topbar />
-        <main className="max-w-6xl mx-auto px-6 py-20 text-center text-gray-500">No se pudo cargar el dashboard. Recargá la página.</main>
+        <main className="max-w-6xl mx-auto px-6 py-20 text-center text-gray-500">Couldn&apos;t load the dashboard. Reload the page.</main>
       </div>
     )
   }
@@ -460,9 +441,8 @@ export default function DashboardPage() {
     )
   }
 
-  const { totals, providers, daily, memoryByCategory } = data
+  const { totals, providers, daily, memoryProfile } = data
   const fusionPct = totals.messages > 0 ? Math.round((totals.fusionTurns / totals.messages) * 100) : 0
-  const memTotal = memoryByCategory.reduce((s, c) => s + c.n, 0)
 
   return (
     <div className="min-h-screen chat-backdrop" style={{ background: "var(--bg-primary)" }}>
@@ -472,7 +452,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
             <div>
               <h1 className="display text-3xl font-semibold text-gray-900 tracking-tight">Dashboard</h1>
-              <p className="text-[14px] text-gray-500 mt-1">Tu uso y gasto estimado entre todos los modelos.</p>
+              <p className="text-[14px] text-gray-500 mt-1">Your usage and estimated spend across every model.</p>
             </div>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide text-white"
               style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}>
@@ -481,43 +461,43 @@ export default function DashboardPage() {
                 <path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" />
                 <path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" />
               </svg>
-              PLAN {data.plan.toUpperCase()}
+{data.plan.toUpperCase()} PLAN
             </span>
           </div>
         </Reveal>
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-          <StatCard delay={40} color="#f97316" label="Gasto estimado" value={fmtUSD(totals.estimatedSpend)} sub="acumulado"
+          <StatCard delay={40} color="#f97316" label="Estimated spend" value={fmtUSD(totals.estimatedSpend)} sub="cumulative"
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>} />
-          <StatCard delay={90} color="#3b82f6" label="Mensajes" value={fmtNum(totals.messages)}
+          <StatCard delay={90} color="#3b82f6" label="Messages" value={fmtNum(totals.messages)}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>} />
-          <StatCard delay={140} color="#10b981" label="Sesiones" value={fmtNum(totals.sessions)}
+          <StatCard delay={140} color="#10b981" label="Sessions" value={fmtNum(totals.sessions)}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M3 7h18M3 12h18M3 17h18" /></svg>} />
-          <StatCard delay={190} color="#8b5cf6" label="Respuestas IA" value={fmtNum(totals.responses)}
+          <StatCard delay={190} color="#8b5cf6" label="AI responses" value={fmtNum(totals.responses)}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" /><path d="M8 12l3 3 5-6" /></svg>} />
-          <StatCard delay={240} color="#7c3aed" label="Hechos en memoria" value={fmtNum(totals.memories)}
+          <StatCard delay={240} color="#7c3aed" label="Memory size" value={fmtNum(totals.memoryChars)} sub="characters"
             icon={<svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M7.4 4Q3.6 5 3.6 8.6Q4.1 12.5 7.6 12.5Q11.1 12 10.7 8.4Q10.3 4.5 7.4 4Z" /><path d="M16.4 5Q13.4 5.5 13 8.6Q13.5 12.5 16.6 12.5Q20.4 12 20 8.4Q19.6 5.5 16.4 5Z" /><path d="M12 13.5Q8.4 14 8.4 17.5Q8.9 21 12.4 20.5Q15.9 20 15.5 16.5Q15 13.5 12 13.5Z" /></svg>} />
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Reveal delay={290} className="lg:col-span-2">
-            <Card title="Actividad" hint="últimos 30 días"><ActivityChart daily={daily} /></Card>
+            <Card title="Activity" hint="last 30 days"><ActivityChart daily={daily} /></Card>
           </Reveal>
           <Reveal delay={340}>
-            <Card title="Gasto estimado por modelo"><SpendBars providers={providers} total={totals.estimatedSpend} /></Card>
+            <Card title="Estimated spend by model"><SpendBars providers={providers} total={totals.estimatedSpend} /></Card>
           </Reveal>
           <Reveal delay={390}>
-            <Card title="Distribución de uso"><UsageDonut providers={providers} responses={totals.responses} fusionPct={fusionPct} /></Card>
+            <Card title="Usage distribution"><UsageDonut providers={providers} responses={totals.responses} fusionPct={fusionPct} /></Card>
           </Reveal>
           <Reveal delay={440} className="lg:col-span-2">
-            <Card title="Memoria por categoría" hint={`${memTotal} hechos`}><MemoryBars cats={memoryByCategory} total={memTotal} /></Card>
+            <Card title="Memory profile" hint={`${fmtNum(totals.memoryChars)} chars`}><MemoryProfile profile={memoryProfile} /></Card>
           </Reveal>
         </div>
 
         <p className="text-[11px] text-gray-400 mt-5 leading-relaxed max-w-2xl">
-          El gasto es una <strong className="font-semibold text-gray-500">estimación</strong> calculada a partir del tamaño de los mensajes y un precio promedio por modelo. No refleja la facturación real de tu proveedor: con BYOK, ese cobro lo hace cada proveedor directamente sobre tu API key.
+          Spend is an <strong className="font-semibold text-gray-500">estimate</strong> based on message size and an average price per model. It doesn&apos;t reflect your provider&apos;s actual billing: with BYOK, each provider charges your API key directly.
         </p>
       </main>
     </div>

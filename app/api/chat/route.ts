@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
           else if (provider === "openai") await imageOpenAI(prompt, apiKey, model, controller, encoder)
           else if (provider === "google") await imageGoogle(prompt, apiKey, model, controller, encoder)
           else if (provider === "xai") await imageXAI(prompt, apiKey, model, controller, encoder)
-          else controller.enqueue(encoder.encode(`[Error: ${provider} no genera imágenes]`))
+          else controller.enqueue(encoder.encode(`[Error: ${provider} can't generate images]`))
         } else if (apiKey === "demo") {
           await streamDemo(messages, provider, controller, encoder, imgs)
         } else if (provider === "openai") {
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
           await streamOpenAICompat("https://api.deepseek.com/v1/chat/completions", "DeepSeek", messages, apiKey, model || "deepseek-chat", controller, encoder)
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error desconocido"
+        const msg = err instanceof Error ? err.message : "Unknown error"
         controller.enqueue(encoder.encode(`\n[Error: ${msg}]`))
       } finally {
         controller.close()
@@ -203,19 +203,19 @@ async function streamAnthropic(
 const DEMO_PERSONAS: Record<string, { intro: string; style: string }> = {
   openai: {
     intro: "GPT-4o",
-    style: "Respondo de forma directa y estructurada.",
+    style: "I answer in a direct, structured way.",
   },
   anthropic: {
     intro: "Claude",
-    style: "Prefiero dar contexto antes de la respuesta concreta.",
+    style: "I prefer to give context before the concrete answer.",
   },
   google: {
     intro: "Gemini",
-    style: "Aporto perspectivas adicionales y ejemplos prácticos.",
+    style: "I add extra perspectives and practical examples.",
   },
   groq: {
     intro: "Llama (Groq)",
-    style: "Respondo ultra rápido con inferencia acelerada.",
+    style: "I answer ultra-fast with accelerated inference.",
   },
 }
 
@@ -226,7 +226,7 @@ function buildDemoResponse(provider: string, messages: { role: string; content: 
 
   // Detect synthesis request (fusion mode)
   if (lastUser.includes("[GPT-4o]:") || lastUser.includes("[Claude]:") || lastUser.includes("[Gemini]:")) {
-    return `Esta es una respuesta fusionada de demostración, sintetizando los aportes de GPT-4o, Claude y Gemini.\n\nEn producción, este modelo analizaría las tres respuestas individuales y produciría una síntesis superior que:\n\n• Combina los mejores argumentos de cada modelo\n• Elimina redundancias y contradicciones\n• Presenta la información de forma clara y unificada\n\nLa fusión de IAs te da lo mejor de cada modelo en una sola respuesta coherente.`
+    return `This is a demo fused answer, synthesizing the contributions of GPT-4o, Claude and Gemini.\n\nIn production, this model would analyze the three individual answers and produce a superior synthesis that:\n\n• Combines the best arguments from each model\n• Removes redundancies and contradictions\n• Presents the information clearly and as one\n\nFusing AIs gives you the best of every model in a single coherent answer.`
   }
 
   const isFollowUp = userMessages.length > 1
@@ -236,21 +236,21 @@ function buildDemoResponse(provider: string, messages: { role: string; content: 
 
   const topic = lastUser.slice(0, 60) + (lastUser.length > 60 ? "…" : "")
 
-  let response = `**${persona.intro}** · Modo demo\n\n`
+  let response = `**${persona.intro}** · Demo mode\n\n`
 
   if (isFollowUp && hasPreviousContext) {
-    response += `Retomando el contexto compartido de esta conversación, respondo a "${topic}".\n\n`
-    response += `${persona.style} Esta es la respuesta ${userMessages.length} de nuestra sesión, podés ver que mantengo contexto de lo que dijeron los otros modelos anteriormente.\n\n`
-    response += `En producción con tu API key real, aquí aparecería mi análisis completo sobre tu consulta, basado en todo lo que se ha discutido en este chat (incluyendo las respuestas de los demás modelos).\n\n`
-    response += `✓ Contexto compartido activo\n✓ Streaming en tiempo real\n✓ Respuestas simultáneas de todos los modelos`
+    response += `Picking up the shared context of this conversation, here's my answer to "${topic}".\n\n`
+    response += `${persona.style} This is answer ${userMessages.length} of our session — as you can see, I keep the context of what the other models said earlier.\n\n`
+    response += `In production with your real API key, my full analysis of your query would appear here, based on everything discussed in this chat (including the other models' answers).\n\n`
+    response += `✓ Shared context active\n✓ Real-time streaming\n✓ Simultaneous answers from every model`
   } else {
-    response += `Esta es una respuesta simulada para que puedas probar la interfaz sin necesitar API keys reales.\n\n`
+    response += `This is a simulated answer so you can try the interface without needing real API keys.\n\n`
     response += `${persona.style}\n\n`
-    response += `Cuando conectes tu key de verdad, responderé a "${topic}" con mi análisis completo en tiempo real.\n\n`
-    response += `**Funcionalidades que ya están activas:**\n`
-    response += `• Streaming simultáneo de múltiples modelos\n`
-    response += `• Contexto compartido entre todas las IAs\n`
-    response += `• Historial persistente por sesión`
+    response += `Once you connect your real key, I'll answer "${topic}" with my full analysis in real time.\n\n`
+    response += `**Features that are already active:**\n`
+    response += `• Simultaneous streaming from multiple models\n`
+    response += `• Shared context across every AI\n`
+    response += `• Persistent history per session`
   }
 
   return response
@@ -263,7 +263,7 @@ async function streamDemo(
   encoder: TextEncoder,
   images: string[] = []
 ) {
-  const text = (images.length ? `📎 Recibí ${images.length} ${images.length === 1 ? "imagen" : "imágenes"} (en modo demo no las analizo, pero con tu API key real sí).\n\n` : "")
+  const text = (images.length ? `📎 I received ${images.length} ${images.length === 1 ? "image" : "images"} (I don't analyze them in demo mode, but with your real API key I will).\n\n` : "")
     + buildDemoResponse(provider, messages)
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -452,7 +452,7 @@ async function imageOpenAI(
 
   const json = await res.json()
   const b64: string | undefined = json.data?.[0]?.b64_json
-  if (!b64) throw new Error("OpenAI no devolvió imagen")
+  if (!b64) throw new Error("OpenAI didn't return an image")
   controller.enqueue(encoder.encode(`data:image/png;base64,${b64}`))
 }
 
@@ -472,7 +472,7 @@ async function imageXAI(
 
   const json = await res.json()
   const b64: string | undefined = json.data?.[0]?.b64_json
-  if (!b64) throw new Error("xAI no devolvió imagen")
+  if (!b64) throw new Error("xAI didn't return an image")
   controller.enqueue(encoder.encode(`data:image/png;base64,${b64}`))
 }
 
@@ -501,7 +501,7 @@ async function imageGoogle(
   const parts: { inlineData?: { mimeType?: string; data?: string } }[] =
     json.candidates?.[0]?.content?.parts ?? []
   const img = parts.find((p) => p.inlineData?.data)
-  if (!img?.inlineData?.data) throw new Error("Gemini no devolvió imagen")
+  if (!img?.inlineData?.data) throw new Error("Gemini didn't return an image")
   const mime = img.inlineData.mimeType || "image/png"
   controller.enqueue(encoder.encode(`data:${mime};base64,${img.inlineData.data}`))
 }
@@ -524,7 +524,7 @@ async function imageDemo(
       <stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/>
     </linearGradient></defs>
     <rect width="512" height="512" fill="url(#g)"/>
-    <text x="256" y="240" font-family="sans-serif" font-size="26" fill="white" text-anchor="middle" font-weight="bold">Imagen demo</text>
+    <text x="256" y="240" font-family="sans-serif" font-size="26" fill="white" text-anchor="middle" font-weight="bold">Demo image</text>
     <text x="256" y="280" font-family="sans-serif" font-size="16" fill="rgba(255,255,255,0.85)" text-anchor="middle">${label}</text>
   </svg>`
   const b64 = Buffer.from(svg).toString("base64")
@@ -544,7 +544,7 @@ async function streamOpenRouter(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://onechat.app",
+      "HTTP-Referer": "https://onechater.app",
       "X-Title": "OneChater",
     },
     body: JSON.stringify({ model: model || "nvidia/nemotron-3-super-120b-a12b:free", messages, stream: true }),

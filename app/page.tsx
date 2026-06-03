@@ -6,6 +6,178 @@ import Image from "next/image";
 import { useSession, SessionProvider } from "next-auth/react";
 import ThemeToggle from "./components/ThemeToggle";
 import UserMenu from "./components/UserMenu";
+import { useLang, useT, LangToggle } from "@/lib/i18n";
+
+// â"€ Landing copy (EN / ES) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+
+const LP = {
+  en: {
+    nav: { features: "Features", how: "How it works", memory: "Memory", pricing: "Pricing", signIn: "Sign in", startFree: "Start free", menu: "Menu", openMenu: "Open menu", closeMenu: "Close menu", home: "OneChater home" },
+    hero: {
+      new: "New", badge: "Persistent memory across models",
+      srH1: "OneChater — AI chat with GPT, Claude and Gemini in one place, with a persistent memory that follows you across every model",
+      line1: "One memory.", line2: "Every AI.",
+      subA: "The only AI chat app that doesn't forget you when you switch models.", subBold: " GPT, Claude and Gemini", subC: " in one place, with a memory that travels with you.",
+      startFree: "Start free", seeHow: "See how it works",
+      proWorldwide: "professionals worldwide", byok: "BYOK · 0% fee", worksWith: "Works with",
+    },
+    preview: { activeMemory: "Active memory:", chips: "Next.js · Banking client · Short answers", userQ: "How do I optimize this Postgres query?", sent: "Sent to 3 models", now: "Just now", gpt: "Add a composite index on", gptB: "and run EXPLAIN ANALYZE to verify...", claude: "With pgvector on your Supabase you can use", claudeB: "indexes for more efficient searches...", full: "Full answer →", gen: "Generating response...", ask: "Ask every model at once...", send: "Send message" },
+    feat: {
+      label: "Features", title: "Never start from scratch again",
+      subtitle: "Every time you switch models, you lose context. OneChater remembers everything, across every model, forever.",
+      items: {
+        memory: { name: "Living memory", badge: "Differentiator", long: "The only memory system that works across every model you use. It captures your projects, stack, decisions and tone automatically.",
+          bullets: [["Automatic capture", "Stack and decisions, effortlessly."], ["Editable profile", "Add, edit and delete what it knows about you."], ["Semantic search", "The exact answer in seconds."], ["Portable", "Every model knows you the same."]] },
+        multi: { name: "Multi-model chat", long: "Write once and get answers from GPT, Claude and Gemini in parallel. Compare them side by side and keep the best.",
+          bullets: [["Parallel streaming", "Three answers at once."], ["Compare view", "Differences highlighted instantly."], ["Pick your models", "Toggle them on or off per chat."], ["Fork an answer", "Take the best one and keep going."]] },
+        byok: { name: "Your own API keys", long: "Paste your OpenAI, Anthropic and Google keys. They're stored only in your browser, never on our servers. No markup, no middlemen.",
+          bullets: [["Browser-only", "Keys stored locally, never on the server."], ["30-second setup", "Paste and go, no OAuth."], ["Easy rotation", "Change or delete them anytime."], ["Multi-provider", "OpenAI, Anthropic, Google and more."]] },
+        projects: { name: "Isolated projects", long: "Separate contexts by project. Each one with its own memory, history and configuration. No cross-contamination between clients.",
+          bullets: [["Isolated memory", "No mixing between clients."], ["Keys per project", "Assign different API keys."], ["Scoped search", "Filter by the active project."], ["Custom config", "Model and tone per project."]] },
+        spend: { name: "Spend dashboard", long: "Track spend by model, by project, by day. Set limits and rest easy knowing you'll never be overcharged.",
+          bullets: [["Live tracking", "Every request, in real time."], ["Configurable limits", "Cut off when you hit the cap."], ["Deep breakdown", "By model, project or day."], ["Smart alerts", "A heads-up if something spikes."]] },
+      },
+    },
+    how: {
+      label: "How it works", title1: "Up and running in", title2: "60 seconds",
+      subtitle: "No complicated setup. No subscriptions to manage. Paste your keys and get started.", step: "Step",
+      steps: {
+        s1: { eyebrow: "Setup", title: "Connect your API keys", desc: "Paste your OpenAI, Anthropic or Google keys. They're stored only in your browser, never on our servers. Set it up once, forever.", tags: ["OpenAI", "Anthropic", "Google", "Local only"] },
+        s2: { eyebrow: "Chat", title: "Chat with every model", desc: "Write once and get answers from GPT, Claude and Gemini in real time, side by side. Compare them and pick the best.", tags: ["Real-time streaming", "Compare view", "Zero friction"] },
+        s3: { eyebrow: "Memory", title: "Memory learns as you go", desc: "After every chat, OneChater extracts what matters: projects, preferences, decisions. Next time, every model already knows you.", tags: ["Automatic capture", "Editable profile", "Portable across models"] },
+      },
+    },
+    mem: {
+      label: "Per-user memory", premium: "Premium", title1: "Never repeat yourself", title2: "to your AI again",
+      subtitle: "OneChater builds a private memory for every user, so your assistants remember your preferences, projects, goals and long-term context.",
+      user: "User", account: "Your account", personal: "Personal Memory", encrypted: "Private and encrypted",
+      caption: "A single memory shared across all your AI models, keeping context consistent everywhere.",
+      noteTitle: "You're in control", noteBody: "Users keep full control over their information. Memory exists to improve your experience and can be managed from the settings panel.",
+      cards: {
+        personal: { name: "Personal Memory", desc: "Every user gets an independent memory. Information is stored only to improve the quality of their conversations." },
+        contexto: { name: "Continuous Context", desc: "Switch between GPT, Claude, Gemini or other models without losing important information about you or your projects." },
+        aprendizaje: { name: "Progressive Learning", desc: "OneChater can remember relevant details shared in earlier conversations to deliver more consistent, personalized answers." },
+        preferencias: { name: "Persistent Preferences", desc: "Writing style, technical preferences, active projects and settings can carry over between sessions." },
+        privacidad: { name: "Privacy First", desc: "Your memory is tied to your account only and is never shared with other users." },
+        control: { name: "Full Control", desc: "You can review, edit or delete the stored information at any time." },
+      },
+    },
+    models: { label: "Supported models", title: "Every model you use", subtitle: "Connect your own API key for each provider and pay them directly.", footnote: "+ Amazon Bedrock, Azure OpenAI, Replicate and any OpenAI-compatible endpoint" },
+    test: {
+      label: "Testimonials", title1: "People who no longer", title2: "start from scratch",
+      subtitle: "Professionals and teams who stopped repeating their context to every model.",
+      stats: ["Professionals worldwide", "Models supported", "Average rating", "Fee on your keys"],
+      items: [
+        { quote: "I switched from GPT to Claude mid-project and didn't lose any context. It's the first time an AI tool actually remembers me.", role: "Full-stack developer · freelance" },
+        { quote: "I pay for my own API keys with no markup. For a small agency like ours, that's the difference between the numbers working or not.", role: "Founder · design studio" },
+        { quote: "Having GPT, Claude and Gemini side by side — and merging them into a single answer — saves me hours. I stopped jumping between tabs.", role: "Product Manager · fintech" },
+      ],
+    },
+    pricing: {
+      label: "Pricing", title1: "Simple, transparent", title2: "pricing", subtitle: "You already pay for your API keys. OneChater should be affordable too.",
+      monthly: "Monthly", annual: "Annual", soon: "Soon", redirecting: "Redirecting...", mostPopular: "Most popular", rated: "Rated 5 out of 5 stars",
+      securePay: "Secure, encrypted payment", currencies: "Cancel anytime · Local currencies coming soon",
+      plans: {
+        free: { tagline: "To get started", period: "forever", description: "Start with zero friction. No credit card required.", cta: "Start free",
+          features: ["Free-AI providers only (Groq, OpenRouter, Mistral, Gemini)", "Personal memory profile", "1 project", "Conversation history", "Community support"] },
+        pro: { tagline: "For professionals", period: "/ mo", annualNote: "billed $144/year · 20% off", description: "For professionals who live in AI every day.", cta: "Try Pro",
+          features: ["Every provider — bring any API key", "Unlimited memory profile", "Semantic history search", "Unlimited projects", "Cross-device sync", "Full spend dashboard", "Priority support"] },
+        team: { tagline: "For teams", period: "/ user / mo", description: "For teams that want AI with shared context.", cta: "Coming soon",
+          features: ["Everything in Pro", "Up to 10 members", "Shared prompt library", "Team memory", "SSO / SAML", "Dedicated Slack support"] },
+      },
+    },
+    cta: { title1: "Ready to unify your", title2: "AI workflow?", subtitle: "Join thousands of professionals and freelancers who use OneChater to get the most out of every AI model — with one memory that connects them all.", startFree: "Start for free", seePricing: "See pricing", micro: "No credit card · Set up in 60 seconds · Cancel anytime" },
+    footer: {
+      tagline: "One memory. Every AI. Bring your keys, own your data.",
+      groups: { Product: "Product", Resources: "Resources", Legal: "Legal", Community: "Community" },
+      links: { features: "Features", how: "How it works", pricing: "Pricing", models: "Models", docs: "Documentation", api: "API reference", status: "Status", contact: "Contact", privacy: "Privacy policy", terms: "Terms of use", refunds: "Refund policy", discord: "Discord", twitter: "Twitter / X", reddit: "Reddit", newsletter: "Newsletter" },
+      rights: "All rights reserved.", systems: "All systems operational", privacy: "Privacy", terms: "Terms", refunds: "Refunds",
+    },
+  },
+  es: {
+    nav: { features: "Funcionalidades", how: "Cómo funciona", memory: "Memoria", pricing: "Precios", signIn: "Iniciar sesión", startFree: "Empezar gratis", menu: "Menú", openMenu: "Abrir menú", closeMenu: "Cerrar menú", home: "Inicio de OneChater" },
+    hero: {
+      new: "Nuevo", badge: "Memoria persistente entre modelos",
+      srH1: "OneChater — chat con IA: GPT, Claude y Gemini en un solo lugar, con una memoria persistente que te sigue en todos los modelos",
+      line1: "Una memoria.", line2: "Todas las IAs.",
+      subA: "La única app de chat con IA que no te olvida cuando cambiás de modelo.", subBold: " GPT, Claude y Gemini", subC: " en un solo lugar, con una memoria que viaja con vos.",
+      startFree: "Empezar gratis", seeHow: "Ver cómo funciona",
+      proWorldwide: "profesionales en todo el mundo", byok: "BYOK · 0% de comisión", worksWith: "Compatible con",
+    },
+    preview: { activeMemory: "Memoria activa:", chips: "Next.js · Cliente bancario · Respuestas cortas", userQ: "¿Cómo optimizo esta query de Postgres?", sent: "Enviado a 3 modelos", now: "Hace un momento", gpt: "Agregá un índice compuesto en", gptB: "y usá EXPLAIN ANALYZE para verificar...", claude: "Con pgvector en tu Supabase podés usar índices", claudeB: "para búsquedas más eficientes...", full: "Respuesta completa →", gen: "Generando respuesta...", ask: "Preguntale a todos los modelos a la vez...", send: "Enviar mensaje" },
+    feat: {
+      label: "Funcionalidades", title: "Nunca más empezar de cero",
+      subtitle: "Cada vez que cambiás de modelo, perdés contexto. OneChater lo recuerda todo, en todos los modelos, para siempre.",
+      items: {
+        memory: { name: "Memoria viva", badge: "Diferenciador", long: "El único sistema de memoria que funciona entre todos tus modelos. Captura proyectos, stack, decisiones y tono automáticamente.",
+          bullets: [["Captura automática", "Stack y decisiones, sin esfuerzo."], ["Perfil editable", "Agregás, editás y borrás qué sabe de vos."], ["Búsqueda semántica", "Respuesta exacta en segundos."], ["Portable", "Todos los modelos te conocen igual."]] },
+        multi: { name: "Chat multi-modelo", long: "Escribí una vez y recibí respuestas en paralelo de GPT, Claude y Gemini. Comparalas lado a lado y quedate con la mejor.",
+          bullets: [["Streaming paralelo", "Tres respuestas a la vez."], ["Vista comparativa", "Diferencias resaltadas al toque."], ["Modelos a elección", "Activá o desactivá por chat."], ["Fork de respuesta", "Tomá la mejor y seguí."]] },
+        byok: { name: "Tus propias API keys", long: "Pegá tus keys de OpenAI, Anthropic y Google. Se guardan solo en tu navegador, nunca en nuestros servidores. Sin markup, sin intermediarios.",
+          bullets: [["Solo en tu navegador", "Keys guardadas localmente, nunca en el servidor."], ["Setup en 30s", "Pegá y listo, sin OAuth."], ["Rotación fácil", "Cambiá o borrá cuando quieras."], ["Multi-proveedor", "OpenAI, Anthropic, Google y más."]] },
+        projects: { name: "Proyectos aislados", long: "Separá contextos por proyecto. Cada uno con su propia memoria, historial y configuración. Sin contaminación entre clientes.",
+          bullets: [["Memoria aislada", "Sin mezcla entre clientes."], ["Keys por proyecto", "Asigná API keys distintas."], ["Búsqueda scoped", "Filtrá por proyecto activo."], ["Config custom", "Modelo y tono por proyecto."]] },
+        spend: { name: "Dashboard de gasto", long: "Visualizá el gasto por modelo, por proyecto, por día. Poné límites y dormí tranquilo sabiendo que no te van a cobrar de más.",
+          bullets: [["Tracking en vivo", "Cada request al toque."], ["Límites configurables", "Cortá al llegar al techo."], ["Breakdown profundo", "Por modelo, proyecto o día."], ["Alertas inteligentes", "Aviso si algo se dispara."]] },
+      },
+    },
+    how: {
+      label: "Cómo funciona", title1: "Funcionando en", title2: "60 segundos",
+      subtitle: "Sin setup complicado. Sin suscripciones que gestionar. Pegás tus keys y empezás.", step: "Paso",
+      steps: {
+        s1: { eyebrow: "Setup", title: "Conectá tus API keys", desc: "Pegá tus keys de OpenAI, Anthropic o Google. Se guardan solo en tu navegador, nunca en nuestros servidores. Configuración única, para siempre.", tags: ["OpenAI", "Anthropic", "Google", "Solo local"] },
+        s2: { eyebrow: "Chat", title: "Chateá con todos los modelos", desc: "Escribí una vez, recibí respuestas de GPT, Claude y Gemini en tiempo real lado a lado. Comparalos y elegí el mejor.", tags: ["Streaming en tiempo real", "Vista comparativa", "Sin fricción"] },
+        s3: { eyebrow: "Memoria", title: "La memoria aprende con vos", desc: "Después de cada chat, OneChater extrae lo relevante: proyectos, preferencias, decisiones. La próxima vez, todos los modelos ya te conocen.", tags: ["Captura automática", "Perfil editable", "Portable entre modelos"] },
+      },
+    },
+    mem: {
+      label: "Memoria por usuario", premium: "Premium", title1: "Nunca vuelvas a repetir", title2: "información a tu IA",
+      subtitle: "OneChater construye una memoria privada para cada usuario, permitiendo que tus asistentes recuerden preferencias, proyectos, objetivos y contexto a largo plazo.",
+      user: "Usuario", account: "Tu cuenta", personal: "Memoria Personal", encrypted: "Privada y cifrada",
+      caption: "Una única memoria compartida entre todos tus modelos de IA para mantener el contexto de forma consistente.",
+      noteTitle: "Vos tenés el control", noteBody: "Los usuarios mantienen el control total sobre su información. La memoria existe para mejorar la experiencia y puede gestionarse desde el panel de configuración.",
+      cards: {
+        personal: { name: "Memoria Personal", desc: "Cada usuario dispone de una memoria independiente. La información se almacena únicamente para mejorar la calidad de sus conversaciones." },
+        contexto: { name: "Contexto Continuo", desc: "Cambiá entre GPT, Claude, Gemini u otros modelos sin perder información importante sobre vos o tus proyectos." },
+        aprendizaje: { name: "Aprendizaje Progresivo", desc: "OneChater puede recordar datos relevantes compartidos en conversaciones anteriores para ofrecer respuestas más consistentes y personalizadas." },
+        preferencias: { name: "Preferencias Persistentes", desc: "Estilo de escritura, preferencias técnicas, proyectos activos y configuraciones pueden mantenerse entre sesiones." },
+        privacidad: { name: "Privacidad Primero", desc: "Tu memoria está asociada únicamente a tu cuenta y no se comparte con otros usuarios." },
+        control: { name: "Control Total", desc: "Podés revisar, editar o eliminar la información almacenada en cualquier momento." },
+      },
+    },
+    models: { label: "Modelos soportados", title: "Todos los modelos que usás", subtitle: "Conectá tu propia API key de cada proveedor y pagá directo a ellos.", footnote: "+ Amazon Bedrock, Azure OpenAI, Replicate y cualquier endpoint compatible con OpenAI" },
+    test: {
+      label: "Testimonios", title1: "Quienes ya no", title2: "empiezan de cero",
+      subtitle: "Profesionales y equipos que dejaron de repetir su contexto en cada modelo.",
+      stats: ["Profesionales en todo el mundo", "Modelos soportados", "Rating promedio", "Comisión sobre tus keys"],
+      items: [
+        { quote: "Cambié de GPT a Claude a mitad de proyecto y no perdí nada de contexto. Es la primera vez que una herramienta de IA realmente me recuerda.", role: "Desarrolladora full-stack · freelance" },
+        { quote: "Pago mis propias API keys sin markup. Para una agencia chica como la nuestra, eso es la diferencia entre cerrar los números o no.", role: "Founder · estudio de diseño" },
+        { quote: "Tener GPT, Claude y Gemini lado a lado, y que se fusionen en una sola respuesta, me ahorra horas. Dejé de saltar entre pestañas.", role: "Product Manager · fintech" },
+      ],
+    },
+    pricing: {
+      label: "Precios", title1: "Precios simples y", title2: "transparentes", subtitle: "Ya pagás tus API keys. OneChater tiene que ser accesible también.",
+      monthly: "Mensual", annual: "Anual", soon: "Pronto", redirecting: "Redirigiendo...", mostPopular: "Más popular", rated: "Calificación 5 de 5 estrellas",
+      securePay: "Pago seguro con encriptación", currencies: "Cancelá cuando quieras · Monedas locales próximamente",
+      plans: {
+        free: { tagline: "Para arrancar", period: "para siempre", description: "Para empezar sin fricción. Sin tarjeta de crédito.", cta: "Empezar gratis",
+          features: ["Solo proveedores de IA gratis (Groq, OpenRouter, Mistral, Gemini)", "Perfil de memoria personal", "1 proyecto", "Historial de conversaciones", "Soporte por comunidad"] },
+        pro: { tagline: "Para profesionales", period: "/ mes", annualNote: "facturado $144/año · 20% off", description: "Para profesionales que viven en la IA todos los días.", cta: "Probar Pro",
+          features: ["Todos los proveedores — traé cualquier API key", "Memoria ilimitada", "Búsqueda semántica del historial", "Proyectos ilimitados", "Sync entre dispositivos", "Dashboard de gasto completo", "Soporte prioritario"] },
+        team: { tagline: "Para equipos", period: "/ usuario / mes", description: "Para equipos que quieren IA con contexto compartido.", cta: "Próximamente",
+          features: ["Todo lo de Pro", "Hasta 10 integrantes", "Biblioteca de prompts compartida", "Memoria de equipo", "SSO / SAML", "Soporte dedicado por Slack"] },
+      },
+    },
+    cta: { title1: "¿Listo para unificar tu", title2: "flujo de trabajo con IA?", subtitle: "Unite a miles de profesionales y freelancers que usan OneChater para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.", startFree: "Empezar gratis", seePricing: "Ver precios", micro: "Sin tarjeta de crédito · Listo en 60 segundos · Cancelá cuando quieras" },
+    footer: {
+      tagline: "Una memoria. Todas las IAs. Traé tus keys, controlá tus datos.",
+      groups: { Product: "Producto", Resources: "Recursos", Legal: "Legal", Community: "Comunidad" },
+      links: { features: "Funcionalidades", how: "Cómo funciona", pricing: "Precios", models: "Modelos", docs: "Documentación", api: "Referencia API", status: "Estado", contact: "Contacto", privacy: "Política de privacidad", terms: "Términos de uso", refunds: "Política de reembolsos", discord: "Discord", twitter: "Twitter / X", reddit: "Reddit", newsletter: "Newsletter" },
+      rights: "Todos los derechos reservados.", systems: "Todos los sistemas operativos", privacy: "Privacidad", terms: "Términos", refunds: "Reembolsos",
+    },
+  },
+};
 
 // â"€â"€â"€ OneChat Logo Components â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
@@ -24,7 +196,7 @@ function OneChatLogoFull({ className = "h-8" }: { className?: string }) {
     <>
       <Image
         src="/OneChater-35-blobs/svg/horizontal-light.svg"
-        alt="OneChat"
+        alt="OneChater"
         height={44}
         width={220}
         className={`${className} logo-dark-hidden`}
@@ -32,7 +204,7 @@ function OneChatLogoFull({ className = "h-8" }: { className?: string }) {
       />
       <Image
         src="/OneChater-35-blobs/svg/horizontal-dark.svg"
-        alt="OneChat"
+        alt="OneChater"
         height={44}
         width={220}
         className={`${className} logo-dark-only`}
@@ -148,14 +320,6 @@ function IconArrowRight() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
       <path d="M5 12h14M12 5l7 7-7 7" />
-    </svg>
-  );
-}
-
-function IconGithub() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
     </svg>
   );
 }
@@ -291,17 +455,15 @@ function PerplexityLogo() {
 function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
+  const t = useT(LP);
 
-  type NavSection = { label: string; sectionId: string; slug: string };
-  type NavLink    = { label: string; href: string; external?: boolean; icon?: React.ReactNode };
-  type NavItem    = NavSection | NavLink;
+  type NavItem = { label: string; sectionId: string };
 
   const navItems: NavItem[] = [
-    { label: "Funcionalidades", sectionId: "features",    slug: "funcionalidades" },
-    { label: "Cómo funciona",   sectionId: "how-it-works", slug: "como-funciona" },
-    { label: "Memoria",         sectionId: "memoria",      slug: "memoria" },
-    { label: "Precios",         sectionId: "pricing",      slug: "precios" },
-    { label: "GitHub", href: "https://github.com/fabriciovla", external: true, icon: <IconGithub /> },
+    { label: t.nav.features, sectionId: "features" },
+    { label: t.nav.how,      sectionId: "how-it-works" },
+    { label: t.nav.memory,   sectionId: "memoria" },
+    { label: t.nav.pricing,  sectionId: "pricing" },
   ];
 
   useEffect(() => {
@@ -311,12 +473,11 @@ function Navbar() {
 
   const close = () => setMobileOpen(false);
 
-  const scrollTo = (sectionId: string, slug: string) => {
+  // Smooth-scroll to a section. We intentionally do NOT push a slug into the
+  // URL — the path stays "/" so a page refresh always lands on the home top.
+  const scrollTo = (sectionId: string) => {
     const el = document.getElementById(sectionId);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.pushState(null, "", `/${slug}`);
-    }
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
@@ -324,7 +485,7 @@ function Navbar() {
       <nav className="nav-enter absolute top-0 left-0 right-0 z-50" style={{ background: "transparent" }}>
         <div className="w-full max-w-[1600px] mx-auto px-5 md:px-10 lg:px-16 h-[72px] flex items-center justify-between">
           {/* Logo */}
-          <a href="#" className="flex items-center cursor-pointer group" aria-label="OneChat inicio">
+          <a href="#" className="flex items-center cursor-pointer group" aria-label={t.nav.home}>
             <div className="transition-all duration-300 group-hover:opacity-80 group-hover:scale-[1.02]">
               <OneChatLogoFull className="h-8 md:h-9 w-auto" />
             </div>
@@ -333,57 +494,46 @@ function Navbar() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              "sectionId" in item ? (
-                <button
-                  key={item.label}
-                  onClick={() => scrollTo(item.sectionId, item.slug)}
-                  className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
-                >
-                  {item.label}
-                </button>
-              ) : (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
-                  target={item.external ? "_blank" : undefined}
-                  rel={item.external ? "noopener noreferrer" : undefined}
-                >
-                  {"icon" in item && item.icon}
-                  {item.label}
-                </a>
-              )
+              <button
+                key={item.sectionId}
+                onClick={() => scrollTo(item.sectionId)}
+                className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+              >
+                {item.label}
+              </button>
             ))}
             <span className="nav-separator mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
+            <LangToggle className="!h-8" />
             <ThemeToggle className="!w-8 !h-8" />
             {session?.user ? (
               <UserMenu />
             ) : (
               <>
                 <a href="/login" className="px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all cursor-pointer">
-                  Iniciar sesión
+                  {t.nav.signIn}
                 </a>
                 <a href="/login" className="ml-1 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold text-white transition-all duration-200 cursor-pointer hover:-translate-y-px"
                   style={{ background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(14,15,18,0.2), 0 6px 18px -6px rgba(14,15,18,0.35)" }}>
-                  Empezar gratis <IconArrowRight />
+                  {t.nav.startFree} <IconArrowRight />
                 </a>
               </>
             )}
           </div>
 
-          {/* Mobile right: theme + open */}
+          {/* Mobile right: lang + theme + open */}
           <div className="md:hidden flex items-center gap-2">
+            <LangToggle className="!h-8" />
             <ThemeToggle className="!w-8 !h-8" />
             <button
               onClick={() => setMobileOpen(true)}
-              aria-label="Abrir menú"
+              aria-label={t.nav.openMenu}
               className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-[13px] font-semibold cursor-pointer transition-all"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-2)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-4 h-4">
                 <path d="M3 12h18M3 6h18M3 18h12" />
               </svg>
-              Menú
+              {t.nav.menu}
             </button>
           </div>
         </div>
@@ -404,7 +554,7 @@ function Navbar() {
           <OneChatLogoFull className="h-8 w-auto" />
           <button
             onClick={close}
-            aria-label="Cerrar menú"
+            aria-label={t.nav.closeMenu}
             className="w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer"
             style={{ background: "var(--surface-2)", color: "var(--text-2)" }}
           >
@@ -417,43 +567,27 @@ function Navbar() {
         {/* Nav links */}
         <nav className="px-5 mt-2">
           {navItems.map((item) => (
-            "sectionId" in item ? (
-              <button
-                key={item.label}
-                onClick={() => { scrollTo(item.sectionId, item.slug); close(); }}
-                className="nav-overlay-link w-full text-left"
-              >
-                <span className="inline-flex items-center gap-2">{item.label}</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </button>
-            ) : (
-              <a
-                key={item.label}
-                href={item.href}
-                onClick={close}
-                className="nav-overlay-link"
-                target={item.external ? "_blank" : undefined}
-                rel={item.external ? "noopener noreferrer" : undefined}
-              >
-                <span className="inline-flex items-center gap-2">{"icon" in item && item.icon}{item.label}</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </a>
-            )
+            <button
+              key={item.sectionId}
+              onClick={() => { scrollTo(item.sectionId); close(); }}
+              className="nav-overlay-link w-full text-left"
+            >
+              <span className="inline-flex items-center gap-2">{item.label}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
           ))}
         </nav>
 
         {/* Bottom CTAs */}
         <div className="px-5 mt-8 flex flex-col gap-3">
           <a href="/login" className="btn-primary text-[15px] py-3.5 justify-center">
-            Empezar gratis <IconArrowRight />
+            {t.nav.startFree} <IconArrowRight />
           </a>
           <a href="/login" className="text-center text-sm py-2.5 font-medium rounded-xl transition-all"
             style={{ color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-            Iniciar sesión
+            {t.nav.signIn}
           </a>
         </div>
       </div>
@@ -464,6 +598,7 @@ function Navbar() {
 // â"€â"€â"€ Hero Chat Preview â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function ChatPreview() {
+  const t = useT(LP).preview;
   return (
     <div className="relative w-full max-w-3xl mx-auto">
       <div
@@ -483,7 +618,7 @@ function ChatPreview() {
           </div>
           <div className="flex-1 mx-4">
             <div className="w-40 mx-auto h-6 rounded-lg bg-gray-100 border border-black/8 flex items-center justify-center">
-              <span className="text-xs text-gray-500 font-mono">onechat.app/chat</span>
+              <span className="text-xs text-gray-500 font-mono">onechater.app/chat</span>
             </div>
           </div>
           <div className="flex gap-1.5">
@@ -498,22 +633,22 @@ function ChatPreview() {
           {/* Memory chip */}
           <div className="group flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gray-50 border border-black/10 shadow-sm w-fit hover:border-black/20 transition-all cursor-default">
             <span className="w-2 h-2 rounded-full bg-black animate-pulse" />
-            <span className="text-xs text-gray-700 font-medium">Memoria activa:</span>
-            <span className="text-xs text-gray-500">Next.js · Cliente bancario · Respuestas cortas</span>
+            <span className="text-xs text-gray-700 font-medium">{t.activeMemory}</span>
+            <span className="text-xs text-gray-500">{t.chips}</span>
           </div>
 
           {/* User message */}
           <div className="flex justify-end">
             <div className="group max-w-[75%] px-5 py-3.5 rounded-2xl rounded-tr-sm text-sm text-white shadow-xl"
               style={{ background: "#0E0F12" }}>
-              <p className="leading-relaxed font-medium">¿Cómo optimizo esta query de Postgres?</p>
+              <p className="leading-relaxed font-medium">{t.userQ}</p>
               <div className="mt-2.5 pt-2 border-t border-white/15 flex items-center gap-3 text-xs text-white/70">
                 <span className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                  Enviado a 3 modelos
+                  {t.sent}
                 </span>
                 <span className="opacity-50">·</span>
-                <span>Hace un momento</span>
+                <span>{t.now}</span>
               </div>
             </div>
           </div>
@@ -530,10 +665,10 @@ function ChatPreview() {
                 <div className="ml-auto w-2 h-2 rounded-full bg-green-500" />
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Agregá un índice compuesto en <code className="text-gray-700 bg-gray-100 px-1 py-0.5 rounded">user_id, created_at</code> y usá EXPLAIN ANALYZE para verificar...
+                {t.gpt} <code className="text-gray-700 bg-gray-100 px-1 py-0.5 rounded">user_id, created_at</code> {t.gptB}
               </p>
               <div className="flex items-center gap-2 pt-2 border-t border-black/6">
-                <span className="text-[10px] text-gray-400 font-medium">Respuesta completa â†’</span>
+                <span className="text-[10px] text-gray-400 font-medium">{t.full}</span>
               </div>
             </div>
 
@@ -547,10 +682,10 @@ function ChatPreview() {
                 <div className="ml-auto w-2 h-2 rounded-full bg-green-500" />
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Con pgvector en tu Supabase podés usar índices <code className="text-gray-700 bg-gray-100 px-1 py-0.5 rounded">HNSW</code> para búsquedas más eficientes...
+                {t.claude} <code className="text-gray-700 bg-gray-100 px-1 py-0.5 rounded">HNSW</code> {t.claudeB}
               </p>
               <div className="flex items-center gap-2 pt-2 border-t border-black/6">
-                <span className="text-[10px] text-gray-400 font-medium">Respuesta completa â†’</span>
+                <span className="text-[10px] text-gray-400 font-medium">{t.full}</span>
               </div>
             </div>
 
@@ -569,7 +704,7 @@ function ChatPreview() {
                 <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:300ms]" />
               </div>
               <div className="flex items-center gap-2 pt-2 border-t border-black/6">
-                <span className="text-[10px] text-gray-400 font-medium">Generando respuesta...</span>
+                <span className="text-[10px] text-gray-400 font-medium">{t.gen}</span>
               </div>
             </div>
           </div>
@@ -577,12 +712,12 @@ function ChatPreview() {
           {/* Input bar */}
           <div className="flex gap-2 items-center mt-4">
             <div className="flex-1 h-9 rounded-xl bg-gray-50 border border-black/10 flex items-center px-3">
-              <span className="text-xs text-gray-400">Preguntale a todos los modelos a la vez...</span>
+              <span className="text-xs text-gray-400">{t.ask}</span>
             </div>
             <button
               className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer transition-transform hover:scale-105"
               style={{ background: "#0E0F12" }}
-              aria-label="Enviar mensaje"
+              aria-label={t.send}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
@@ -628,10 +763,10 @@ const FEATURES: FeatureDef[] = [
   {
     id: "memory",
     n: "01",
-    name: "Memoria viva",
-    short: "Contexto siempre activo",
-    badge: "Diferenciador",
-    long: "El único sistema de memoria que funciona entre todos tus modelos. Captura proyectos, stack, decisiones y tono automáticamente.",
+    name: "Living memory",
+    short: "Context that's always on",
+    badge: "Differentiator",
+    long: "The only memory system that works across every model you use. It captures your projects, stack, decisions and tone automatically.",
     icon: <IconBrain />,
     accent: {
       from: "from-orange-500",
@@ -645,9 +780,9 @@ const FEATURES: FeatureDef[] = [
   {
     id: "multi",
     n: "02",
-    name: "Chat multi-modelo",
-    short: "Un mensaje, 3 respuestas",
-    long: "Escribí una vez y recibí respuestas en paralelo de GPT, Claude y Gemini. Comparalas lado a lado y quedate con la mejor.",
+    name: "Multi-model chat",
+    short: "One message, 3 answers",
+    long: "Write once and get answers from GPT, Claude and Gemini in parallel. Compare them side by side and keep the best.",
     icon: <IconMessages />,
     accent: {
       from: "from-blue-500",
@@ -661,9 +796,9 @@ const FEATURES: FeatureDef[] = [
   {
     id: "byok",
     n: "03",
-    name: "Tus propias API keys",
-    short: "0% fee, pagás directo",
-    long: "Pegá tus keys de OpenAI, Anthropic, Google. Se guardan solo en tu navegador, nunca en nuestros servidores. Sin markup, sin intermediarios.",
+    name: "Your own API keys",
+    short: "0% fee, pay providers direct",
+    long: "Paste your OpenAI, Anthropic and Google keys. They're stored only in your browser, never on our servers. No markup, no middlemen.",
     icon: <IconKey />,
     accent: {
       from: "from-violet-500",
@@ -677,9 +812,9 @@ const FEATURES: FeatureDef[] = [
   {
     id: "projects",
     n: "04",
-    name: "Proyectos aislados",
-    short: "Cada cliente, su espacio",
-    long: "Separá contextos por proyecto. Cada uno con su propia memoria, historial y configuración. Sin contaminación entre clientes.",
+    name: "Isolated projects",
+    short: "Every client, its own space",
+    long: "Separate contexts by project. Each one with its own memory, history and configuration. No cross-contamination between clients.",
     icon: <IconFolder />,
     accent: {
       from: "from-green-500",
@@ -693,9 +828,9 @@ const FEATURES: FeatureDef[] = [
   {
     id: "spend",
     n: "05",
-    name: "Dashboard de gasto",
-    short: "Sabés cuánto gastás",
-    long: "Visualizá el gasto por modelo, por proyecto, por día. Poné límites y dormí tranquilo sabiendo que no te van a cobrar de más.",
+    name: "Spend dashboard",
+    short: "Know exactly what you spend",
+    long: "Track spend by model, by project, by day. Set limits and rest easy knowing you'll never be overcharged.",
     icon: <IconBarChart />,
     accent: {
       from: "from-orange-400",
@@ -708,52 +843,22 @@ const FEATURES: FeatureDef[] = [
   },
 ];
 
-const MEMORY_BULLETS = [
-  { icon: <IconZap />, label: "Captura automática", desc: "Stack y decisiones, sin esfuerzo." },
-  { icon: <IconPencil />, label: "Perfil editable", desc: "Agregás, editás y borrás qué sabe de vos." },
-  { icon: <IconSearch />, label: "Búsqueda semántica", desc: "Respuesta exacta en segundos." },
-  { icon: <IconShuffle />, label: "Portable", desc: "Todos los modelos te conocen igual." },
-];
-
-const MULTI_BULLETS = [
-  { icon: <IconZap />, label: "Streaming paralelo", desc: "Tres respuestas a la vez." },
-  { icon: <IconSearch />, label: "Vista comparativa", desc: "Diferencias resaltadas al toque." },
-  { icon: <IconShuffle />, label: "Modelos a elección", desc: "Activá o desactivá por chat." },
-  { icon: <IconPencil />, label: "Fork de respuesta", desc: "Tomá la mejor y seguí." },
-];
-
-const BYOK_BULLETS = [
-  { icon: <IconShield />, label: "Solo en tu navegador", desc: "Keys guardadas localmente, nunca en el servidor." },
-  { icon: <IconZap />, label: "Setup en 30s", desc: "Pegá y listo, sin OAuth." },
-  { icon: <IconKey />, label: "Rotación fácil", desc: "Cambiá o borrá cuando quieras." },
-  { icon: <IconShuffle />, label: "Multi-proveedor", desc: "OpenAI, Anthropic, Google y más." },
-];
-
-const PROJECT_BULLETS = [
-  { icon: <IconFolder />, label: "Memoria aislada", desc: "Sin mezcla entre clientes." },
-  { icon: <IconKey />, label: "Keys por proyecto", desc: "Asigná API keys distintas." },
-  { icon: <IconSearch />, label: "Búsqueda scoped", desc: "Filtrá por proyecto activo." },
-  { icon: <IconPencil />, label: "Config custom", desc: "Modelo y tono por proyecto." },
-];
-
-const SPEND_BULLETS = [
-  { icon: <IconBarChart />, label: "Tracking en vivo", desc: "Cada request al toque." },
-  { icon: <IconShield />, label: "Límites configurables", desc: "Cortá al llegar al techo." },
-  { icon: <IconSearch />, label: "Breakdown profundo", desc: "Por modelo, proyecto o día." },
-  { icon: <IconZap />, label: "Alertas inteligentes", desc: "Aviso si algo se dispara." },
-];
-
-const FEATURE_BULLETS: Record<string, Array<{ icon: React.ReactNode; label: string; desc: string }>> = {
-  memory: MEMORY_BULLETS,
-  multi: MULTI_BULLETS,
-  byok: BYOK_BULLETS,
-  projects: PROJECT_BULLETS,
-  spend: SPEND_BULLETS,
+// Icons per feature card (order matches the bullets in the LP dictionary).
+const FEATURE_BULLET_ICONS: Record<string, React.ReactNode[]> = {
+  memory:   [<IconZap key="z" />, <IconPencil key="p" />, <IconSearch key="s" />, <IconShuffle key="h" />],
+  multi:    [<IconZap key="z" />, <IconSearch key="s" />, <IconShuffle key="h" />, <IconPencil key="p" />],
+  byok:     [<IconShield key="d" />, <IconZap key="z" />, <IconKey key="k" />, <IconShuffle key="h" />],
+  projects: [<IconFolder key="f" />, <IconKey key="k" />, <IconSearch key="s" />, <IconPencil key="p" />],
+  spend:    [<IconBarChart key="b" />, <IconShield key="d" />, <IconSearch key="s" />, <IconZap key="z" />],
 };
+
+type FeatureText = { name: string; long: string; badge?: string; bullets: string[][] };
 
 // ── Static feature card (no inner interactivity) ────────────────────
 function FeatureCard({ f, span }: { f: FeatureDef; span: boolean }) {
-  const bullets = FEATURE_BULLETS[f.id];
+  const fi = (useT(LP).feat.items as Record<string, FeatureText>)[f.id];
+  const icons = FEATURE_BULLET_ICONS[f.id] ?? [];
+  const bullets = fi.bullets.map((b, i) => ({ icon: icons[i], label: b[0], desc: b[1] }));
   return (
     <div className={`feature-card relative rounded-2xl p-7 md:p-8 h-full overflow-hidden`}>
       {/* faint static corner accent */}
@@ -772,33 +877,33 @@ function FeatureCard({ f, span }: { f: FeatureDef; span: boolean }) {
           </div>
           <div className="flex items-center gap-2">
             <span className={`text-[11px] font-mono font-bold tracking-widest ${f.accent.text}`}>{f.n}</span>
-            {f.badge && (
+            {fi.badge && (
               <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
-                {f.badge}
+                {fi.badge}
               </span>
             )}
           </div>
         </div>
 
-        <h3 className="display text-xl md:text-2xl font-semibold text-gray-900 tracking-tight leading-tight">{f.name}</h3>
-        <p className="mt-3 text-gray-500 text-[14px] leading-relaxed text-pretty">{f.long}</p>
+        <h3 className="display text-xl md:text-2xl font-semibold text-gray-900 tracking-tight leading-tight">{fi.name}</h3>
+        <p className="hidden sm:block mt-3 text-gray-500 text-[14px] leading-relaxed text-pretty">{fi.long}</p>
 
         {/* capabilities — static list (enlarged on the wide span card) */}
-        <div className={`grid ${span ? "mt-7 gap-x-6 gap-y-5 sm:grid-cols-2" : "mt-6 gap-x-5 gap-y-3.5 grid-cols-1"}`}>
+        <div className={`grid ${span ? "mt-5 sm:mt-7 gap-x-6 gap-y-3 sm:gap-y-5 sm:grid-cols-2" : "mt-4 sm:mt-6 gap-x-5 gap-y-2.5 sm:gap-y-3.5 grid-cols-1"}`}>
           {bullets.map((b) => (
-            <div key={b.label} className={`flex items-start ${span ? "gap-3.5 p-3 rounded-xl" : "gap-2.5"}`}
+            <div key={b.label} className={`flex items-start ${span ? "gap-3 sm:gap-3.5 p-2.5 sm:p-3 rounded-xl" : "gap-2 sm:gap-2.5"}`}
               style={span ? { background: "var(--overlay)", border: "1px solid var(--border-soft)" } : undefined}>
               <span
                 className={`rounded-lg flex items-center justify-center flex-shrink-0 ${f.accent.text} ${
-                  span ? "mt-0.5 w-10 h-10 [&_svg]:w-[20px] [&_svg]:h-[20px]" : "mt-0.5 w-6 h-6 [&_svg]:w-3.5 [&_svg]:h-3.5"
+                  span ? "mt-0.5 w-8 h-8 sm:w-10 sm:h-10 [&_svg]:w-[16px] [&_svg]:h-[16px] sm:[&_svg]:w-[20px] sm:[&_svg]:h-[20px]" : "mt-0.5 w-6 h-6 [&_svg]:w-3.5 [&_svg]:h-3.5"
                 }`}
                 style={{ background: f.accent.ring }}
               >
                 {b.icon}
               </span>
               <div className="min-w-0">
-                <div className={`font-semibold text-gray-900 leading-snug ${span ? "text-[15px]" : "text-[12.5px]"}`}>{b.label}</div>
-                <div className={`text-gray-500 leading-relaxed mt-0.5 ${span ? "text-[13px]" : "text-[11.5px]"}`}>{b.desc}</div>
+                <div className={`font-semibold text-gray-900 leading-snug ${span ? "text-[14px] sm:text-[15px]" : "text-[12.5px]"}`}>{b.label}</div>
+                <div className={`hidden sm:block text-gray-500 leading-relaxed mt-0.5 ${span ? "text-[13px]" : "text-[11.5px]"}`}>{b.desc}</div>
               </div>
             </div>
           ))}
@@ -814,6 +919,7 @@ function FeatureCard({ f, span }: { f: FeatureDef; span: boolean }) {
 function FeaturesSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
+  const tf = useT(LP).feat;
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -829,18 +935,21 @@ function FeaturesSection() {
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
-        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <span className="section-label">Funcionalidades</span>
-          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
-            Nunca más empezar de cero
+        <div className={`text-center mb-8 md:mb-14 card-item${inView ? " in-view" : ""}`}>
+          <span className="section-label">{tf.label}</span>
+          <h2 className="display mt-4 md:mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
+            {tf.title}
           </h2>
-          <p className="mt-5 text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
-            Cada vez que cambiás de modelo, perdés contexto. OneChat lo recuerda todo, en todos los modelos, para siempre.
+          <p className="hidden md:block mt-5 text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
+            {tf.subtitle}
           </p>
         </div>
 
-        {/* Bento grid — static cards, no inner interactivity */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr">
+        {/* Bento grid — static cards, no inner interactivity.
+            auto-rows-fr only from sm+ (where there are real columns); on a
+            single-column mobile layout it would stretch every card to the
+            tallest one's height, leaving dead space below the shorter cards. */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:auto-rows-fr">
           {FEATURES.map((f, i) => (
             <div
               key={f.id}
@@ -863,8 +972,8 @@ const steps = [
   {
     n: "01",
     eyebrow: "Setup",
-    title: "Conectá tus API keys",
-    description: "Pegá tus keys de OpenAI, Anthropic o Google. Se guardan solo en tu navegador, nunca en nuestros servidores. Configuración única, para siempre.",
+    title: "Connect your API keys",
+    description: "Paste your OpenAI, Anthropic or Google keys. They're stored only in your browser, never on our servers. Set it up once, forever.",
     tags: ["OpenAI", "Anthropic", "Google", "Local only"],
     gradient: "from-violet-500 to-purple-600",
     iconBg: "bg-gradient-to-br from-violet-500 to-purple-600",
@@ -876,9 +985,9 @@ const steps = [
   {
     n: "02",
     eyebrow: "Chat",
-    title: "Chateá con todos los modelos",
-    description: "Escribí una vez, recibí respuestas de GPT, Claude y Gemini en tiempo real lado a lado. Comparalos y elegí el mejor.",
-    tags: ["Streaming en tiempo real", "Vista comparativa", "Sin fricción"],
+    title: "Chat with every model",
+    description: "Write once and get answers from GPT, Claude and Gemini in real time, side by side. Compare them and pick the best.",
+    tags: ["Real-time streaming", "Compare view", "Zero friction"],
     gradient: "from-blue-500 to-cyan-500",
     iconBg: "bg-gradient-to-br from-blue-500 to-cyan-500",
     shadow: "rgba(59,130,246,0.4)",
@@ -888,10 +997,10 @@ const steps = [
   },
   {
     n: "03",
-    eyebrow: "Memoria",
-    title: "La memoria aprende con vos",
-    description: "Después de cada chat, OneChat extrae lo relevante: proyectos, preferencias, decisiones. La próxima vez, todos los modelos ya te conocen.",
-    tags: ["Captura automática", "Perfil editable", "Portable entre modelos"],
+    eyebrow: "Memory",
+    title: "Memory learns as you go",
+    description: "After every chat, OneChater extracts what matters: projects, preferences, decisions. Next time, every model already knows you.",
+    tags: ["Automatic capture", "Editable profile", "Portable across models"],
     gradient: "from-orange-500 to-amber-500",
     iconBg: "bg-gradient-to-br from-orange-500 to-amber-500",
     shadow: "rgba(249,115,22,0.4)",
@@ -904,6 +1013,8 @@ const steps = [
 function HowItWorksSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
+  const th = useT(LP).how;
+  const stepsT = [th.steps.s1, th.steps.s2, th.steps.s3];
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -923,14 +1034,14 @@ function HowItWorksSection() {
       </div>
 
       <div className="max-w-7xl mx-auto relative">
-        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <span className="section-label">Cómo funciona</span>
-          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
-            Funcionando en{" "}
-            <span className="gradient-text">60 segundos</span>
+        <div className={`text-center mb-8 md:mb-14 card-item${inView ? " in-view" : ""}`}>
+          <span className="section-label">{th.label}</span>
+          <h2 className="display mt-4 md:mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
+            {th.title1}{" "}
+            <span className="gradient-text">{th.title2}</span>
           </h2>
-          <p className="mt-5 text-gray-500 max-w-lg mx-auto text-lg leading-relaxed">
-            Sin setup complicado. Sin suscripciones que gestionar. Pegás tus keys y empezás.
+          <p className="hidden md:block mt-5 text-gray-500 max-w-lg mx-auto text-lg leading-relaxed">
+            {th.subtitle}
           </p>
         </div>
 
@@ -942,7 +1053,9 @@ function HowItWorksSection() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {steps.map((step, i) => (
+            {steps.map((step, i) => {
+              const st = stepsT[i];
+              return (
               <div
                 key={step.n}
                 className={`step-card-premium group rounded-2xl p-8 card-item${inView ? " in-view" : ""}`}
@@ -966,16 +1079,16 @@ function HowItWorksSection() {
                     {step.icon}
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="eyebrow text-gray-400">Paso {step.n}</span>
-                    <span className={`text-[11px] font-semibold ${step.tone === "tone-violet" ? "text-violet-600" : step.tone === "tone-blue" ? "text-blue-600" : "text-orange-600"}`}>{step.eyebrow}</span>
+                    <span className="eyebrow text-gray-400">{th.step} {step.n}</span>
+                    <span className={`text-[11px] font-semibold ${step.tone === "tone-violet" ? "text-violet-600" : step.tone === "tone-blue" ? "text-blue-600" : "text-orange-600"}`}>{st.eyebrow}</span>
                   </div>
                 </div>
 
-                <h3 className="display text-lg md:text-xl font-semibold text-gray-900 tracking-tight mb-3 group-hover:text-gray-700 transition-colors">{step.title}</h3>
-                <p className="text-gray-500 leading-relaxed mb-6 text-[15px]">{step.description}</p>
+                <h3 className="display text-lg md:text-xl font-semibold text-gray-900 tracking-tight mb-3 group-hover:text-gray-700 transition-colors">{st.title}</h3>
+                <p className="hidden sm:block text-gray-500 leading-relaxed mb-6 text-[15px]">{st.description}</p>
 
                 <div className="flex flex-wrap gap-2">
-                  {step.tags.map((tag) => (
+                  {st.tags.map((tag) => (
                     <span key={tag} className="text-xs px-3 py-1.5 rounded-lg bg-white text-gray-600 font-medium border border-black/8 shadow-sm group-hover:border-black/16 group-hover:-translate-y-0.5 transition-all">
                       {tag}
                     </span>
@@ -985,7 +1098,8 @@ function HowItWorksSection() {
                 {/* Bottom gradient accent */}
                 <div className={`mt-7 h-1 w-12 rounded-full bg-gradient-to-r ${step.gradient} opacity-50 group-hover:opacity-100 group-hover:w-24 transition-all duration-500`} />
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1060,8 +1174,8 @@ type MemoryCardDef = {
 const MEMORY_CARDS: MemoryCardDef[] = [
   {
     id: "personal",
-    name: "Memoria Personal",
-    desc: "Cada usuario dispone de una memoria independiente. La información se almacena únicamente para mejorar la calidad de sus conversaciones.",
+    name: "Personal Memory",
+    desc: "Every user gets an independent memory. Information is stored only to improve the quality of their conversations.",
     icon: <IconBrain />,
     glow: "glow-orange",
     from: "from-orange-500",
@@ -1071,8 +1185,8 @@ const MEMORY_CARDS: MemoryCardDef[] = [
   },
   {
     id: "contexto",
-    name: "Contexto Continuo",
-    desc: "Cambia entre GPT, Claude, Gemini u otros modelos sin perder información importante sobre ti o tus proyectos.",
+    name: "Continuous Context",
+    desc: "Switch between GPT, Claude, Gemini or other models without losing important information about you or your projects.",
     icon: <IconSync />,
     glow: "glow-blue",
     from: "from-blue-500",
@@ -1082,8 +1196,8 @@ const MEMORY_CARDS: MemoryCardDef[] = [
   },
   {
     id: "aprendizaje",
-    name: "Aprendizaje Progresivo",
-    desc: "One Chater puede recordar datos relevantes compartidos durante conversaciones anteriores para ofrecer respuestas más consistentes y personalizadas.",
+    name: "Progressive Learning",
+    desc: "OneChater can remember relevant details shared in earlier conversations to deliver more consistent, personalized answers.",
     icon: <IconLayers />,
     glow: "glow-violet",
     from: "from-violet-500",
@@ -1093,8 +1207,8 @@ const MEMORY_CARDS: MemoryCardDef[] = [
   },
   {
     id: "preferencias",
-    name: "Preferencias Persistentes",
-    desc: "Estilo de escritura, preferencias técnicas, proyectos activos y configuraciones pueden mantenerse entre sesiones.",
+    name: "Persistent Preferences",
+    desc: "Writing style, technical preferences, active projects and settings can carry over between sessions.",
     icon: <IconTarget />,
     glow: "glow-green",
     from: "from-green-500",
@@ -1104,8 +1218,8 @@ const MEMORY_CARDS: MemoryCardDef[] = [
   },
   {
     id: "privacidad",
-    name: "Privacidad Primero",
-    desc: "La memoria está asociada únicamente a tu cuenta y no se comparte con otros usuarios.",
+    name: "Privacy First",
+    desc: "Your memory is tied to your account only and is never shared with other users.",
     icon: <IconShield />,
     glow: "glow-indigo",
     from: "from-indigo-500",
@@ -1115,8 +1229,8 @@ const MEMORY_CARDS: MemoryCardDef[] = [
   },
   {
     id: "control",
-    name: "Control Total",
-    desc: "Puedes revisar, editar o eliminar la información almacenada en cualquier momento.",
+    name: "Full Control",
+    desc: "You can review, edit or delete the stored information at any time.",
     icon: <IconGear />,
     glow: "glow-cyan",
     from: "from-cyan-500",
@@ -1145,6 +1259,8 @@ function MemoryFlowArrow() {
 function MemorySection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
+  const tm = useT(LP).mem;
+  const cardsT = tm.cards as Record<string, { name: string; desc: string }>;
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -1165,9 +1281,9 @@ function MemorySection() {
 
       <div className="max-w-7xl mx-auto relative">
         {/* Header */}
-        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
+        <div className={`text-center mb-8 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <div className="inline-flex items-center gap-2">
-            <span className="section-label">Memoria por usuario</span>
+            <span className="section-label">{tm.label}</span>
             <span
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white"
               style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)", boxShadow: "0 6px 16px -6px rgba(139,92,246,0.6), inset 0 1px 0 rgba(255,255,255,0.3)" }}
@@ -1175,15 +1291,15 @@ function MemorySection() {
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5">
                 <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
               </svg>
-              Premium
+              {tm.premium}
             </span>
           </div>
-          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
-            Nunca vuelvas a repetir{" "}
-            <span className="gradient-text">información a tu IA</span>
+          <h2 className="display mt-4 md:mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
+            {tm.title1}{" "}
+            <span className="gradient-text">{tm.title2}</span>
           </h2>
-          <p className="mt-5 text-gray-500 max-w-2xl mx-auto text-lg leading-relaxed">
-            One Chater construye una memoria privada para cada usuario, permitiendo que tus asistentes recuerden preferencias, proyectos, objetivos y contexto a largo plazo.
+          <p className="hidden md:block mt-5 text-gray-500 max-w-2xl mx-auto text-lg leading-relaxed">
+            {tm.subtitle}
           </p>
         </div>
 
@@ -1209,8 +1325,8 @@ function MemorySection() {
                 style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}>
                 <IconUser />
               </div>
-              <div className="mt-3 text-sm font-semibold text-gray-900">Usuario</div>
-              <div className="text-[11px] text-gray-400 mt-0.5">Tu cuenta</div>
+              <div className="mt-3 text-sm font-semibold text-gray-900">{tm.user}</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">{tm.account}</div>
             </div>
 
             <MemoryFlowArrow />
@@ -1225,13 +1341,13 @@ function MemorySection() {
                   style={{ boxShadow: "0 10px 28px -6px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.25)" }}>
                   <IconBrain />
                 </div>
-                <div className="mt-3.5 text-[15px] font-semibold text-gray-900">Memoria Personal</div>
+                <div className="mt-3.5 text-[15px] font-semibold text-gray-900">{tm.personal}</div>
                 <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-gray-500">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
                     <rect x="3" y="11" width="18" height="11" rx="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
-                  Privada y cifrada
+                  {tm.encrypted}
                 </div>
               </div>
             </div>
@@ -1260,7 +1376,7 @@ function MemorySection() {
 
           {/* Caption */}
           <p className="relative mt-8 md:mt-10 text-center text-[14px] md:text-[15px] text-gray-500 max-w-2xl mx-auto leading-relaxed text-pretty">
-            Una única memoria compartida entre todos tus modelos de IA para mantener el contexto de forma consistente.
+            {tm.caption}
           </p>
         </div>
 
@@ -1278,8 +1394,8 @@ function MemorySection() {
               >
                 {c.icon}
               </div>
-              <h3 className="display mt-5 text-lg md:text-xl font-semibold text-gray-900 tracking-tight leading-tight">{c.name}</h3>
-              <p className="mt-2.5 text-[14px] text-gray-500 leading-relaxed text-pretty">{c.desc}</p>
+              <h3 className="display mt-5 text-lg md:text-xl font-semibold text-gray-900 tracking-tight leading-tight">{cardsT[c.id].name}</h3>
+              <p className="mt-2.5 text-[14px] text-gray-500 leading-relaxed text-pretty">{cardsT[c.id].desc}</p>
               <div className={`accent-bar bg-gradient-to-r ${c.bar}`} />
             </div>
           ))}
@@ -1295,9 +1411,9 @@ function MemorySection() {
               <IconShield />
             </div>
             <div className="relative">
-              <div className="text-[15px] font-semibold text-gray-900">Vos tenés el control</div>
+              <div className="text-[15px] font-semibold text-gray-900">{tm.noteTitle}</div>
               <p className="mt-1.5 text-[14px] text-gray-500 leading-relaxed text-pretty">
-                Los usuarios mantienen el control total sobre su información. La memoria existe para mejorar la experiencia y puede gestionarse desde el panel de configuración.
+                {tm.noteBody}
               </p>
             </div>
           </div>
@@ -1319,23 +1435,23 @@ type ModelCard = {
 
 const supportedModels: ModelCard[] = [
   { name: "GPT-5.5",           provider: "OpenAI",    tag: "Flagship",   logo: <OpenAILogo />,    accent: "#10b981" },
-  { name: "GPT-5.4 mini",      provider: "OpenAI",    tag: "Rápido",     logo: <OpenAILogo />,    accent: "#10b981" },
-  { name: "Claude Opus 4.8",   provider: "Anthropic", tag: "Profundo",   logo: <AnthropicLogo />, accent: "#f97316" },
-  { name: "Claude Sonnet 4.6", provider: "Anthropic", tag: "Razonamiento", logo: <AnthropicLogo />, accent: "#f97316" },
-  { name: "Claude Haiku 4.5",  provider: "Anthropic", tag: "Liviano",    logo: <AnthropicLogo />, accent: "#f97316" },
-  { name: "Gemini 3 Pro",      provider: "Google",    tag: "Avanzado",   logo: <GoogleLogo />,    accent: "#3b82f6" },
+  { name: "GPT-5.4 mini",      provider: "OpenAI",    tag: "Fast",       logo: <OpenAILogo />,    accent: "#10b981" },
+  { name: "Claude Opus 4.8",   provider: "Anthropic", tag: "Deep",       logo: <AnthropicLogo />, accent: "#f97316" },
+  { name: "Claude Sonnet 4.6", provider: "Anthropic", tag: "Reasoning",  logo: <AnthropicLogo />, accent: "#f97316" },
+  { name: "Claude Haiku 4.5",  provider: "Anthropic", tag: "Light",      logo: <AnthropicLogo />, accent: "#f97316" },
+  { name: "Gemini 3 Pro",      provider: "Google",    tag: "Advanced",   logo: <GoogleLogo />,    accent: "#3b82f6" },
   { name: "Gemini 2.5 Flash",  provider: "Google",    tag: "Multimodal", logo: <GoogleLogo />,    accent: "#3b82f6" },
   { name: "Grok 4.3",          provider: "xAI",       tag: "Realtime",   logo: <XAILogo />,       accent: "#111111" },
-  { name: "Grok 4",            provider: "xAI",       tag: "Potente",    logo: <XAILogo />,       accent: "#111111" },
-  { name: "Llama 3.3 70B",     provider: "Groq",      tag: "Ultra rápido", logo: <GroqLogo />,    accent: "#f55036" },
+  { name: "Grok 4",            provider: "xAI",       tag: "Powerful",   logo: <XAILogo />,       accent: "#111111" },
+  { name: "Llama 3.3 70B",     provider: "Groq",      tag: "Ultra fast", logo: <GroqLogo />,      accent: "#f55036" },
   { name: "Llama 3.1 8B",      provider: "Groq",      tag: "Instant",    logo: <GroqLogo />,      accent: "#f55036" },
   { name: "GPT-OSS 120B",      provider: "Groq",      tag: "Open",       logo: <GroqLogo />,      accent: "#f55036" },
   { name: "Mistral Large 3",   provider: "Mistral",   tag: "Top tier",   logo: <MistralLogo />,   accent: "#ff7000" },
-  { name: "Mistral Medium 3.5", provider: "Mistral",  tag: "Equilibrado", logo: <MistralLogo />,  accent: "#ff7000" },
-  { name: "Codestral",         provider: "Mistral",   tag: "Código",     logo: <MistralLogo />,   accent: "#ff7000" },
+  { name: "Mistral Medium 3.5", provider: "Mistral",  tag: "Balanced",   logo: <MistralLogo />,   accent: "#ff7000" },
+  { name: "Codestral",         provider: "Mistral",   tag: "Code",       logo: <MistralLogo />,   accent: "#ff7000" },
   { name: "DeepSeek V4",       provider: "DeepSeek",  tag: "Open",       logo: <DeepSeekLogo />,  accent: "#4462F5" },
   { name: "DeepSeek V4 Reasoner", provider: "DeepSeek", tag: "Reasoning", logo: <DeepSeekLogo />, accent: "#4462F5" },
-  { name: "OpenRouter",        provider: "Gateway",   tag: "300+ modelos", logo: <PerplexityLogo />, accent: "#8b5cf6" },
+  { name: "OpenRouter",        provider: "Gateway",   tag: "300+ models", logo: <PerplexityLogo />, accent: "#8b5cf6" },
 ];
 
 function ModelCardItem({ m }: { m: ModelCard }) {
@@ -1384,6 +1500,7 @@ function ModelsSection() {
     return () => obs.disconnect();
   }, []);
 
+  const tmo = useT(LP).models;
   const half = Math.ceil(supportedModels.length / 2);
   const rowA = supportedModels.slice(0, half);
   const rowB = supportedModels.slice(half);
@@ -1392,12 +1509,12 @@ function ModelsSection() {
     <section ref={sectionRef} id="models" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <span className="section-label">Modelos soportados</span>
+          <span className="section-label">{tmo.label}</span>
           <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
-            Todos los modelos que usás
+            {tmo.title}
           </h2>
-          <p className="mt-5 text-gray-500 max-w-md mx-auto text-lg leading-relaxed">
-            Conectá tu propia API key de cada proveedor y pagá directo a ellos.
+          <p className="hidden md:block mt-5 text-gray-500 max-w-md mx-auto text-lg leading-relaxed">
+            {tmo.subtitle}
           </p>
         </div>
 
@@ -1416,7 +1533,7 @@ function ModelsSection() {
 
         <p className={`text-center text-gray-400 text-sm mt-10 card-item${inView ? " in-view" : ""}`}
           style={inView ? { animationDelay: "300ms" } : {}}>
-          + Amazon Bedrock, Azure OpenAI, Replicate y cualquier endpoint compatible con OpenAI
+          {tmo.footnote}
         </p>
 
       </div>
@@ -1436,18 +1553,18 @@ type Plan = {
 const plans: Plan[] = [
   {
     name: "Free",
-    tagline: "Para arrancar",
+    tagline: "To get started",
     price: "$0",
-    period: "para siempre",
-    description: "Para empezar sin fricción. Sin tarjeta de crédito.",
+    period: "forever",
+    description: "Start with zero friction. No credit card required.",
     features: [
-      "BYOK (tus propias API keys)",
-      "Memoria: hasta 50 hechos recordados",
-      "1 proyecto",
-      "Historial de conversaciones",
-      "Soporte por comunidad",
+      "Free-AI providers only (Groq, OpenRouter, Mistral, Gemini)",
+      "Personal memory profile",
+      "1 project",
+      "Conversation history",
+      "Community support",
     ],
-    cta: "Empezar gratis",
+    cta: "Start free",
     highlighted: false,
     gradient: "from-gray-500 to-gray-600",
     accentBar: "from-gray-300 to-gray-400",
@@ -1461,21 +1578,21 @@ const plans: Plan[] = [
   },
   {
     name: "Pro",
-    tagline: "Para profesionales",
+    tagline: "For professionals",
     price: "$15",
-    period: "/ mes",
-    annual: { price: "$12", period: "/ mes", note: "facturado $144/año · 20% off" },
-    description: "Para profesionales que viven en la IA todos los días.",
+    period: "/ mo",
+    annual: { price: "$12", period: "/ mo", note: "billed $144/year · 20% off" },
+    description: "For professionals who live in AI every day.",
     features: [
-      "API keys ilimitadas",
-      "Memoria ilimitada",
-      "Búsqueda semántica del historial",
-      "Proyectos ilimitados",
-      "Sync entre dispositivos",
-      "Dashboard de gasto completo",
-      "Soporte prioritario",
+      "Every provider — bring any API key",
+      "Unlimited memory profile",
+      "Semantic history search",
+      "Unlimited projects",
+      "Cross-device sync",
+      "Full spend dashboard",
+      "Priority support",
     ],
-    cta: "Probar Pro",
+    cta: "Try Pro",
     highlighted: true,
     gradient: "from-indigo-500 via-purple-500 to-violet-500",
     accentBar: "from-indigo-500 via-purple-500 to-violet-500",
@@ -1491,19 +1608,19 @@ const plans: Plan[] = [
   },
   {
     name: "Team",
-    tagline: "Para equipos",
+    tagline: "For teams",
     price: "$19",
-    period: "/ usuario / mes",
-    description: "Para equipos que quieren IA con contexto compartido.",
+    period: "/ user / mo",
+    description: "For teams that want AI with shared context.",
     features: [
-      "Todo lo de Pro",
-      "Hasta 10 integrantes",
-      "Biblioteca de prompts compartida",
-      "Memoria de equipo",
+      "Everything in Pro",
+      "Up to 10 members",
+      "Shared prompt library",
+      "Team memory",
       "SSO / SAML",
-      "Soporte dedicado por Slack",
+      "Dedicated Slack support",
     ],
-    cta: "Próximamente",
+    cta: "Coming soon",
     comingSoon: true,
     highlighted: false,
     gradient: "from-blue-500 to-cyan-500",
@@ -1552,10 +1669,10 @@ function CountUp({
 type Stat = { value: number; decimals?: number; prefix?: string; suffix?: string; separator?: string; label: string; star?: boolean };
 
 const STATS: Stat[] = [
-  { value: 2400, suffix: "+", separator: ".", label: "Profesionales en LATAM" },
-  { value: 18, label: "Modelos soportados" },
-  { value: 4.9, decimals: 1, label: "Rating promedio", star: true },
-  { value: 0, suffix: "%", label: "Comisión sobre tus keys" },
+  { value: 2400, suffix: "+", separator: ",", label: "Professionals worldwide" },
+  { value: 18, label: "Models supported" },
+  { value: 4.9, decimals: 1, label: "Average rating", star: true },
+  { value: 0, suffix: "%", label: "Fee on your keys" },
 ];
 
 type Testimonial = {
@@ -1567,26 +1684,26 @@ type Testimonial = {
   gradient: string;
 };
 
-// NOTE: testimonios de ejemplo — reemplazá nombres/roles por reales cuando los tengas.
+// NOTE: sample testimonials — replace names/roles with real ones once you have them.
 const TESTIMONIALS: Testimonial[] = [
   {
-    quote: "Cambié de GPT a Claude a mitad de proyecto y no perdí nada de contexto. Es la primera vez que una herramienta de IA realmente me recuerda.",
+    quote: "I switched from GPT to Claude mid-project and didn't lose any context. It's the first time an AI tool actually remembers me.",
     name: "Martina Rossi",
-    role: "Desarrolladora full-stack · freelance",
+    role: "Full-stack developer · freelance",
     city: "Buenos Aires",
     initials: "MR",
     gradient: "from-orange-500 to-amber-500",
   },
   {
-    quote: "Pago mis propias API keys sin markup. Para una agencia chica como la nuestra, eso es la diferencia entre cerrar los números o no.",
+    quote: "I pay for my own API keys with no markup. For a small agency like ours, that's the difference between the numbers working or not.",
     name: "Diego Herrera",
-    role: "Founder · estudio de diseño",
-    city: "Ciudad de México",
+    role: "Founder · design studio",
+    city: "Mexico City",
     initials: "DH",
     gradient: "from-violet-500 to-purple-600",
   },
   {
-    quote: "Tener GPT, Claude y Gemini lado a lado, y que se fusionen en una sola respuesta, me ahorra horas. Dejé de saltar entre pestañas.",
+    quote: "Having GPT, Claude and Gemini side by side — and merging them into a single answer — saves me hours. I stopped jumping between tabs.",
     name: "Camila Reyes",
     role: "Product Manager · fintech",
     city: "Bogotá",
@@ -1598,6 +1715,7 @@ const TESTIMONIALS: Testimonial[] = [
 function TestimonialsSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
+  const tt = useT(LP).test;
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -1619,13 +1737,13 @@ function TestimonialsSection() {
       <div className="max-w-7xl mx-auto relative">
         {/* Header */}
         <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <span className="section-label">Testimonios</span>
+          <span className="section-label">{tt.label}</span>
           <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
-            Quienes ya no{" "}
-            <span className="gradient-text">empiezan de cero</span>
+            {tt.title1}{" "}
+            <span className="gradient-text">{tt.title2}</span>
           </h2>
-          <p className="mt-5 text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
-            Profesionales y equipos de toda LATAM que dejaron de repetir su contexto en cada modelo.
+          <p className="hidden md:block mt-5 text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
+            {tt.subtitle}
           </p>
         </div>
 
@@ -1636,7 +1754,7 @@ function TestimonialsSection() {
         >
           {STATS.map((s, i) => (
             <div
-              key={s.label}
+              key={i}
               className={`flex flex-col items-center text-center px-5 py-7 ${i !== 0 ? "border-l border-black/8" : ""} ${i >= 2 ? "border-t md:border-t-0 border-black/8" : ""} ${i === 2 ? "border-l-0 md:border-l" : ""}`}
             >
               <div className="display text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-900 leading-none flex items-center gap-1.5 tabular-nums">
@@ -1654,7 +1772,7 @@ function TestimonialsSection() {
                   </svg>
                 )}
               </div>
-              <div className="mt-2 text-[12.5px] text-gray-500 font-medium leading-snug max-w-[140px]">{s.label}</div>
+              <div className="mt-2 text-[12.5px] text-gray-500 font-medium leading-snug max-w-[140px]">{tt.stats[i]}</div>
             </div>
           ))}
         </div>
@@ -1673,7 +1791,7 @@ function TestimonialsSection() {
               </svg>
 
               {/* Stars */}
-              <div className="flex gap-0.5 mb-3" role="img" aria-label="Calificación 5 de 5 estrellas">
+              <div className="flex gap-0.5 mb-3" role="img" aria-label="Rated 5 out of 5 stars">
                 {[...Array(5)].map((_, s) => (
                   <svg key={s} viewBox="0 0 24 24" fill="#FBBF24" className="w-3.5 h-3.5">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -1682,7 +1800,7 @@ function TestimonialsSection() {
               </div>
 
               <blockquote className="text-[15px] text-gray-700 leading-relaxed flex-1">
-                “{t.quote}”
+                “{tt.items[i].quote}”
               </blockquote>
 
               <figcaption className="mt-6 pt-5 border-t border-black/8 flex items-center gap-3">
@@ -1694,7 +1812,7 @@ function TestimonialsSection() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-semibold text-gray-900 leading-tight">{t.name}</div>
-                  <div className="text-[11px] text-gray-500 leading-tight mt-0.5 truncate">{t.role}</div>
+                  <div className="text-[11px] text-gray-500 leading-tight mt-0.5 truncate">{tt.items[i].role}</div>
                   <div className="text-[11px] text-gray-400 leading-tight mt-0.5">{t.city}</div>
                 </div>
               </figcaption>
@@ -1706,12 +1824,16 @@ function TestimonialsSection() {
   );
 }
 
+type PlanText = { tagline: string; period: string; description: string; cta: string; features: string[]; annualNote?: string };
+
 function PricingSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const { data: session } = useSession();
+  const tp = useT(LP).pricing;
+  const plansT = tp.plans as Record<string, PlanText>;
 
   async function handleProCheckout() {
     if (!session?.user) {
@@ -1725,10 +1847,10 @@ function PricingSection() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert("Error al crear el checkout: " + (data.error ?? "desconocido"));
+        alert("Couldn't create checkout: " + (data.error ?? "unknown"));
       }
     } catch {
-      alert("Error de red al crear checkout");
+      alert("Network error creating checkout");
     } finally {
       setCheckoutLoading(false);
     }
@@ -1753,13 +1875,13 @@ function PricingSection() {
 
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <span className="section-label">Precios</span>
+          <span className="section-label">{tp.label}</span>
           <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
-            Precios simples y{" "}
-            <span className="gradient-text">transparentes</span>
+            {tp.title1}{" "}
+            <span className="gradient-text">{tp.title2}</span>
           </h2>
-          <p className="mt-5 text-gray-500 max-w-md mx-auto text-lg leading-relaxed">
-            Ya pagás tus API keys. OneChater tiene que ser accesible también.
+          <p className="hidden md:block mt-5 text-gray-500 max-w-md mx-auto text-lg leading-relaxed">
+            {tp.subtitle}
           </p>
         </div>
 
@@ -1771,19 +1893,21 @@ function PricingSection() {
             <button onClick={() => setBilling("monthly")}
               className="relative z-10 px-6 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer text-center"
               style={{ color: billing === "monthly" ? "var(--text-1)" : "var(--text-3)" }}>
-              Mensual
+              {tp.monthly}
             </button>
             <button onClick={() => setBilling("annual")}
               className="relative z-10 px-6 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-2"
               style={{ color: billing === "annual" ? "var(--text-1)" : "var(--text-3)" }}>
-              Anual
+              {tp.annual}
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.16)", color: "#10b981" }}>−20%</span>
             </button>
           </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
-          {plans.map((plan, i) => (
+          {plans.map((plan, i) => {
+            const pt = plansT[plan.name.toLowerCase()];
+            return (
             <div
               key={plan.name}
               className={`plan-card relative rounded-2xl flex flex-col card-item${inView ? " in-view" : ""} ${
@@ -1806,7 +1930,7 @@ function PricingSection() {
                     <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
                       <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
                     </svg>
-                    Más popular
+                    {tp.mostPopular}
                   </span>
                 </div>
               )}
@@ -1831,7 +1955,7 @@ function PricingSection() {
                     </div>
                     <div>
                       <div className={`display text-lg font-semibold tracking-tight ${plan.highlighted ? "text-white" : "text-gray-900"}`}>{plan.name}</div>
-                      <div className={`text-[11px] font-medium ${plan.highlighted ? "text-indigo-300/90" : "text-gray-400"}`}>{plan.tagline}</div>
+                      <div className={`text-[11px] font-medium ${plan.highlighted ? "text-indigo-300/90" : "text-gray-400"}`}>{pt.tagline}</div>
                     </div>
                   </div>
                 </div>
@@ -1839,9 +1963,9 @@ function PricingSection() {
                 {/* Price block */}
                 {(() => {
                   const showAnnual = billing === "annual" && !!plan.annual && !plan.comingSoon;
-                  const price = plan.comingSoon ? "Pronto" : showAnnual ? plan.annual!.price : plan.price;
-                  const period = plan.comingSoon ? "" : showAnnual ? plan.annual!.period : plan.period;
-                  const note = showAnnual ? plan.annual!.note : null;
+                  const price = plan.comingSoon ? tp.soon : showAnnual ? plan.annual!.price : plan.price;
+                  const period = plan.comingSoon ? "" : pt.period;
+                  const note = showAnnual ? pt.annualNote : null;
                   return (
                     <div className="relative">
                       <div className="flex items-end gap-1.5">
@@ -1849,7 +1973,7 @@ function PricingSection() {
                         {period && <span className={`mb-2 text-sm ${plan.highlighted ? "text-white/50" : "text-gray-400"}`}>{period}</span>}
                       </div>
                       {note && <p className={`mt-1.5 text-xs font-semibold ${plan.highlighted ? "text-indigo-300" : "text-emerald-600"}`}>{note}</p>}
-                      <p className={`mt-3 text-sm leading-relaxed ${plan.highlighted ? "text-white/65" : "text-gray-500"}`}>{plan.description}</p>
+                      <p className={`mt-3 text-sm leading-relaxed ${plan.highlighted ? "text-white/65" : "text-gray-500"}`}>{pt.description}</p>
                     </div>
                   );
                 })()}
@@ -1858,7 +1982,7 @@ function PricingSection() {
                 <div className={`h-px ${plan.highlighted ? "bg-gradient-to-r from-transparent via-white/15 to-transparent" : "bg-gradient-to-r from-transparent via-black/10 to-transparent"}`} />
 
                 <ul className="space-y-3 flex-1 relative">
-                  {plan.features.map((f) => (
+                  {pt.features.map((f) => (
                     <li key={f} className={`flex items-start gap-3 text-sm ${plan.highlighted ? "text-white/85" : "text-gray-600"}`}>
                       <span
                         className={`w-5 h-5 mt-0.5 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -1907,8 +2031,8 @@ function PricingSection() {
                   }
                 >
                   {plan.highlighted
-                    ? checkoutLoading ? "Redirigiendo..." : plan.cta
-                    : plan.cta}
+                    ? checkoutLoading ? tp.redirecting : pt.cta
+                    : pt.cta}
                   {!plan.comingSoon && !plan.highlighted && <IconArrowRight />}
                   {plan.highlighted && !checkoutLoading && <IconArrowRight />}
                 </button>
@@ -1919,7 +2043,8 @@ function PricingSection() {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className={`mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 card-item${inView ? " in-view" : ""}`}
@@ -1928,10 +2053,10 @@ function PricingSection() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-green-500">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            <span>Pago seguro con encriptación</span>
+            <span>{tp.securePay}</span>
           </div>
           <span className="hidden sm:block text-gray-300">·</span>
-          <span className="text-sm text-gray-400">ARS · MXN · PEN · BRL y más monedas locales próximamente</span>
+          <span className="text-sm text-gray-400">{tp.currencies}</span>
         </div>
       </div>
     </section>
@@ -1943,6 +2068,7 @@ function PricingSection() {
 function CTASection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
+  const tc = useT(LP).cta;
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -1974,7 +2100,7 @@ function CTASection() {
             style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
           <div className="relative z-10">
-            <div className="flex justify-center gap-1 mb-6" role="img" aria-label="Calificación 5 de 5 estrellas">
+            <div className="flex justify-center gap-1 mb-6" role="img" aria-label="Rated 5 out of 5 stars">
               {[...Array(5)].map((_, i) => (
                 <svg key={i} viewBox="0 0 24 24" fill="#FBBF24" className="w-4 h-4">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -1982,8 +2108,8 @@ function CTASection() {
               ))}
             </div>
             <h2 className="display text-4xl md:text-[3.25rem] font-semibold text-white leading-[1.05] tracking-tight text-balance">
-              ¿Listo para unificar tu
-              <br className="hidden sm:block" />
+              {tc.title1}
+              <br className="hidden sm:block" />{" "}
               <span
                 style={{
                   background: "linear-gradient(120deg, #fff 0%, #C7D2FE 35%, #DDD6FE 60%, #fff 100%)",
@@ -1992,11 +2118,11 @@ function CTASection() {
                   backgroundClip: "text",
                 }}
               >
-                flujo de trabajo con IA?
+                {tc.title2}
               </span>
             </h2>
             <p className="mt-5 text-lg text-white/60 max-w-xl mx-auto leading-relaxed">
-              Únete a miles de profesionales y freelancers en LATAM que usan OneChater para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.
+              {tc.subtitle}
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
               <a href="/chat" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-[#0E0F12] transition-all cursor-pointer hover:-translate-y-0.5"
@@ -2005,12 +2131,10 @@ function CTASection() {
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 30px -10px rgba(255,255,255,0.4)",
                 }}
               >
-                Empezar gratis <IconArrowRight />
+                {tc.startFree} <IconArrowRight />
               </a>
-              <a
-                href="https://github.com/fabriciovla"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-white/85 transition-all cursor-pointer hover:bg-white/[0.08] hover:text-white"
                 style={{
                   background: "rgba(255,255,255,0.04)",
@@ -2018,11 +2142,11 @@ function CTASection() {
                   backdropFilter: "blur(10px)",
                 }}
               >
-                <IconGithub /> Ver en GitHub
-              </a>
+                {tc.seePricing}
+              </button>
             </div>
             <p className="mt-6 text-sm text-white/45">
-              Sin tarjeta de crédito · Código abierto · Self-hosteable
+              {tc.micro}
             </p>
           </div>
         </div>
@@ -2034,31 +2158,32 @@ function CTASection() {
 // â"€â"€â"€ Footer â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function Footer() {
-  const links: Record<string, { label: string; href: string }[]> = {
-    Producto: [
-      { label: "Funcionalidades",     href: "#" },
-      { label: "Cómo funciona",       href: "#" },
-      { label: "Precios",             href: "#" },
-      { label: "Novedades",           href: "#" },
-    ],
-    Developers: [
-      { label: "Documentación",       href: "#" },
-      { label: "Referencia API",      href: "#" },
-      { label: "Self-hosting",        href: "#" },
-      { label: "GitHub",              href: "https://github.com/fabriciovla" },
-    ],
-    Legal: [
-      { label: "Política de privacidad", href: "/privacy" },
-      { label: "Términos de uso",         href: "/terms" },
-      { label: "Política de reembolsos",  href: "/refunds" },
-    ],
-    Comunidad: [
-      { label: "Discord",    href: "#" },
-      { label: "Twitter / X", href: "#" },
-      { label: "Reddit",     href: "#" },
-      { label: "Newsletter", href: "#" },
-    ],
-  };
+  const tf = useT(LP).footer;
+  const groups: { id: keyof typeof tf.groups; items: { label: string; href: string }[] }[] = [
+    { id: "Product", items: [
+      { label: tf.links.features, href: "#features" },
+      { label: tf.links.how,      href: "#how-it-works" },
+      { label: tf.links.pricing,  href: "#pricing" },
+      { label: tf.links.models,   href: "#models" },
+    ] },
+    { id: "Resources", items: [
+      { label: tf.links.docs,    href: "#" },
+      { label: tf.links.api,     href: "#" },
+      { label: tf.links.status,  href: "#" },
+      { label: tf.links.contact, href: "mailto:fabriciouala1@gmail.com" },
+    ] },
+    { id: "Legal", items: [
+      { label: tf.links.privacy, href: "/privacy" },
+      { label: tf.links.terms,   href: "/terms" },
+      { label: tf.links.refunds, href: "/refunds" },
+    ] },
+    { id: "Community", items: [
+      { label: tf.links.discord,    href: "#" },
+      { label: tf.links.twitter,    href: "#" },
+      { label: tf.links.reddit,     href: "#" },
+      { label: tf.links.newsletter, href: "#" },
+    ] },
+  ];
 
   return (
     <footer className="border-t border-black/8 py-14 md:py-20 px-5 md:px-6">
@@ -2069,13 +2194,9 @@ function Footer() {
               <OneChatLogoFull className="h-7 w-auto" />
             </div>
             <p className="text-sm text-gray-500 leading-relaxed max-w-xs">
-              Una memoria. Todas las IAs. Traé tus keys, controlá tus datos.
+              {tf.tagline}
             </p>
             <div className="mt-4 flex gap-3">
-              <a href="https://github.com/fabriciovla" target="_blank" rel="noopener noreferrer"
-                className="footer-social-btn w-8 h-8 rounded-lg bg-black/[0.04] border border-black/10 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-black/[0.08] transition-all cursor-pointer">
-                <IconGithub />
-              </a>
               <a href="#" className="footer-social-btn w-8 h-8 rounded-lg bg-black/[0.04] border border-black/10 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-black/[0.08] transition-all cursor-pointer">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -2084,11 +2205,11 @@ function Footer() {
             </div>
           </div>
 
-          {Object.entries(links).map(([section, items]) => (
-            <div key={section}>
-              <h4 className="eyebrow text-gray-500 mb-4">{section}</h4>
+          {groups.map((group) => (
+            <div key={group.id}>
+              <h4 className="eyebrow text-gray-500 mb-4">{tf.groups[group.id]}</h4>
               <ul className="space-y-2.5">
-                {items.map((item) => (
+                {group.items.map((item) => (
                   <li key={item.label}>
                     <a
                       href={item.href}
@@ -2107,17 +2228,17 @@ function Footer() {
 
         <div className="pt-8 border-t border-black/6 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-gray-400">
-            © {new Date().getFullYear()} OneChat. Código abierto bajo licencia MIT.
+            © {new Date().getFullYear()} OneChater. {tf.rights}
           </p>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 text-xs text-gray-400">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-              Todos los sistemas operativos
+              {tf.systems}
             </span>
             <span className="text-gray-300">·</span>
-            <a href="/privacy" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Privacidad</a>
-            <a href="/terms" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Términos</a>
-            <a href="/refunds" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">Reembolsos</a>
+            <a href="/privacy" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">{tf.privacy}</a>
+            <a href="/terms" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">{tf.terms}</a>
+            <a href="/refunds" className="footer-link text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer">{tf.refunds}</a>
           </div>
         </div>
       </div>
@@ -2128,6 +2249,7 @@ function Footer() {
 // â"€â"€â"€ Hero Section â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function HeroSection() {
+  const th = useT(LP).hero;
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-32 pb-20 overflow-hidden">
       {/* Subtle dot grid */}
@@ -2157,9 +2279,9 @@ function HeroSection() {
           >
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-widest uppercase text-white"
               style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
-              Nuevo
+              {th.new}
             </span>
-            <span className="hero-badge-inner-text text-gray-700">Memoria persistente entre modelos</span>
+            <span className="hero-badge-inner-text text-gray-700">{th.badge}</span>
             <span className="transition-transform group-hover:translate-x-0.5 text-gray-500">
               <IconArrowRight />
             </span>
@@ -2167,7 +2289,7 @@ function HeroSection() {
         </div>
 
         {/* SEO H1 — hidden visually, indexed by search engines */}
-        <h1 className="sr-only">Chat con IA: GPT, Claude y Gemini en un solo lugar con memoria persistente</h1>
+        <h1 className="sr-only">{th.srH1}</h1>
 
         {/* Visual headline — decorative, aria-hidden */}
         <div aria-hidden="true" className="animate-fade-up delay-200 relative display display-tight text-center text-[clamp(2.75rem,9vw,5.75rem)] leading-[1.02] max-w-5xl">
@@ -2175,31 +2297,33 @@ function HeroSection() {
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[170%]"
             style={{ background: "radial-gradient(58% 48% at 50% 50%, rgba(99,102,241,0.12), rgba(139,92,246,0.06) 45%, transparent 72%)", filter: "blur(22px)" }} />
           <span className="relative block font-light text-gray-800">
-            Una memoria.
+            {th.line1}
           </span>
           <span className="relative block font-semibold mt-1 sm:mt-2 gradient-text-premium">
-            Todas las IAs.
+            {th.line2}
           </span>
         </div>
 
         {/* Subtext */}
         <p className="animate-fade-up delay-300 mt-7 text-center text-lg md:text-xl text-gray-500 max-w-2xl leading-relaxed">
-          La única app de chat con IA que no te olvida cuando cambiás de modelo.
-          <span className="text-gray-700 font-medium"> GPT, Claude y Gemini</span> en un solo lugar, con una memoria que viaja con vos.
+          {th.subA}
+          <span className="text-gray-700 font-medium">{th.subBold}</span>{th.subC}
         </p>
 
         {/* CTAs */}
         <div className="animate-fade-up delay-400 mt-10 flex flex-col sm:flex-row gap-3">
           <a href="/chat" className="btn-primary text-[15px] px-8 py-3.5">
-            Empezar gratis <IconArrowRight />
+            {th.startFree} <IconArrowRight />
           </a>
-          <button className="btn-ghost text-[15px] px-7 py-3.5">
+          <button
+            onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="btn-ghost text-[15px] px-7 py-3.5">
             <span className="w-5 h-5 rounded-full bg-gray-100 border border-black/10 flex items-center justify-center text-gray-700">
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 ml-0.5">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
             </span>
-            Ver demo
+            {th.seeHow}
           </button>
         </div>
 
@@ -2220,8 +2344,8 @@ function HeroSection() {
               )}
             </div>
             <span className="text-sm text-gray-500">
-              <span className="text-gray-900 font-semibold">2.400+</span>{" "}
-              profesionales en LATAM
+              <span className="text-gray-900 font-semibold">2,400+</span>{" "}
+              {th.proWorldwide}
             </span>
           </div>
 
@@ -2242,7 +2366,7 @@ function HeroSection() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-green-500">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              Open source
+              {th.byok}
             </span>
           </div>
         </div>
@@ -2251,7 +2375,7 @@ function HeroSection() {
         <div className="animate-fade-up delay-600 mt-12 w-full max-w-4xl">
           <div className="flex items-center gap-3 mb-5 justify-center">
             <span className="h-px w-12 bg-gradient-to-r from-transparent to-gray-300" />
-            <span className="eyebrow text-gray-400">Compatible con</span>
+            <span className="eyebrow text-gray-400">{th.worksWith}</span>
             <span className="h-px w-12 bg-gradient-to-l from-transparent to-gray-300" />
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5 opacity-70 grayscale">

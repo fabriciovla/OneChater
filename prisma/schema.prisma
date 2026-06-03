@@ -27,7 +27,8 @@ model User {
   email         String?   @unique
   emailVerified DateTime? @map("email_verified") @db.Timestamptz
   image         String?
-  plan          String    @default("free") // free | pro | team — gates memory cap
+  plan          String    @default("free") // free | pro | team — gates memory cap + providers
+  memoryProfile String?   @map("memory_profile") @db.Text // single free-form memory prompt, shared across every model
   lsCustomerId        String?   @map("ls_customer_id")
   lsSubscriptionId    String?   @map("ls_subscription_id")
   lsSubscriptionStatus String?  @map("ls_subscription_status") // active | cancelled | expired | past_due | on_trial
@@ -81,7 +82,7 @@ model ChatSession {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   folderId  String?  @map("folder_id")
-  title     String   @default("Nueva conversación")
+  title     String   @default("New conversation")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -100,7 +101,7 @@ model ChatSession {
 model Folder {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  name      String   @default("Nueva carpeta")
+  name      String   @default("New folder")
   color     String?  // accent hex, e.g. "#f97316"
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
