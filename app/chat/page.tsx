@@ -344,6 +344,65 @@ function cleanProfile(raw: string): string {
   return s.slice(0, MEMORY_PROFILE_MAX)
 }
 
+// Self-statements we capture verbatim, in EN and ES. Each matches the clause the
+// user wrote ("my name is Ana", "trabajo de diseñador", "me gusta el dark mode").
+// Built via RegExp (not literals) so we can use an explicit Latin+accents class
+// instead of \p{L}, which would require an ES6 compile target.
+const L = "a-zA-ZÁÉÍÓÚÜÑáéíóúüñ"
+const W = `[${L}]+(?:[-'][${L}]+)?` // a single name-ish word (allows O'Brien, Jean-Paul)
+const MEMORY_PATTERNS: RegExp[] = [
+  new RegExp(`\\b(?:my name is|i am called|i'?m called|call me|me llamo|mi nombre es)\\s+${W}`, "gi"),
+  new RegExp(`\\bi(?:'?m| am)\\s+(?:a|an)\\s+[${L}][${L}\\s/&+-]{2,46}`, "gi"),
+  new RegExp(`\\b(?:i work as|i work at|i work with|i use|i'?m working on|i am working on|i build|i'?m building)\\s+[${L}0-9][^.,;!?\\n]{2,60}`, "gi"),
+  new RegExp(`\\b(?:soy|trabajo (?:de|como|en|con)|uso|utilizo|estoy (?:haciendo|trabajando en)|construyo)\\s+[${L}0-9][^.,;!?\\n]{2,60}`, "gi"),
+  new RegExp(`\\b(?:i like|i love|i prefer|i enjoy|i hate|i dislike)\\s+[${L}0-9][^.,;!?\\n]{2,60}`, "gi"),
+  new RegExp(`\\b(?:me gusta[n]?|me encanta[n]?|prefiero|odio|no me gusta[n]?)\\s+[${L}0-9][^.,;!?\\n]{2,60}`, "gi"),
+  new RegExp(`\\b(?:i live in|i'?m from|i am from|vivo en|soy de)\\s+[${L}][^.,;!?\\n]{2,40}`, "gi"),
+]
+
+const HEURISTIC_HEADING = "Personal context"
+const normFact = (s: string) => s.toLowerCase().replace(/["'.\-]/g, "").replace(/\s+/g, " ").trim()
+
+// No-LLM fact capture so memory visibly works for EVERYONE — demo users and
+// people who haven't pasted a paid key included. Pulls clear self-statements out
+// of the user's message and folds genuinely new ones into the profile. Returns
+// the updated profile, or null when there's nothing new worth saving.
+function heuristicMemoryExtract(userMsg: string, currentProfile: string): string | null {
+  const msg = userMsg.replace(/\s+/g, " ").trim()
+  if (!msg || msg.startsWith("/")) return null
+
+  const found: string[] = []
+  for (const re of MEMORY_PATTERNS) {
+    let m: RegExpExecArray | null
+    while ((m = re.exec(msg)) !== null) {
+      const clause = m[0].trim().replace(/\s+/g, " ")
+      if (clause.length >= 6) found.push(clause)
+    }
+  }
+  if (!found.length) return null
+
+  // Dedup longest-first so overlapping captures collapse to the most informative
+  // one, and skip anything already present in the profile.
+  const profNorm = normFact(currentProfile)
+  const keptNorms: string[] = []
+  const fresh: string[] = []
+  for (const clause of found.sort((a, b) => b.length - a.length)) {
+    const n = normFact(clause)
+    if (!n || profNorm.includes(n)) continue
+    if (keptNorms.some((k) => k.includes(n))) continue // contained in a longer kept fact
+    keptNorms.push(n)
+    fresh.push(clause.charAt(0).toUpperCase() + clause.slice(1))
+  }
+  if (!fresh.length) return null
+
+  const bullets = fresh.map((f) => `- ${f}`).join("\n")
+  const base = currentProfile.trim()
+  const updated = base
+    ? base.includes(HEURISTIC_HEADING) ? `${base}\n${bullets}` : `${base}\n\n${HEURISTIC_HEADING}\n${bullets}`
+    : `${HEURISTIC_HEADING}\n${bullets}`
+  return updated.slice(0, MEMORY_PROFILE_MAX)
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(provider: Provider, activeProviders: Provider[], memoryProfile: string): { role: string; content: string } {
@@ -1163,6 +1222,13 @@ function AIChipSelector({
                           </button>
                         )}
                       </div>
+                      {/* Trust line — keys are encrypted server-side, not just local */}
+                      <div className="flex items-center gap-1.5 -mt-1 text-[10.5px] leading-tight" style={{ color: "var(--text-4)" }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11, flexShrink: 0 }}>
+                          <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        Encrypted (AES-256) &amp; synced to your account
+                      </div>
                       {/* Model list — menu style: name + description + check */}
                       <div>
                         <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-4)" }}>Model</span>
@@ -1910,6 +1976,13 @@ export default function ChatPage() {
   })
   const selectedModelsRef = useRef(selectedModels)
   useEffect(() => { selectedModelsRef.current = selectedModels }, [selectedModels])
+  // Mirrors of key/enabled state so the debounced server sync always reads the
+  // latest snapshot without re-subscribing.
+  const apiKeysRef = useRef(apiKeys)
+  useEffect(() => { apiKeysRef.current = apiKeys }, [apiKeys])
+  const enabledRef = useRef(enabled)
+  useEffect(() => { enabledRef.current = enabled }, [enabled])
+  const providerSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -1972,6 +2045,36 @@ export default function ChatPage() {
       if (fc) setCollapsedFolders(JSON.parse(fc))
     } catch {}
 
+    // Server-side provider settings win over localStorage: encrypted keys are
+    // restored here so they follow the user across devices and survive a cache
+    // clear. Local "demo" keys are preserved (never persisted server-side).
+    fetch(`/api/providers`)
+      .then((r) => r.json())
+      .then((data: { providers?: Record<Provider, { apiKey: string; isEnabled: boolean; selectedModel: string }> }) => {
+        const sp = data?.providers
+        if (!sp) return
+        setApiKeysRaw((prev) => {
+          const next = { ...prev }
+          for (const p of PROVIDERS) { const s = sp[p]; if (s) next[p] = s.apiKey || (prev[p] === "demo" ? "demo" : "") }
+          apiKeysRef.current = next
+          localStorage.setItem("oc_keys", JSON.stringify(next))
+          return next
+        })
+        setEnabledRaw((prev) => {
+          const next = { ...prev }
+          for (const p of PROVIDERS) { const s = sp[p]; if (s) next[p] = s.isEnabled }
+          enabledRef.current = next
+          return next
+        })
+        setSelectedModelsRaw((prev) => {
+          const next = { ...prev }
+          for (const p of PROVIDERS) { const s = sp[p]; if (s && CFG[p].models.some((m) => m.id === s.selectedModel)) next[p] = s.selectedModel }
+          selectedModelsRef.current = next
+          return next
+        })
+      })
+      .catch(() => {})
+
     fetch(`/api/sessions`)
       .then((r) => r.json())
       .then(async (data: ChatSession[]) => {
@@ -2028,15 +2131,37 @@ export default function ChatPage() {
     })
   }, [turns])
 
+  // Debounced push of the full provider snapshot to the server, where keys are
+  // encrypted at rest. localStorage stays as a fast local cache; the server is
+  // the source of truth that lets keys follow the user across devices.
+  const scheduleProviderSync = useCallback(() => {
+    if (!session?.user?.id) return
+    if (providerSyncTimer.current) clearTimeout(providerSyncTimer.current)
+    providerSyncTimer.current = setTimeout(() => {
+      const providers = Object.fromEntries(
+        PROVIDERS.map((p) => [p, {
+          apiKey: apiKeysRef.current[p],
+          isEnabled: enabledRef.current[p],
+          selectedModel: selectedModelsRef.current[p],
+        }])
+      )
+      fetch("/api/providers", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providers }),
+      }).catch(() => {})
+    }, 600)
+  }, [session?.user?.id])
+
   const setApiKeys = useCallback((k: Record<Provider, string>) => {
-    setApiKeysRaw(k); localStorage.setItem("oc_keys", JSON.stringify(k))
-  }, [])
+    setApiKeysRaw(k); apiKeysRef.current = k; localStorage.setItem("oc_keys", JSON.stringify(k)); scheduleProviderSync()
+  }, [scheduleProviderSync])
   const setEnabled = useCallback((e: Record<Provider, boolean>) => {
-    setEnabledRaw(e); localStorage.setItem("oc_enabled", JSON.stringify(e))
-  }, [])
+    setEnabledRaw(e); enabledRef.current = e; localStorage.setItem("oc_enabled", JSON.stringify(e)); scheduleProviderSync()
+  }, [scheduleProviderSync])
   const setSelectedModels = useCallback((m: Record<Provider, string>) => {
-    setSelectedModelsRaw(m); localStorage.setItem("oc_models", JSON.stringify(m))
-  }, [])
+    setSelectedModelsRaw(m); selectedModelsRef.current = m; localStorage.setItem("oc_models", JSON.stringify(m)); scheduleProviderSync()
+  }, [scheduleProviderSync])
 
   const setTurns = useCallback((updater: ConversationTurn[] | ((prev: ConversationTurn[]) => ConversationTurn[])) => {
     setTurnsState((prev) => typeof updater === "function" ? updater(prev) : updater)
@@ -2294,10 +2419,16 @@ export default function ChatPage() {
           { role: "user", content: `User: ${userMsg}\n\nAI answer(s):\n${assistantText.slice(0, 4000)}` },
         ]
         const raw = await collectFull(provider, messages, MEMORY_MODELS[provider])
-        const updated = cleanProfile(raw)
+        let updated = cleanProfile(raw)
         if (!updated || updated === current.trim()) {
-          console.debug("[memory] no profile change.")
-          return
+          // The model added nothing — fall back to literal capture so clear
+          // self-statements ("my name is…", "I like…") still get remembered.
+          const h = heuristicMemoryExtract(userMsg, current)
+          if (!h || h === current.trim()) {
+            console.debug("[memory] no profile change.")
+            return
+          }
+          updated = h
         }
         const res = await fetch("/api/memory", {
           method: "PUT",
@@ -2319,10 +2450,35 @@ export default function ChatPage() {
     [collectFull, showToast]
   )
 
-  // Fire extraction once per completed, real turn (skip demo / commands / images).
+  // Demo / keyless path: capture facts locally (no LLM call) and persist them,
+  // so a user trying the app still sees memory learn who they are.
+  const runHeuristicMemoryUpdate = useCallback(async (userMsg: string) => {
+    const current = memoryProfileRef.current
+    const updated = heuristicMemoryExtract(userMsg, current)
+    if (!updated || updated === current.trim()) return
+    setMemoryProfile(updated); memoryProfileRef.current = updated
+    try {
+      const res = await fetch("/api/memory", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: updated }),
+      })
+      if (res.ok) {
+        const data: { profile?: string } = await res.json().catch(() => ({}))
+        const saved = typeof data?.profile === "string" ? data.profile : updated
+        setMemoryProfile(saved); memoryProfileRef.current = saved
+        showToast("Memory updated")
+      }
+    } catch (e) {
+      console.warn("[memory] heuristic update failed:", e)
+    }
+  }, [showToast])
+
+  // Fire extraction once per completed turn (skip commands / images). With a real
+  // key the cheapest model smartens the profile; in demo / keyless mode a literal
+  // capture runs instead, so memory works for everyone.
   useEffect(() => {
     const realActive = PROVIDERS.filter((p) => enabled[p] && apiKeys[p].trim() && apiKeys[p] !== "demo")
-    if (realActive.length === 0) return
     turns.forEach((turn) => {
       if (extractedRef.current.has(turn.id)) return
       if (turn.userMessage.startsWith("/")) { extractedRef.current.add(turn.id); return }
@@ -2331,6 +2487,11 @@ export default function ChatPage() {
         : Object.values(turn.responses).length > 0 && Object.values(turn.responses).every((r) => r?.done === true)
       if (!allDone) return
       extractedRef.current.add(turn.id)
+      if (realActive.length === 0) {
+        // No paid model available to mine the turn — capture facts literally.
+        void runHeuristicMemoryUpdate(turn.userMessage)
+        return
+      }
       let assistantText = ""
       if (turn.isFusion && turn.fusedResponse?.content && !turn.fusedResponse.error) {
         assistantText = turn.fusedResponse.content
@@ -2344,7 +2505,7 @@ export default function ChatPage() {
       if (!assistantText.trim()) return
       void runMemoryUpdate(turn.userMessage, assistantText, realActive[0])
     })
-  }, [turns, enabled, apiKeys, runMemoryUpdate])
+  }, [turns, enabled, apiKeys, runMemoryUpdate, runHeuristicMemoryUpdate])
 
   // Save the whole memory profile by hand (the "editable profile" promise).
   // Optimistic; PUT is scoped to the owner and clamped per plan server-side.
