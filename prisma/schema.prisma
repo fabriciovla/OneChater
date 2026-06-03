@@ -29,6 +29,11 @@ model User {
   image         String?
   plan          String    @default("free") // free | pro | team — gates memory cap + providers
   memoryProfile String?   @map("memory_profile") @db.Text // single free-form memory prompt, shared across every model
+  // Two-factor auth (TOTP). Secret + backup codes are encrypted at rest (lib/crypto).
+  // `totpEnabled` flips true only after the user confirms a code during enrollment.
+  totpEnabled       Boolean  @default(false) @map("totp_enabled")
+  totpSecretEnc     String?  @map("totp_secret_enc") @db.Text
+  totpBackupCodesEnc String? @map("totp_backup_codes_enc") @db.Text
   lsCustomerId        String?   @map("ls_customer_id")
   lsSubscriptionId    String?   @map("ls_subscription_id")
   lsSubscriptionStatus String?  @map("ls_subscription_status") // active | cancelled | expired | past_due | on_trial

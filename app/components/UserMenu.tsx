@@ -87,6 +87,7 @@ export default function UserMenu() {
           <div className="py-1.5">
             <MenuItem href="/chat" icon={<IconChat />}>Chat</MenuItem>
             <MenuItem href="/dashboard" icon={<IconDashboard />}>Dashboard</MenuItem>
+            <MenuItem href="/security" icon={<IconShieldLock />}>Security &amp; 2FA</MenuItem>
           </div>
 
           <div style={{ borderTop: "1px solid var(--border, #e5e7eb)" }} className="py-1.5">
@@ -132,6 +133,16 @@ function IconDashboard() {
       <rect x="14" y="3" width="7" height="7" rx="1" strokeLinecap="round" strokeLinejoin="round" />
       <rect x="3" y="14" width="7" height="7" rx="1" strokeLinecap="round" strokeLinejoin="round" />
       <rect x="14" y="14" width="7" height="7" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconShieldLock() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="9" y="10.5" width="6" height="5" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.5 10.5V9a1.5 1.5 0 013 0v1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
