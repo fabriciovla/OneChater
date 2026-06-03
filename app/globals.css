@@ -958,6 +958,21 @@ html.dark .step-card-premium::before { background-image: radial-gradient(rgba(25
   75% { opacity: 1; }
 }
 
+/* ── Memory section: flow diagram ─────────────────────────────────── */
+/* Dashes travel along the connector → suggests context flowing
+   Usuario → Memoria → modelos. */
+@keyframes dashFlow { to { stroke-dashoffset: -16; } }
+.flow-path {
+  stroke-dasharray: 5 6;
+  animation: dashFlow 0.75s linear infinite;
+}
+/* Soft breathing glow behind the central Memoria Personal node. */
+@keyframes memoryPulse {
+  0%, 100% { transform: scale(1);    opacity: 0.45; }
+  50%      { transform: scale(1.07); opacity: 0.8; }
+}
+.memory-hub-pulse { animation: memoryPulse 3.4s ease-in-out infinite; }
+
 /* ── Chat Page Animations ────────────────────────────────────────── */
 
 /* User message slide in from right */
@@ -1383,6 +1398,7 @@ html.dark [class*="border-black"] { border-color: var(--border) !important; }
   .blob-1, .blob-2, .blob-3,
   .gradient-text, .gradient-text-premium,
   .fusion-progress-bar, .fusion-logo-pulse, .typing-dot-glow,
+  .flow-path, .memory-hub-pulse,
   .pricing-pro::after, .input-card-loading::before {
     animation: none !important;
   }

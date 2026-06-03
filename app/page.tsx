@@ -992,6 +992,320 @@ function HowItWorksSection() {
   );
 }
 
+// --- Memoria Persistente por Usuario -----------------------------------
+
+function IconUser() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function IconSync() {
+  // Circular refresh arrows — contexto que se mantiene al cambiar de modelo
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  );
+}
+
+function IconLayers() {
+  // Capas que se acumulan — aprendizaje progresivo
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <path d="M12 2 2 7l10 5 10-5-10-5z" />
+      <path d="m2 12 10 5 10-5" />
+      <path d="m2 17 10 5 10-5" />
+    </svg>
+  );
+}
+
+function IconTarget() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function IconGear() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+type MemoryCardDef = {
+  id: string;
+  name: string;
+  desc: string;
+  icon: React.ReactNode;
+  glow: string;       // premium-card glow-* class (drives hover glow + dark mode)
+  from: string;
+  to: string;
+  bar: string;        // bottom accent-bar gradient
+  glowColor: string;  // icon tile shadow tint
+};
+
+const MEMORY_CARDS: MemoryCardDef[] = [
+  {
+    id: "personal",
+    name: "Memoria Personal",
+    desc: "Cada usuario dispone de una memoria independiente. La información se almacena únicamente para mejorar la calidad de sus conversaciones.",
+    icon: <IconBrain />,
+    glow: "glow-orange",
+    from: "from-orange-500",
+    to: "to-amber-500",
+    bar: "from-orange-500 to-amber-400",
+    glowColor: "rgba(249,115,22,0.5)",
+  },
+  {
+    id: "contexto",
+    name: "Contexto Continuo",
+    desc: "Cambia entre GPT, Claude, Gemini u otros modelos sin perder información importante sobre ti o tus proyectos.",
+    icon: <IconSync />,
+    glow: "glow-blue",
+    from: "from-blue-500",
+    to: "to-cyan-500",
+    bar: "from-blue-500 to-cyan-400",
+    glowColor: "rgba(59,130,246,0.5)",
+  },
+  {
+    id: "aprendizaje",
+    name: "Aprendizaje Progresivo",
+    desc: "One Chater puede recordar datos relevantes compartidos durante conversaciones anteriores para ofrecer respuestas más consistentes y personalizadas.",
+    icon: <IconLayers />,
+    glow: "glow-violet",
+    from: "from-violet-500",
+    to: "to-purple-600",
+    bar: "from-violet-500 to-purple-500",
+    glowColor: "rgba(139,92,246,0.5)",
+  },
+  {
+    id: "preferencias",
+    name: "Preferencias Persistentes",
+    desc: "Estilo de escritura, preferencias técnicas, proyectos activos y configuraciones pueden mantenerse entre sesiones.",
+    icon: <IconTarget />,
+    glow: "glow-green",
+    from: "from-green-500",
+    to: "to-emerald-600",
+    bar: "from-emerald-500 to-green-400",
+    glowColor: "rgba(34,197,94,0.5)",
+  },
+  {
+    id: "privacidad",
+    name: "Privacidad Primero",
+    desc: "La memoria está asociada únicamente a tu cuenta y no se comparte con otros usuarios.",
+    icon: <IconShield />,
+    glow: "glow-indigo",
+    from: "from-indigo-500",
+    to: "to-blue-600",
+    bar: "from-indigo-500 to-blue-500",
+    glowColor: "rgba(99,102,241,0.5)",
+  },
+  {
+    id: "control",
+    name: "Control Total",
+    desc: "Puedes revisar, editar o eliminar la información almacenada en cualquier momento.",
+    icon: <IconGear />,
+    glow: "glow-cyan",
+    from: "from-cyan-500",
+    to: "to-teal-500",
+    bar: "from-cyan-500 to-teal-400",
+    glowColor: "rgba(6,182,212,0.5)",
+  },
+];
+
+// Responsive connector: horizontal arrow on desktop, vertical on mobile.
+function MemoryFlowArrow() {
+  return (
+    <div className="flex items-center justify-center text-gray-300 md:px-1" aria-hidden="true">
+      <svg className="hidden md:block" width="48" height="24" viewBox="0 0 48 24" fill="none">
+        <path className="flow-path" d="M2 12 H39" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M35 6 L43 12 L35 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <svg className="block md:hidden my-1" width="24" height="40" viewBox="0 0 24 40" fill="none">
+        <path className="flow-path" d="M12 2 V31" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M6 27 L12 35 L18 27" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+function MemorySection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } },
+      { threshold: 0.08 }
+    );
+    if (sectionRef.current) obs.observe(sectionRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <section ref={sectionRef} id="memoria" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
+      {/* Background accent */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[820px] h-[440px] opacity-[0.04] rounded-full"
+          style={{ background: "radial-gradient(ellipse, #f97316, transparent 70%)" }} />
+      </div>
+
+      <div className="max-w-7xl mx-auto relative">
+        {/* Header */}
+        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
+          <div className="inline-flex items-center gap-2">
+            <span className="section-label">Memoria por usuario</span>
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white"
+              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)", boxShadow: "0 6px 16px -6px rgba(139,92,246,0.6), inset 0 1px 0 rgba(255,255,255,0.3)" }}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5">
+                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
+              </svg>
+              Premium
+            </span>
+          </div>
+          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
+            Nunca vuelvas a repetir{" "}
+            <span className="gradient-text">información a tu IA</span>
+          </h2>
+          <p className="mt-5 text-gray-500 max-w-2xl mx-auto text-lg leading-relaxed">
+            One Chater construye una memoria privada para cada usuario, permitiendo que tus asistentes recuerden preferencias, proyectos, objetivos y contexto a largo plazo.
+          </p>
+        </div>
+
+        {/* Conceptual visualization: Usuario → Memoria Personal → GPT / Claude / Gemini */}
+        <div
+          className={`relative rounded-[28px] p-6 md:p-12 surface-light overflow-hidden card-item${inView ? " in-view" : ""}`}
+          style={inView ? { animationDelay: "80ms" } : {}}
+        >
+          {/* dot grid backdrop */}
+          <div className="absolute inset-0 opacity-[0.5] pointer-events-none"
+            style={{
+              backgroundImage: "radial-gradient(var(--border-strong) 1px, transparent 1px)",
+              backgroundSize: "26px 26px",
+              maskImage: "radial-gradient(ellipse 70% 60% at 50% 50%, #000 30%, transparent 75%)",
+              WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 50%, #000 30%, transparent 75%)",
+            }} />
+
+          <div className="relative flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3">
+            {/* Usuario */}
+            <div className="rounded-3xl px-6 py-5 text-center w-[150px] flex-shrink-0"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-soft)" }}>
+              <div className="mx-auto w-12 h-12 rounded-2xl flex items-center justify-center"
+                style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}>
+                <IconUser />
+              </div>
+              <div className="mt-3 text-sm font-semibold text-gray-900">Usuario</div>
+              <div className="text-[11px] text-gray-400 mt-0.5">Tu cuenta</div>
+            </div>
+
+            <MemoryFlowArrow />
+
+            {/* Memoria Personal (hub) */}
+            <div className="relative flex-shrink-0">
+              <div aria-hidden="true" className="memory-hub-pulse absolute -inset-3 rounded-[32px]"
+                style={{ background: "radial-gradient(circle, rgba(249,115,22,0.28), transparent 70%)", zIndex: 0 }} />
+              <div className="relative rounded-3xl px-6 py-6 text-center w-[210px]"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-mid)", zIndex: 1 }}>
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white ring-1 ring-white/40"
+                  style={{ boxShadow: "0 10px 28px -6px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.25)" }}>
+                  <IconBrain />
+                </div>
+                <div className="mt-3.5 text-[15px] font-semibold text-gray-900">Memoria Personal</div>
+                <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-gray-500">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Privada y cifrada
+                </div>
+              </div>
+            </div>
+
+            <MemoryFlowArrow />
+
+            {/* Modelos */}
+            <div className="flex flex-col gap-2.5 flex-shrink-0">
+              {[
+                { name: "GPT", logo: <OpenAILogo /> },
+                { name: "Claude", logo: <AnthropicLogo /> },
+                { name: "Gemini", logo: <GoogleLogo /> },
+              ].map((m) => (
+                <div key={m.name} className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5 w-[180px]"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-soft)" }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                    style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                    {m.logo}
+                  </div>
+                  <span className="text-[13px] font-semibold text-gray-900">{m.name}</span>
+                  <span className="ml-auto w-2 h-2 rounded-full bg-green-500" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Caption */}
+          <p className="relative mt-8 md:mt-10 text-center text-[14px] md:text-[15px] text-gray-500 max-w-2xl mx-auto leading-relaxed text-pretty">
+            Una única memoria compartida entre todos tus modelos de IA para mantener el contexto de forma consistente.
+          </p>
+        </div>
+
+        {/* Feature cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-12 md:mt-16">
+          {MEMORY_CARDS.map((c, i) => (
+            <div
+              key={c.id}
+              className={`premium-card ${c.glow} rounded-2xl p-7 card-item${inView ? " in-view" : ""}`}
+              style={inView ? { animationDelay: `${120 + i * 80}ms` } : {}}
+            >
+              <div
+                className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${c.from} ${c.to} flex items-center justify-center text-white ring-1 ring-white/40`}
+                style={{ boxShadow: `0 10px 28px -6px ${c.glowColor}, inset 0 1px 0 rgba(255,255,255,0.25)` }}
+              >
+                {c.icon}
+              </div>
+              <h3 className="display mt-5 text-lg md:text-xl font-semibold text-gray-900 tracking-tight leading-tight">{c.name}</h3>
+              <p className="mt-2.5 text-[14px] text-gray-500 leading-relaxed text-pretty">{c.desc}</p>
+              <div className={`accent-bar bg-gradient-to-r ${c.bar}`} />
+            </div>
+          ))}
+        </div>
+
+        {/* Important note */}
+        <div className={`mt-12 md:mt-16 card-item${inView ? " in-view" : ""}`} style={inView ? { animationDelay: "200ms" } : {}}>
+          <div className="relative rounded-2xl p-6 md:p-7 flex items-start gap-4 surface-light overflow-hidden">
+            <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-40"
+              style={{ background: "radial-gradient(circle, rgba(99,102,241,0.35), transparent 65%)", filter: "blur(44px)" }} />
+            <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40"
+              style={{ boxShadow: "0 8px 22px -6px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.25)" }}>
+              <IconShield />
+            </div>
+            <div className="relative">
+              <div className="text-[15px] font-semibold text-gray-900">Vos tenés el control</div>
+              <p className="mt-1.5 text-[14px] text-gray-500 leading-relaxed text-pretty">
+                Los usuarios mantienen el control total sobre su información. La memoria existe para mejorar la experiencia y puede gestionarse desde el panel de configuración.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // â"€â"€â"€ Models Section â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 type ModelCard = {
@@ -1444,7 +1758,7 @@ function PricingSection() {
             <span className="gradient-text">transparentes</span>
           </h2>
           <p className="mt-5 text-gray-500 max-w-md mx-auto text-lg leading-relaxed">
-            Ya pagás tus API keys. OneChat tiene que ser accesible también.
+            Ya pagás tus API keys. OneChater tiene que ser accesible también.
           </p>
         </div>
 
@@ -1681,7 +1995,7 @@ function CTASection() {
               </span>
             </h2>
             <p className="mt-5 text-lg text-white/60 max-w-xl mx-auto leading-relaxed">
-              Únete a miles de profesionales y freelancers en LATAM que usan OneChat para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.
+              Únete a miles de profesionales y freelancers en LATAM que usan OneChater para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
               <a href="/chat" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-[#0E0F12] transition-all cursor-pointer hover:-translate-y-0.5"
@@ -2052,6 +2366,7 @@ function HomeInner() {
       <HeroSection />
       <FeaturesSection />
       <HowItWorksSection />
+      <MemorySection />
       <ModelsSection />
       <TestimonialsSection />
       <PricingSection />
