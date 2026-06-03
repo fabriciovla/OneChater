@@ -12,7 +12,11 @@ import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 import GitHub from "next-auth/providers/github"
 import { prisma } from "@/lib/db"
+import { lockRemainingSec, recordFailure, clearLimit } from "@/lib/ratelimit"
 import authConfig from "@/auth.config"
+
+const VERIFY_MAX_ATTEMPTS = 5
+const VERIFY_LOCK_MS = 15 * 60 * 1000 // 15 min
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -33,14 +37,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         code:  { label: "Code", type: "text" },
       },
       authorize: async (credentials) => {
-        const email = credentials?.email as string | undefined
+        const rawEmail = credentials?.email as string | undefined
         const code  = credentials?.code  as string | undefined
-        if (!email || !code) return null
+        if (!rawEmail || !code) return null
+        // Normalize to match how send-otp stored the identifier (lowercased).
+        const email = rawEmail.toLowerCase().trim()
+
+        // Brute-force guard: too many wrong codes locks this email out briefly.
+        const lockKey = `otp_verify:${email}`
+        if ((await lockRemainingSec(lockKey)) > 0) return null
 
         const otp = await prisma.verificationToken.findFirst({
           where: { identifier: email, token: code, expires: { gt: new Date() } },
         })
-        if (!otp) return null
+        if (!otp) {
+          await recordFailure(lockKey, VERIFY_MAX_ATTEMPTS, VERIFY_LOCK_MS)
+          return null
+        }
+        await clearLimit(lockKey)
 
         await prisma.verificationToken.deleteMany({
           where: { identifier: email },

@@ -202,3 +202,16 @@ model ProviderDefault {
 
   @@map("provider_defaults")
 }
+
+// Generic fixed-window rate limiter + lockout state. One row per limiter key,
+// e.g. "otp_send:foo@x.com", "otp_send_ip:1.2.3.4", "otp_verify:foo@x.com".
+// Keeps brute-force / email-bombing off the OTP endpoints without a Redis dep.
+model RateLimit {
+  key         String    @id
+  count       Int       @default(0)
+  windowStart DateTime  @default(now()) @map("window_start") @db.Timestamptz
+  lockedUntil DateTime? @map("locked_until") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("rate_limits")
+}
