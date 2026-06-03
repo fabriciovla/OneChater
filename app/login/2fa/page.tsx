@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect, KeyboardEvent, Suspense } from "react"
-import { signOut } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
+import { logoutAction } from "@/lib/actions/logout"
 
-// Only allow same-origin relative paths (block open redirects). Falls back to /chat.
+// Only allow same-origin relative paths (block open redirects). Falls back to /.
 function safeNext(raw: string | null): string {
   if (raw && raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\")) return raw
-  return "/chat"
+  return "/"
 }
 
 function TwoFactorInner() {
@@ -135,7 +135,7 @@ function TwoFactorInner() {
           </button>
         </div>
 
-        <button onClick={() => signOut({ callbackUrl: "/" })}
+        <button onClick={() => logoutAction("/")}
           className="w-full text-center text-[12px] text-gray-400 hover:text-gray-600 transition-colors cursor-pointer mt-6">
           Sign in with a different account
         </button>

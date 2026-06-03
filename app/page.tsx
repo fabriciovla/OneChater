@@ -12,13 +12,13 @@ import { useLang, useT, LangToggle } from "@/lib/i18n";
 
 const LP = {
   en: {
-    nav: { features: "Features", how: "How it works", memory: "Memory", pricing: "Pricing", signIn: "Sign in", startFree: "Start free", menu: "Menu", openMenu: "Open menu", closeMenu: "Close menu", home: "OneChater home" },
+    nav: { features: "Features", how: "How it works", memory: "Memory", pricing: "Pricing", signIn: "Sign in", startFree: "Start free", goToChat: "Go to chat", menu: "Menu", openMenu: "Open menu", closeMenu: "Close menu", home: "OneChater home" },
     hero: {
       new: "New", badge: "Persistent memory across models",
       srH1: "OneChater — AI chat with GPT, Claude and Gemini in one place, with a persistent memory that follows you across every model",
       line1: "One memory.", line2: "Every AI.",
       subA: "The only AI chat app that doesn't forget you when you switch models.", subBold: " GPT, Claude and Gemini", subC: " in one place, with a memory that travels with you.",
-      startFree: "Start free", seeHow: "See how it works",
+      startFree: "Start free", goToChat: "Go to chat", seeHow: "See how it works",
       proWorldwide: "professionals worldwide", byok: "BYOK · 0% fee", worksWith: "Works with",
     },
     preview: { activeMemory: "Active memory:", chips: "Next.js · Banking client · Short answers", userQ: "How do I optimize this Postgres query?", sent: "Sent to 3 models", now: "Just now", gpt: "Add a composite index on", gptB: "and run EXPLAIN ANALYZE to verify...", claude: "With pgvector on your Supabase you can use", claudeB: "indexes for more efficient searches...", full: "Full answer →", gen: "Generating response...", ask: "Ask every model at once...", send: "Send message" },
@@ -86,7 +86,7 @@ const LP = {
           features: ["Everything in Pro", "Up to 10 members", "Shared prompt library", "Team memory", "SSO / SAML", "Dedicated Slack support"] },
       },
     },
-    cta: { title1: "Ready to unify your", title2: "AI workflow?", subtitle: "Join thousands of professionals and freelancers who use OneChater to get the most out of every AI model — with one memory that connects them all.", startFree: "Start for free", seePricing: "See pricing", micro: "No credit card · Set up in 60 seconds · Cancel anytime" },
+    cta: { title1: "Ready to unify your", title2: "AI workflow?", subtitle: "Join thousands of professionals and freelancers who use OneChater to get the most out of every AI model — with one memory that connects them all.", startFree: "Start for free", goToChat: "Go to chat", seePricing: "See pricing", micro: "No credit card · Set up in 60 seconds · Cancel anytime" },
     footer: {
       tagline: "One memory. Every AI. Bring your keys, own your data.",
       groups: { Product: "Product", Resources: "Resources", Legal: "Legal", Community: "Community" },
@@ -95,13 +95,13 @@ const LP = {
     },
   },
   es: {
-    nav: { features: "Funcionalidades", how: "Cómo funciona", memory: "Memoria", pricing: "Precios", signIn: "Iniciar sesión", startFree: "Empezar gratis", menu: "Menú", openMenu: "Abrir menú", closeMenu: "Cerrar menú", home: "Inicio de OneChater" },
+    nav: { features: "Funcionalidades", how: "Cómo funciona", memory: "Memoria", pricing: "Precios", signIn: "Iniciar sesión", startFree: "Empezar gratis", goToChat: "Ir al chat", menu: "Menú", openMenu: "Abrir menú", closeMenu: "Cerrar menú", home: "Inicio de OneChater" },
     hero: {
       new: "Nuevo", badge: "Memoria persistente entre modelos",
       srH1: "OneChater — chat con IA: GPT, Claude y Gemini en un solo lugar, con una memoria persistente que te sigue en todos los modelos",
       line1: "Una memoria.", line2: "Todas las IAs.",
       subA: "La única app de chat con IA que no te olvida cuando cambiás de modelo.", subBold: " GPT, Claude y Gemini", subC: " en un solo lugar, con una memoria que viaja con vos.",
-      startFree: "Empezar gratis", seeHow: "Ver cómo funciona",
+      startFree: "Empezar gratis", goToChat: "Ir al chat", seeHow: "Ver cómo funciona",
       proWorldwide: "profesionales en todo el mundo", byok: "BYOK · 0% de comisión", worksWith: "Compatible con",
     },
     preview: { activeMemory: "Memoria activa:", chips: "Next.js · Cliente bancario · Respuestas cortas", userQ: "¿Cómo optimizo esta query de Postgres?", sent: "Enviado a 3 modelos", now: "Hace un momento", gpt: "Agregá un índice compuesto en", gptB: "y usá EXPLAIN ANALYZE para verificar...", claude: "Con pgvector en tu Supabase podés usar índices", claudeB: "para búsquedas más eficientes...", full: "Respuesta completa →", gen: "Generando respuesta...", ask: "Preguntale a todos los modelos a la vez...", send: "Enviar mensaje" },
@@ -169,7 +169,7 @@ const LP = {
           features: ["Todo lo de Pro", "Hasta 10 integrantes", "Biblioteca de prompts compartida", "Memoria de equipo", "SSO / SAML", "Soporte dedicado por Slack"] },
       },
     },
-    cta: { title1: "¿Listo para unificar tu", title2: "flujo de trabajo con IA?", subtitle: "Unite a miles de profesionales y freelancers que usan OneChater para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.", startFree: "Empezar gratis", seePricing: "Ver precios", micro: "Sin tarjeta de crédito · Listo en 60 segundos · Cancelá cuando quieras" },
+    cta: { title1: "¿Listo para unificar tu", title2: "flujo de trabajo con IA?", subtitle: "Unite a miles de profesionales y freelancers que usan OneChater para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.", startFree: "Empezar gratis", goToChat: "Ir al chat", seePricing: "Ver precios", micro: "Sin tarjeta de crédito · Listo en 60 segundos · Cancelá cuando quieras" },
     footer: {
       tagline: "Una memoria. Todas las IAs. Traé tus keys, controlá tus datos.",
       groups: { Product: "Producto", Resources: "Recursos", Legal: "Legal", Community: "Comunidad" },
@@ -582,13 +582,21 @@ function Navbar() {
 
         {/* Bottom CTAs */}
         <div className="px-5 mt-8 flex flex-col gap-3">
-          <a href="/login" className="btn-primary text-[15px] py-3.5 justify-center">
-            {t.nav.startFree} <IconArrowRight />
-          </a>
-          <a href="/login" className="text-center text-sm py-2.5 font-medium rounded-xl transition-all"
-            style={{ color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-            {t.nav.signIn}
-          </a>
+          {session?.user ? (
+            <a href="/chat" className="btn-primary text-[15px] py-3.5 justify-center">
+              {t.nav.goToChat} <IconArrowRight />
+            </a>
+          ) : (
+            <>
+              <a href="/login" className="btn-primary text-[15px] py-3.5 justify-center">
+                {t.nav.startFree} <IconArrowRight />
+              </a>
+              <a href="/login" className="text-center text-sm py-2.5 font-medium rounded-xl transition-all"
+                style={{ color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                {t.nav.signIn}
+              </a>
+            </>
+          )}
         </div>
       </div>
     </>
@@ -2069,6 +2077,7 @@ function CTASection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
   const tc = useT(LP).cta;
+  const { data: session } = useSession();
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -2131,7 +2140,7 @@ function CTASection() {
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 30px -10px rgba(255,255,255,0.4)",
                 }}
               >
-                {tc.startFree} <IconArrowRight />
+                {session?.user ? tc.goToChat : tc.startFree} <IconArrowRight />
               </a>
               <button
                 onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth", block: "start" })}
@@ -2250,6 +2259,7 @@ function Footer() {
 
 function HeroSection() {
   const th = useT(LP).hero;
+  const { data: session } = useSession();
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-32 pb-20 overflow-hidden">
       {/* Subtle dot grid */}
@@ -2313,7 +2323,7 @@ function HeroSection() {
         {/* CTAs */}
         <div className="animate-fade-up delay-400 mt-10 flex flex-col sm:flex-row gap-3">
           <a href="/chat" className="btn-primary text-[15px] px-8 py-3.5">
-            {th.startFree} <IconArrowRight />
+            {session?.user ? th.goToChat : th.startFree} <IconArrowRight />
           </a>
           <button
             onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}

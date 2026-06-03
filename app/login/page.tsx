@@ -79,12 +79,12 @@ function IconGitHub() {
 type Step = "email" | "otp"
 
 // Read ?next= and only allow same-origin relative paths (block open redirects
-// like //evil.com or /\evil.com). Falls back to /chat.
+// like //evil.com or /\evil.com). Falls back to / (home page).
 function safeNext(): string {
-  if (typeof window === "undefined") return "/chat"
+  if (typeof window === "undefined") return "/"
   const p = new URLSearchParams(window.location.search).get("next")
   if (p && p.startsWith("/") && !p.startsWith("//") && !p.startsWith("/\\")) return p
-  return "/chat"
+  return "/"
 }
 
 export default function LoginPage() {
