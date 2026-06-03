@@ -28,6 +28,10 @@ model User {
   emailVerified DateTime? @map("email_verified") @db.Timestamptz
   image         String?
   plan          String    @default("free") // free | pro | team — gates memory cap
+  lsCustomerId        String?   @map("ls_customer_id")
+  lsSubscriptionId    String?   @map("ls_subscription_id")
+  lsSubscriptionStatus String?  @map("ls_subscription_status") // active | cancelled | expired | past_due | on_trial
+  lsCurrentPeriodEnd  DateTime? @map("ls_current_period_end") @db.Timestamptz
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 

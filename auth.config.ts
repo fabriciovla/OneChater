@@ -10,10 +10,12 @@ export default {
     authorized: ({ auth }) => !!auth?.user,
     jwt: ({ token, user }) => {
       if (user?.id) token.id = user.id
+      if ((user as { plan?: string })?.plan) token.plan = (user as { plan?: string }).plan
       return token
     },
     session: ({ session, token }) => {
       if (token.id) session.user.id = token.id as string
+      if (token.plan) (session.user as { plan?: string }).plan = token.plan as string
       return session
     },
   },

@@ -9,6 +9,8 @@ if (process.env.AUTH_SECRET === "REEMPLAZAR_CON_SECRET_SEGURO") {
 }
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
+import Google from "next-auth/providers/google"
+import GitHub from "next-auth/providers/github"
 import { prisma } from "@/lib/db"
 import authConfig from "@/auth.config"
 
@@ -16,7 +18,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
-    // Google, GitHub, Apple — add when OAuth credentials are ready
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    GitHub({
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    }),
     Credentials({
       id: "otp",
       credentials: {
@@ -44,7 +53,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await prisma.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } })
         }
 
-        return user
+        return { ...user, plan: user.plan }
       },
     }),
   ],

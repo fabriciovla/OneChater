@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { useSession, SessionProvider } from "next-auth/react";
 import ThemeToggle from "./components/ThemeToggle";
+import UserMenu from "./components/UserMenu";
 
 // â"€â"€â"€ OneChat Logo Components â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
@@ -288,6 +290,7 @@ function PerplexityLogo() {
 
 function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: session } = useSession();
 
   type NavSection = { label: string; sectionId: string; slug: string };
   type NavLink    = { label: string; href: string; external?: boolean; icon?: React.ReactNode };
@@ -352,13 +355,19 @@ function Navbar() {
             ))}
             <span className="nav-separator mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
             <ThemeToggle className="!w-8 !h-8" />
-            <a href="/login" className="px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all cursor-pointer">
-              Iniciar sesión
-            </a>
-            <a href="/login" className="ml-1 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold text-white transition-all duration-200 cursor-pointer hover:-translate-y-px"
-              style={{ background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(14,15,18,0.2), 0 6px 18px -6px rgba(14,15,18,0.35)" }}>
-              Empezar gratis <IconArrowRight />
-            </a>
+            {session?.user ? (
+              <UserMenu />
+            ) : (
+              <>
+                <a href="/login" className="px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all cursor-pointer">
+                  Iniciar sesión
+                </a>
+                <a href="/login" className="ml-1 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold text-white transition-all duration-200 cursor-pointer hover:-translate-y-px"
+                  style={{ background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(14,15,18,0.2), 0 6px 18px -6px rgba(14,15,18,0.35)" }}>
+                  Empezar gratis <IconArrowRight />
+                </a>
+              </>
+            )}
           </div>
 
           {/* Mobile right: theme + open */}
@@ -1386,6 +1395,29 @@ function PricingSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const { data: session } = useSession();
+
+  async function handleProCheckout() {
+    if (!session?.user) {
+      window.location.href = "/login?next=/";
+      return;
+    }
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/checkout", { method: "POST" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("Error al crear el checkout: " + (data.error ?? "desconocido"));
+      }
+    } catch {
+      alert("Error de red al crear checkout");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -1533,10 +1565,16 @@ function PricingSection() {
                 </ul>
 
                 <button
-                  disabled={plan.comingSoon || plan.highlighted}
-                  onClick={!plan.comingSoon && !plan.highlighted ? () => window.location.href = "/chat" : undefined}
+                  disabled={plan.comingSoon || (plan.highlighted && checkoutLoading)}
+                  onClick={
+                    plan.comingSoon
+                      ? undefined
+                      : plan.highlighted
+                        ? handleProCheckout
+                        : () => (window.location.href = "/chat")
+                  }
                   className={`relative w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-                    plan.comingSoon || plan.highlighted
+                    plan.comingSoon
                       ? "cursor-not-allowed"
                       : "cursor-pointer btn-primary"
                   }`}
@@ -1548,13 +1586,16 @@ function PricingSection() {
                             background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
                             boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 28px -8px rgba(255,255,255,0.4)",
                             color: "#0E0F12",
-                            opacity: 0.5,
+                            opacity: checkoutLoading ? 0.6 : 1,
                           }
                         : undefined
                   }
                 >
-                  {plan.highlighted ? "Próximamente" : plan.cta}
+                  {plan.highlighted
+                    ? checkoutLoading ? "Redirigiendo..." : plan.cta
+                    : plan.cta}
                   {!plan.comingSoon && !plan.highlighted && <IconArrowRight />}
+                  {plan.highlighted && !checkoutLoading && <IconArrowRight />}
                 </button>
 
                 {/* Bottom accent bar */}
@@ -1974,7 +2015,7 @@ function SectionScrollHandler() {
   return null;
 }
 
-export default function Home() {
+function HomeInner() {
   useEffect(() => {
     const iframe = document.getElementById("demo-video") as HTMLIFrameElement;
     if (!iframe) return;
@@ -2017,5 +2058,13 @@ export default function Home() {
       <CTASection />
       <Footer />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <SessionProvider>
+      <HomeInner />
+    </SessionProvider>
   );
 }
