@@ -1685,86 +1685,86 @@ function FusionSection() {
   }, []);
 
   const steps = [tf.step1, tf.step2, tf.step3];
-  const STEP_COLORS = [“#6366f1”, “#8b5cf6”, “#a855f7”];
+  const STEP_COLORS = ["#6366f1", "#8b5cf6", "#a855f7"];
 
   return (
-    <section ref={sectionRef} id=”fusion” className=”relative py-10 md:py-14 px-5 md:px-6 overflow-hidden”>
+    <section ref={sectionRef} id="fusion" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
-      <div className=”absolute inset-0 pointer-events-none”>
-        <div className=”absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-[0.05] rounded-full”
-          style={{ background: “radial-gradient(ellipse, #a855f7, transparent 70%)” }} />
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-[0.05] rounded-full"
+          style={{ background: "radial-gradient(ellipse, #a855f7, transparent 70%)" }} />
       </div>
 
-      <div className=”max-w-7xl mx-auto relative”>
+      <div className="max-w-7xl mx-auto relative">
         {/* Header */}
-        <div className={`text-center mb-10 md:mb-16 card-item${inView ? “ in-view” : “”}`}>
-          <span className=”section-label flex items-center justify-center gap-2”>
+        <div className={`text-center mb-10 md:mb-16 card-item${inView ? " in-view" : ""}`}>
+          <span className="section-label flex items-center justify-center gap-2">
             {tf.label}
-            <span className=”inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-white”
-              style={{ background: “linear-gradient(135deg,#6366f1,#a855f7)” }}>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-white"
+              style={{ background: "linear-gradient(135deg,#6366f1,#a855f7)" }}>
               {tf.badge}
             </span>
           </span>
-          <h2 className=”display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance”>
-            {tf.title1}{“ “}
-            <span className=”gradient-text”>{tf.title2}</span>
+          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
+            {tf.title1}{" "}
+            <span className="gradient-text">{tf.title2}</span>
           </h2>
-          <p className=”mt-5 text-gray-500 max-w-2xl mx-auto text-[15px] md:text-lg leading-relaxed”>
+          <p className="mt-5 text-gray-500 max-w-2xl mx-auto text-[15px] md:text-lg leading-relaxed">
             {tf.subtitle}
           </p>
         </div>
 
         {/* Visual diagram: 3 models → fusion */}
-        <div className={`mb-12 md:mb-16 card-item${inView ? “ in-view” : “”}`} style={inView ? { animationDelay: “80ms” } : {}}>
-          <div className=”rounded-3xl overflow-hidden” style={{ background: “linear-gradient(160deg, #14161B 0%, #0E0F12 100%)”, border: “1px solid rgba(255,255,255,0.08)”, boxShadow: “0 30px 80px -20px rgba(99,102,241,0.25), 0 12px 40px -12px rgba(0,0,0,0.5)” }}>
-            <div className=”p-6 md:p-10”>
+        <div className={`mb-12 md:mb-16 card-item${inView ? " in-view" : ""}`} style={inView ? { animationDelay: "80ms" } : {}}>
+          <div className="rounded-3xl overflow-hidden" style={{ background: "linear-gradient(160deg, #14161B 0%, #0E0F12 100%)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 30px 80px -20px rgba(99,102,241,0.25), 0 12px 40px -12px rgba(0,0,0,0.5)" }}>
+            <div className="p-6 md:p-10">
               {/* Three model bubbles + arrows */}
-              <div className=”flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6”>
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
                 {[
-                  { tag: tf.tagGPT,    color: “#10a37f”, icon: “G” },
-                  { tag: tf.tagClaude, color: “#d97757”, icon: “C” },
-                  { tag: tf.tagGemini, color: “#4285f4”, icon: “✦” },
+                  { tag: tf.tagGPT,    color: "#10a37f", icon: "G" },
+                  { tag: tf.tagClaude, color: "#d97757", icon: "C" },
+                  { tag: tf.tagGemini, color: "#4285f4", icon: "✦" },
                 ].map((m, i) => (
-                  <div key={i} className=”flex flex-col items-center gap-3 w-full md:w-auto md:flex-1 max-w-[200px]”>
-                    <div className=”w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0”
+                  <div key={i} className="flex flex-col items-center gap-3 w-full md:w-auto md:flex-1 max-w-[200px]">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
                       style={{ background: m.color, boxShadow: `0 8px 24px -8px ${m.color}66` }}>
                       {m.icon}
                     </div>
-                    <div className=”text-white/50 text-[11px] font-medium tracking-wide”>{m.tag}</div>
-                    <div className=”hidden md:flex flex-col gap-1.5 w-full”>
+                    <div className="text-white/50 text-[11px] font-medium tracking-wide">{m.tag}</div>
+                    <div className="hidden md:flex flex-col gap-1.5 w-full">
                       {[...Array(3)].map((_, j) => (
-                        <div key={j} className=”h-2 rounded-full opacity-20” style={{ background: m.color, width: `${70 + j * 10}%` }} />
+                        <div key={j} className="h-2 rounded-full opacity-20" style={{ background: m.color, width: `${70 + j * 10}%` }} />
                       ))}
                     </div>
                   </div>
                 ))}
 
                 {/* Arrow */}
-                <div className=”flex items-center justify-center px-2 md:px-4 flex-shrink-0”>
-                  <div className=”flex flex-col items-center gap-1”>
-                    <svg viewBox=”0 0 24 24” fill=”none” stroke=”rgba(255,255,255,0.25)” strokeWidth=”2” className=”w-6 h-6 rotate-90 md:rotate-0”>
-                      <path d=”M5 12h14M12 5l7 7-7 7” strokeLinecap=”round” strokeLinejoin=”round” />
+                <div className="flex items-center justify-center px-2 md:px-4 flex-shrink-0">
+                  <div className="flex flex-col items-center gap-1">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" className="w-6 h-6 rotate-90 md:rotate-0">
+                      <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <span className=”text-white/25 text-[10px] font-medium”>Fusion</span>
+                    <span className="text-white/25 text-[10px] font-medium">Fusion</span>
                   </div>
                 </div>
 
                 {/* Fused output */}
-                <div className=”flex flex-col items-center gap-3 w-full md:w-auto md:flex-1 max-w-[220px]”>
-                  <div className=”w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0”
-                    style={{ background: “linear-gradient(135deg,#6366f1,#a855f7)”, boxShadow: “0 8px 24px -8px rgba(99,102,241,0.6)” }}>
-                    <svg viewBox=”0 0 24 24” fill=”none” stroke=”white” strokeWidth=”2” className=”w-5 h-5”>
-                      <path d=”M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5” strokeLinecap=”round” strokeLinejoin=”round” />
+                <div className="flex flex-col items-center gap-3 w-full md:w-auto md:flex-1 max-w-[220px]">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg,#6366f1,#a855f7)", boxShadow: "0 8px 24px -8px rgba(99,102,241,0.6)" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="w-5 h-5">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
-                  <div className=”flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white”
-                    style={{ background: “linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3))”, border: “1px solid rgba(168,85,247,0.4)” }}>
-                    <span className=”w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse” />
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
+                    style={{ background: "linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3))", border: "1px solid rgba(168,85,247,0.4)" }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
                     {tf.tagFusion}
                   </div>
-                  <div className=”w-full flex flex-col gap-1.5”>
+                  <div className="w-full flex flex-col gap-1.5">
                     {[...Array(4)].map((_, j) => (
-                      <div key={j} className=”h-2 rounded-full” style={{ background: “linear-gradient(90deg,rgba(99,102,241,0.5),rgba(168,85,247,0.3))”, width: `${85 - j * 8}%` }} />
+                      <div key={j} className="h-2 rounded-full" style={{ background: "linear-gradient(90deg,rgba(99,102,241,0.5),rgba(168,85,247,0.3))", width: `${85 - j * 8}%` }} />
                     ))}
                   </div>
                 </div>
@@ -1774,29 +1774,29 @@ function FusionSection() {
         </div>
 
         {/* 3-step flow */}
-        <div className=”grid md:grid-cols-3 gap-6 mb-10”>
+        <div className="grid md:grid-cols-3 gap-6 mb-10">
           {steps.map((s, i) => (
-            <div key={i} className={`premium-card rounded-2xl p-7 card-item${inView ? “ in-view” : “”}`}
+            <div key={i} className={`premium-card rounded-2xl p-7 card-item${inView ? " in-view" : ""}`}
               style={inView ? { animationDelay: `${160 + i * 100}ms` } : {}}>
-              <div className=”flex items-center gap-3 mb-4”>
-                <span className=”text-[11px] font-bold tracking-widest” style={{ color: STEP_COLORS[i] }}>{s.num}</span>
-                <div className=”flex-1 h-px” style={{ background: `${STEP_COLORS[i]}30` }} />
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-[11px] font-bold tracking-widest" style={{ color: STEP_COLORS[i] }}>{s.num}</span>
+                <div className="flex-1 h-px" style={{ background: `${STEP_COLORS[i]}30` }} />
               </div>
-              <h3 className=”display text-[18px] font-semibold text-gray-900 mb-2”>{s.title}</h3>
-              <p className=”text-[14px] text-gray-500 leading-relaxed”>{s.desc}</p>
+              <h3 className="display text-[18px] font-semibold text-gray-900 mb-2">{s.title}</h3>
+              <p className="text-[14px] text-gray-500 leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
 
         {/* CTA */}
-        <div className={`flex flex-col items-center gap-3 card-item${inView ? “ in-view” : “”}`}
-          style={inView ? { animationDelay: “460ms” } : {}}>
-          <a href={session?.user ? “/chat” : “/login”}
-            className=”inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-white transition-all cursor-pointer hover:-translate-y-0.5”
-            style={{ background: “linear-gradient(135deg,#6366f1,#8b5cf6)”, boxShadow: “0 8px 24px -8px rgba(99,102,241,0.5)” }}>
+        <div className={`flex flex-col items-center gap-3 card-item${inView ? " in-view" : ""}`}
+          style={inView ? { animationDelay: "460ms" } : {}}>
+          <a href={session?.user ? "/chat" : "/login"}
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-white transition-all cursor-pointer hover:-translate-y-0.5"
+            style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", boxShadow: "0 8px 24px -8px rgba(99,102,241,0.5)" }}>
             {tf.cta} <IconArrowRight />
           </a>
-          <p className=”text-[12px] text-gray-400”>{tf.note}</p>
+          <p className="text-[12px] text-gray-400">{tf.note}</p>
         </div>
       </div>
     </section>
