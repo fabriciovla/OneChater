@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { useSession, SessionProvider } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import ThemeToggle from "./components/ThemeToggle";
 import UserMenu from "./components/UserMenu";
 import { useLang, useT, LangToggle } from "@/lib/i18n";
@@ -18,7 +18,7 @@ const LP = {
       srH1: "OneChater — AI chat with GPT, Claude and Gemini in one place, with a persistent memory that follows you across every model",
       line1: "One memory.", line2: "Every AI.",
       subA: "The only AI chat app that doesn't forget you when you switch models.", subBold: " GPT, Claude and Gemini", subC: " in one place, with a memory that travels with you.",
-      startFree: "Start free", goToChat: "Go to chat", seeHow: "See how it works",
+      startFree: "Start free", goToChat: "Go to chat", continueGitHub: "Continue with GitHub",
       proWorldwide: "professionals worldwide", byok: "BYOK · 0% fee", worksWith: "Works with",
     },
     preview: { activeMemory: "Active memory:", chips: "Next.js · Banking client · Short answers", userQ: "How do I optimize this Postgres query?", sent: "Sent to 3 models", now: "Just now", gpt: "Add a composite index on", gptB: "and run EXPLAIN ANALYZE to verify...", claude: "With pgvector on your Supabase you can use", claudeB: "indexes for more efficient searches...", full: "Full answer →", gen: "Generating response...", ask: "Ask every model at once...", send: "Send message" },
@@ -86,6 +86,17 @@ const LP = {
           features: ["Everything in Pro", "Up to 10 members", "Shared prompt library", "Team memory", "SSO / SAML", "Dedicated Slack support"] },
       },
     },
+    fusion: {
+      label: "Fusion mode", badge: "Most powerful",
+      title1: "The best of every AI,", title2: "fused into one answer",
+      subtitle: "Send your prompt once. GPT, Claude and Gemini answer simultaneously. OneChater's Fusion mode synthesizes all three into one superior, sharper response — automatically.",
+      step1: { num: "01", title: "Write once", desc: "Your prompt is sent to GPT, Claude and Gemini simultaneously. No switching tabs, no copy-pasting." },
+      step2: { num: "02", title: "Three answers in parallel", desc: "All three models respond in real time, side by side. See their different approaches instantly." },
+      step3: { num: "03", title: "One fused response", desc: "Fusion mode analyzes all three answers and synthesizes the best parts into a single, superior response." },
+      cta: "Try Fusion mode",
+      tagGPT: "GPT-4o", tagClaude: "Claude 3.5", tagGemini: "Gemini Pro", tagFusion: "Fused answer",
+      note: "Fusion mode uses your own API keys — you pay providers directly, zero markup.",
+    },
     cta: { title1: "Ready to unify your", title2: "AI workflow?", subtitle: "Join thousands of professionals and freelancers who use OneChater to get the most out of every AI model — with one memory that connects them all.", startFree: "Start for free", goToChat: "Go to chat", seePricing: "See pricing", micro: "No credit card · Set up in 60 seconds · Cancel anytime" },
     footer: {
       tagline: "One memory. Every AI. Bring your keys, own your data.",
@@ -101,7 +112,7 @@ const LP = {
       srH1: "OneChater — chat con IA: GPT, Claude y Gemini en un solo lugar, con una memoria persistente que te sigue en todos los modelos",
       line1: "Una memoria.", line2: "Todas las IAs.",
       subA: "La única app de chat con IA que no te olvida cuando cambiás de modelo.", subBold: " GPT, Claude y Gemini", subC: " en un solo lugar, con una memoria que viaja con vos.",
-      startFree: "Empezar gratis", goToChat: "Ir al chat", seeHow: "Ver cómo funciona",
+      startFree: "Empezar gratis", goToChat: "Ir al chat", continueGitHub: "Continuar con GitHub",
       proWorldwide: "profesionales en todo el mundo", byok: "BYOK · 0% de comisión", worksWith: "Compatible con",
     },
     preview: { activeMemory: "Memoria activa:", chips: "Next.js · Cliente bancario · Respuestas cortas", userQ: "¿Cómo optimizo esta query de Postgres?", sent: "Enviado a 3 modelos", now: "Hace un momento", gpt: "Agregá un índice compuesto en", gptB: "y usá EXPLAIN ANALYZE para verificar...", claude: "Con pgvector en tu Supabase podés usar índices", claudeB: "para búsquedas más eficientes...", full: "Respuesta completa →", gen: "Generando respuesta...", ask: "Preguntale a todos los modelos a la vez...", send: "Enviar mensaje" },
@@ -168,6 +179,17 @@ const LP = {
         team: { tagline: "Para equipos", period: "/ usuario / mes", description: "Para equipos que quieren IA con contexto compartido.", cta: "Próximamente",
           features: ["Todo lo de Pro", "Hasta 10 integrantes", "Biblioteca de prompts compartida", "Memoria de equipo", "SSO / SAML", "Soporte dedicado por Slack"] },
       },
+    },
+    fusion: {
+      label: "Modo Fusión", badge: "Lo más poderoso",
+      title1: "Lo mejor de cada IA,", title2: "fusionado en una respuesta",
+      subtitle: "Enviá tu prompt una vez. GPT, Claude y Gemini responden al mismo tiempo. El modo Fusión de OneChater sintetiza las tres respuestas en una sola, superior — automáticamente.",
+      step1: { num: "01", title: "Escribís una vez", desc: "Tu prompt se manda a GPT, Claude y Gemini al mismo tiempo. Sin cambiar pestañas, sin copiar y pegar." },
+      step2: { num: "02", title: "Tres respuestas en paralelo", desc: "Los tres modelos responden en tiempo real, lado a lado. Ves sus distintos enfoques al instante." },
+      step3: { num: "03", title: "Una respuesta fusionada", desc: "El modo Fusión analiza las tres respuestas y sintetiza lo mejor de cada una en una sola, superior." },
+      cta: "Probar Fusión",
+      tagGPT: "GPT-4o", tagClaude: "Claude 3.5", tagGemini: "Gemini Pro", tagFusion: "Respuesta fusionada",
+      note: "El modo Fusión usa tus propias API keys — pagás directo a los proveedores, sin markup.",
     },
     cta: { title1: "¿Listo para unificar tu", title2: "flujo de trabajo con IA?", subtitle: "Unite a miles de profesionales y freelancers que usan OneChater para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.", startFree: "Empezar gratis", goToChat: "Ir al chat", seePricing: "Ver precios", micro: "Sin tarjeta de crédito · Listo en 60 segundos · Cancelá cuando quieras" },
     footer: {
@@ -1645,187 +1667,136 @@ const plans: Plan[] = [
   },
 ];
 
-// ─── Testimonials ─────────────────────────────────────────────────────────
+// ─── Fusion Section ────────────────────────────────────────────────────────
 
-// Count-up number that animates once when scrolled into view.
-function CountUp({
-  value, decimals = 0, prefix = "", suffix = "", separator = "", durationMs = 1400, start,
-}: {
-  value: number; decimals?: number; prefix?: string; suffix?: string; separator?: string; durationMs?: number; start: boolean;
-}) {
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (!start) return;
-    let raf = 0;
-    const t0 = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min((now - t0) / durationMs, 1);
-      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
-      setDisplay(value * eased);
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [start, value, durationMs]);
-
-  let out = display.toFixed(decimals);
-  if (separator) out = out.replace(/\B(?=(\d{3})+(?!\d))/g, separator);
-  return <>{prefix}{out}{suffix}</>;
-}
-
-type Stat = { value: number; decimals?: number; prefix?: string; suffix?: string; separator?: string; label: string; star?: boolean };
-
-const STATS: Stat[] = [
-  { value: 2400, suffix: "+", separator: ",", label: "Professionals worldwide" },
-  { value: 18, label: "Models supported" },
-  { value: 4.9, decimals: 1, label: "Average rating", star: true },
-  { value: 0, suffix: "%", label: "Fee on your keys" },
-];
-
-type Testimonial = {
-  quote: string;
-  name: string;
-  role: string;
-  city: string;
-  initials: string;
-  gradient: string;
-};
-
-// NOTE: sample testimonials — replace names/roles with real ones once you have them.
-const TESTIMONIALS: Testimonial[] = [
-  {
-    quote: "I switched from GPT to Claude mid-project and didn't lose any context. It's the first time an AI tool actually remembers me.",
-    name: "Martina Rossi",
-    role: "Full-stack developer · freelance",
-    city: "Buenos Aires",
-    initials: "MR",
-    gradient: "from-orange-500 to-amber-500",
-  },
-  {
-    quote: "I pay for my own API keys with no markup. For a small agency like ours, that's the difference between the numbers working or not.",
-    name: "Diego Herrera",
-    role: "Founder · design studio",
-    city: "Mexico City",
-    initials: "DH",
-    gradient: "from-violet-500 to-purple-600",
-  },
-  {
-    quote: "Having GPT, Claude and Gemini side by side — and merging them into a single answer — saves me hours. I stopped jumping between tabs.",
-    name: "Camila Reyes",
-    role: "Product Manager · fintech",
-    city: "Bogotá",
-    initials: "CR",
-    gradient: "from-blue-500 to-cyan-500",
-  },
-];
-
-function TestimonialsSection() {
+function FusionSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
-  const tt = useT(LP).test;
+  const tf = useT(LP).fusion;
+  const { data: session } = useSession();
 
   useEffect(() => {
     const obs = new IntersectionObserver(
       ([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } },
-      { threshold: 0.15 }
+      { threshold: 0.1 }
     );
     if (sectionRef.current) obs.observe(sectionRef.current);
     return () => obs.disconnect();
   }, []);
 
+  const steps = [tf.step1, tf.step2, tf.step3];
+  const STEP_COLORS = [“#6366f1”, “#8b5cf6”, “#a855f7”];
+
   return (
-    <section ref={sectionRef} id="testimonials" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id=”fusion” className=”relative py-10 md:py-14 px-5 md:px-6 overflow-hidden”>
       {/* Background accent */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[760px] h-[420px] opacity-[0.04] rounded-full"
-          style={{ background: "radial-gradient(ellipse, #6366f1, transparent 70%)" }} />
+      <div className=”absolute inset-0 pointer-events-none”>
+        <div className=”absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-[0.05] rounded-full”
+          style={{ background: “radial-gradient(ellipse, #a855f7, transparent 70%)” }} />
       </div>
 
-      <div className="max-w-7xl mx-auto relative">
+      <div className=”max-w-7xl mx-auto relative”>
         {/* Header */}
-        <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <span className="section-label">{tt.label}</span>
-          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
-            {tt.title1}{" "}
-            <span className="gradient-text">{tt.title2}</span>
+        <div className={`text-center mb-10 md:mb-16 card-item${inView ? “ in-view” : “”}`}>
+          <span className=”section-label flex items-center justify-center gap-2”>
+            {tf.label}
+            <span className=”inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-white”
+              style={{ background: “linear-gradient(135deg,#6366f1,#a855f7)” }}>
+              {tf.badge}
+            </span>
+          </span>
+          <h2 className=”display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance”>
+            {tf.title1}{“ “}
+            <span className=”gradient-text”>{tf.title2}</span>
           </h2>
-          <p className="hidden md:block mt-5 text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
-            {tt.subtitle}
+          <p className=”mt-5 text-gray-500 max-w-2xl mx-auto text-[15px] md:text-lg leading-relaxed”>
+            {tf.subtitle}
           </p>
         </div>
 
-        {/* Stats band */}
-        <div
-          className={`grid grid-cols-2 md:grid-cols-4 rounded-2xl overflow-hidden mb-14 surface-light card-item${inView ? " in-view" : ""}`}
-          style={inView ? { animationDelay: "120ms" } : {}}
-        >
-          {STATS.map((s, i) => (
-            <div
-              key={i}
-              className={`flex flex-col items-center text-center px-5 py-7 ${i !== 0 ? "border-l border-black/8" : ""} ${i >= 2 ? "border-t md:border-t-0 border-black/8" : ""} ${i === 2 ? "border-l-0 md:border-l" : ""}`}
-            >
-              <div className="display text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-900 leading-none flex items-center gap-1.5 tabular-nums">
-                <CountUp
-                  value={s.value}
-                  decimals={s.decimals}
-                  prefix={s.prefix}
-                  suffix={s.suffix}
-                  separator={s.separator}
-                  start={inView}
-                />
-                {s.star && (
-                  <svg viewBox="0 0 24 24" fill="#FBBF24" className="w-5 h-5 md:w-6 md:h-6 mt-0.5">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                )}
+        {/* Visual diagram: 3 models → fusion */}
+        <div className={`mb-12 md:mb-16 card-item${inView ? “ in-view” : “”}`} style={inView ? { animationDelay: “80ms” } : {}}>
+          <div className=”rounded-3xl overflow-hidden” style={{ background: “linear-gradient(160deg, #14161B 0%, #0E0F12 100%)”, border: “1px solid rgba(255,255,255,0.08)”, boxShadow: “0 30px 80px -20px rgba(99,102,241,0.25), 0 12px 40px -12px rgba(0,0,0,0.5)” }}>
+            <div className=”p-6 md:p-10”>
+              {/* Three model bubbles + arrows */}
+              <div className=”flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6”>
+                {[
+                  { tag: tf.tagGPT,    color: “#10a37f”, icon: “G” },
+                  { tag: tf.tagClaude, color: “#d97757”, icon: “C” },
+                  { tag: tf.tagGemini, color: “#4285f4”, icon: “✦” },
+                ].map((m, i) => (
+                  <div key={i} className=”flex flex-col items-center gap-3 w-full md:w-auto md:flex-1 max-w-[200px]”>
+                    <div className=”w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0”
+                      style={{ background: m.color, boxShadow: `0 8px 24px -8px ${m.color}66` }}>
+                      {m.icon}
+                    </div>
+                    <div className=”text-white/50 text-[11px] font-medium tracking-wide”>{m.tag}</div>
+                    <div className=”hidden md:flex flex-col gap-1.5 w-full”>
+                      {[...Array(3)].map((_, j) => (
+                        <div key={j} className=”h-2 rounded-full opacity-20” style={{ background: m.color, width: `${70 + j * 10}%` }} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Arrow */}
+                <div className=”flex items-center justify-center px-2 md:px-4 flex-shrink-0”>
+                  <div className=”flex flex-col items-center gap-1”>
+                    <svg viewBox=”0 0 24 24” fill=”none” stroke=”rgba(255,255,255,0.25)” strokeWidth=”2” className=”w-6 h-6 rotate-90 md:rotate-0”>
+                      <path d=”M5 12h14M12 5l7 7-7 7” strokeLinecap=”round” strokeLinejoin=”round” />
+                    </svg>
+                    <span className=”text-white/25 text-[10px] font-medium”>Fusion</span>
+                  </div>
+                </div>
+
+                {/* Fused output */}
+                <div className=”flex flex-col items-center gap-3 w-full md:w-auto md:flex-1 max-w-[220px]”>
+                  <div className=”w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0”
+                    style={{ background: “linear-gradient(135deg,#6366f1,#a855f7)”, boxShadow: “0 8px 24px -8px rgba(99,102,241,0.6)” }}>
+                    <svg viewBox=”0 0 24 24” fill=”none” stroke=”white” strokeWidth=”2” className=”w-5 h-5”>
+                      <path d=”M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5” strokeLinecap=”round” strokeLinejoin=”round” />
+                    </svg>
+                  </div>
+                  <div className=”flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white”
+                    style={{ background: “linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3))”, border: “1px solid rgba(168,85,247,0.4)” }}>
+                    <span className=”w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse” />
+                    {tf.tagFusion}
+                  </div>
+                  <div className=”w-full flex flex-col gap-1.5”>
+                    {[...Array(4)].map((_, j) => (
+                      <div key={j} className=”h-2 rounded-full” style={{ background: “linear-gradient(90deg,rgba(99,102,241,0.5),rgba(168,85,247,0.3))”, width: `${85 - j * 8}%` }} />
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="mt-2 text-[12.5px] text-gray-500 font-medium leading-snug max-w-[140px]">{tt.stats[i]}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3-step flow */}
+        <div className=”grid md:grid-cols-3 gap-6 mb-10”>
+          {steps.map((s, i) => (
+            <div key={i} className={`premium-card rounded-2xl p-7 card-item${inView ? “ in-view” : “”}`}
+              style={inView ? { animationDelay: `${160 + i * 100}ms` } : {}}>
+              <div className=”flex items-center gap-3 mb-4”>
+                <span className=”text-[11px] font-bold tracking-widest” style={{ color: STEP_COLORS[i] }}>{s.num}</span>
+                <div className=”flex-1 h-px” style={{ background: `${STEP_COLORS[i]}30` }} />
+              </div>
+              <h3 className=”display text-[18px] font-semibold text-gray-900 mb-2”>{s.title}</h3>
+              <p className=”text-[14px] text-gray-500 leading-relaxed”>{s.desc}</p>
             </div>
           ))}
         </div>
 
-        {/* Testimonial cards */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
-            <figure
-              key={t.name}
-              className={`premium-card rounded-2xl p-7 flex flex-col card-item${inView ? " in-view" : ""}`}
-              style={inView ? { animationDelay: `${200 + i * 120}ms` } : {}}
-            >
-              {/* Quote mark */}
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-gray-200 mb-3">
-                <path d="M7.17 6A5.17 5.17 0 0 0 2 11.17V18h6.83v-6.83H5.5A1.67 1.67 0 0 1 7.17 9.5zM18.5 6A5.17 5.17 0 0 0 13.33 11.17V18h6.84v-6.83h-3.34A1.67 1.67 0 0 1 18.5 9.5z" />
-              </svg>
-
-              {/* Stars */}
-              <div className="flex gap-0.5 mb-3" role="img" aria-label="Rated 5 out of 5 stars">
-                {[...Array(5)].map((_, s) => (
-                  <svg key={s} viewBox="0 0 24 24" fill="#FBBF24" className="w-3.5 h-3.5">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                ))}
-              </div>
-
-              <blockquote className="text-[15px] text-gray-700 leading-relaxed flex-1">
-                “{tt.items[i].quote}”
-              </blockquote>
-
-              <figcaption className="mt-6 pt-5 border-t border-black/8 flex items-center gap-3">
-                <div
-                  className={`w-11 h-11 rounded-full bg-gradient-to-br ${t.gradient} flex items-center justify-center text-white text-[13px] font-bold flex-shrink-0 ring-1 ring-white/40`}
-                  style={{ boxShadow: "0 6px 16px -4px rgba(14,15,18,0.25), inset 0 1px 0 rgba(255,255,255,0.25)" }}
-                >
-                  {t.initials}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[13.5px] font-semibold text-gray-900 leading-tight">{t.name}</div>
-                  <div className="text-[11px] text-gray-500 leading-tight mt-0.5 truncate">{tt.items[i].role}</div>
-                  <div className="text-[11px] text-gray-400 leading-tight mt-0.5">{t.city}</div>
-                </div>
-              </figcaption>
-            </figure>
-          ))}
+        {/* CTA */}
+        <div className={`flex flex-col items-center gap-3 card-item${inView ? “ in-view” : “”}`}
+          style={inView ? { animationDelay: “460ms” } : {}}>
+          <a href={session?.user ? “/chat” : “/login”}
+            className=”inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-white transition-all cursor-pointer hover:-translate-y-0.5”
+            style={{ background: “linear-gradient(135deg,#6366f1,#8b5cf6)”, boxShadow: “0 8px 24px -8px rgba(99,102,241,0.5)” }}>
+            {tf.cta} <IconArrowRight />
+          </a>
+          <p className=”text-[12px] text-gray-400”>{tf.note}</p>
         </div>
       </div>
     </section>
@@ -2325,16 +2296,17 @@ function HeroSection() {
           <a href="/chat" className="btn-primary text-[15px] px-8 py-3.5">
             {session?.user ? th.goToChat : th.startFree} <IconArrowRight />
           </a>
-          <button
-            onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="btn-ghost text-[15px] px-7 py-3.5">
-            <span className="w-5 h-5 rounded-full bg-gray-100 border border-black/10 flex items-center justify-center text-gray-700">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 ml-0.5">
-                <polygon points="5 3 19 12 5 21 5 3" />
+          {!session?.user && (
+            <button
+              onClick={() => signIn("github", { callbackUrl: "/" })}
+              className="btn-ghost text-[15px] px-7 py-3.5 flex items-center gap-2.5"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true">
+                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
               </svg>
-            </span>
-            {th.seeHow}
-          </button>
+              {th.continueGitHub}
+            </button>
+          )}
         </div>
 
         {/* Social proof + Stats */}
@@ -2504,7 +2476,7 @@ function HomeInner() {
       <HowItWorksSection />
       <MemorySection />
       <ModelsSection />
-      <TestimonialsSection />
+      <FusionSection />
       <PricingSection />
       <CTASection />
       <Footer />
@@ -2513,9 +2485,5 @@ function HomeInner() {
 }
 
 export default function Home() {
-  return (
-    <SessionProvider>
-      <HomeInner />
-    </SessionProvider>
-  );
+  return <HomeInner />;
 }

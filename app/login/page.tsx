@@ -7,8 +7,10 @@ import { LangToggle, useT } from "@/lib/i18n"
 const LOGIN_COPY = {
   en: {
     welcomeBack: "Welcome back",
+    createAccount: "Create your account",
     checkEmail: "Check your email",
     enterEmail: "Enter your email and we'll send you an access code.",
+    enterEmailSignup: "Enter your email to create your free account.",
     sentTo: "We sent a 6-digit code to",
     continueGoogle: "Continue with Google",
     continueGitHub: "Continue with GitHub",
@@ -19,6 +21,7 @@ const LOGIN_COPY = {
     sendCode: "Send code",
     verifying: "Verifying…",
     signIn: "Sign in",
+    createFree: "Create free account",
     changeEmail: "← Change email",
     resendIn: "Resend in",
     resendCode: "Resend code",
@@ -29,11 +32,17 @@ const LOGIN_COPY = {
     failedSend: "Failed to send the code",
     failedVerify: "Failed to verify the code",
     incorrectCode: "Incorrect or expired code",
+    switchToSignup: "New here?",
+    switchToSignupLink: "Create free account",
+    switchToSignin: "Already have an account?",
+    switchToSigninLink: "Sign in",
   },
   es: {
     welcomeBack: "Bienvenido de vuelta",
+    createAccount: "Creá tu cuenta",
     checkEmail: "Revisá tu email",
     enterEmail: "Ingresá tu email y te mandamos un código de acceso.",
+    enterEmailSignup: "Ingresá tu email para crear tu cuenta gratis.",
     sentTo: "Enviamos un código de 6 dígitos a",
     continueGoogle: "Continuar con Google",
     continueGitHub: "Continuar con GitHub",
@@ -44,6 +53,7 @@ const LOGIN_COPY = {
     sendCode: "Enviar código",
     verifying: "Verificando…",
     signIn: "Iniciar sesión",
+    createFree: "Crear cuenta gratis",
     changeEmail: "← Cambiar email",
     resendIn: "Reenviar en",
     resendCode: "Reenviar código",
@@ -54,6 +64,10 @@ const LOGIN_COPY = {
     failedSend: "Error al enviar el código",
     failedVerify: "Error al verificar el código",
     incorrectCode: "Código incorrecto o expirado",
+    switchToSignup: "¿Sos nuevo?",
+    switchToSignupLink: "Crear cuenta gratis",
+    switchToSignin: "¿Ya tenés cuenta?",
+    switchToSigninLink: "Iniciar sesión",
   },
 }
 
@@ -77,6 +91,7 @@ function IconGitHub() {
 }
 
 type Step = "email" | "otp"
+type Mode = "signin" | "signup"
 
 // Read ?next= and only allow same-origin relative paths (block open redirects
 // like //evil.com or /\evil.com). Falls back to / (home page).
@@ -89,6 +104,7 @@ function safeNext(): string {
 
 export default function LoginPage() {
   const t = useT(LOGIN_COPY)
+  const [mode, setMode] = useState<Mode>("signin")
   const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState(["", "", "", "", "", ""])
@@ -340,14 +356,34 @@ export default function LoginPage() {
         </div>
 
         <div className="w-full max-w-[420px]">
+          {/* Mode toggle */}
+          {step === "email" && (
+            <div className="flex mb-6 p-1 rounded-2xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+              <button
+                onClick={() => { setMode("signin"); setError("") }}
+                className="flex-1 py-2 text-[13px] font-semibold rounded-xl transition-all cursor-pointer"
+                style={mode === "signin" ? { background: "var(--surface)", color: "var(--text-1)", boxShadow: "0 1px 4px rgba(14,15,18,0.08)" } : { color: "var(--text-3)" }}
+              >
+                {t.switchToSigninLink}
+              </button>
+              <button
+                onClick={() => { setMode("signup"); setError("") }}
+                className="flex-1 py-2 text-[13px] font-semibold rounded-xl transition-all cursor-pointer"
+                style={mode === "signup" ? { background: "var(--surface)", color: "var(--text-1)", boxShadow: "0 1px 4px rgba(14,15,18,0.08)" } : { color: "var(--text-3)" }}
+              >
+                {t.switchToSignupLink}
+              </button>
+            </div>
+          )}
+
           {/* Header */}
           <div className="mb-8 text-center">
             <h1 className="display text-[28px] lg:text-[32px] font-semibold text-gray-900 tracking-tight leading-tight">
-              {step === "email" ? t.welcomeBack : t.checkEmail}
+              {step === "email" ? (mode === "signup" ? t.createAccount : t.welcomeBack) : t.checkEmail}
             </h1>
             <p className="text-[14px] text-gray-500 mt-2 leading-relaxed">
               {step === "email"
-                ? t.enterEmail
+                ? (mode === "signup" ? t.enterEmailSignup : t.enterEmail)
                 : <>{t.sentTo} <span className="font-semibold text-gray-700">{email}</span></>}
             </p>
           </div>
@@ -409,7 +445,7 @@ export default function LoginPage() {
                     background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)",
                     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px -8px rgba(14,15,18,0.35)",
                   }}>
-                  {loading ? t.sending : t.sendCode}
+                  {loading ? t.sending : (mode === "signup" ? t.createFree : t.sendCode)}
                 </button>
               </form>
 

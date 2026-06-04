@@ -16,12 +16,19 @@ function detect(): Lang {
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  // Deterministic default for SSR + first client render → no hydration mismatch.
-  // The real preference is resolved in the effect below (localStorage, else the
-  // browser language) and the tree re-renders once on mount.
-  const [lang, setLangState] = useState<Lang>("en")
+  // The inline <script> in layout.tsx already sets document.documentElement.lang
+  // before React hydrates, so we can read it synchronously on the client to
+  // avoid the EN→ES flash. On the server, document is undefined → default "en".
+  const [lang, setLangState] = useState<Lang>(() => {
+    if (typeof document !== "undefined") {
+      const l = document.documentElement.lang
+      if (l === "es" || l === "en") return l
+    }
+    return "en"
+  })
 
   useEffect(() => {
+    // Keep in sync if localStorage was updated externally (rare, but safe).
     let initial: Lang
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Lang | null
@@ -29,8 +36,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     } catch {
       initial = detect()
     }
-    setLangState(initial)
-    document.documentElement.lang = initial
+    if (initial !== lang) {
+      setLangState(initial)
+      document.documentElement.lang = initial
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const setLang = useCallback((l: Lang) => {

@@ -8,18 +8,37 @@ export default {
   session: { strategy: "jwt" },
   providers: [],
   callbacks: {
-    // Gate de acceso. Además de exigir sesión, si el usuario tiene 2FA activado
-    // requiere la cookie de step-up firmada (la setea /api/auth/2fa/verify).
-    // Sin ella, redirige a /login/2fa. Funciona igual para Google/GitHub/email.
+    // Gate de acceso. Rutas públicas (/ y /security) permiten acceso sin sesión
+    // pero siguen verificando 2FA para usuarios ya autenticados. Rutas protegidas
+    // (/chat, /dashboard) requieren sesión activa + step-up 2FA si aplica.
     authorized: async ({ auth, request }) => {
       const user = auth?.user as { id?: string; requires2fa?: boolean } | undefined
-      if (!user) return false // sin sesión → NextAuth manda a /login
+      const pathname = request.nextUrl.pathname
+
+      // Páginas públicas — accesibles sin sesión, pero el 2FA se verifica
+      // cuando el usuario YA tiene sesión (para forzar el desafío después del login).
+      const isPublic = pathname === "/" || pathname === "/security"
+      if (isPublic) {
+        if (user?.requires2fa && user.id) {
+          const cookie = request.cookies.get(TWOFA_COOKIE)?.value
+          const passed = await verifyTwoFactor(cookie, user.id)
+          if (!passed) {
+            const to = new URL("/login/2fa", request.nextUrl.origin)
+            to.searchParams.set("next", pathname)
+            return Response.redirect(to)
+          }
+        }
+        return true // permite acceso aunque no haya sesión
+      }
+
+      // Rutas protegidas — requieren sesión
+      if (!user) return false // NextAuth redirige a /login
       if (user.requires2fa && user.id) {
         const cookie = request.cookies.get(TWOFA_COOKIE)?.value
         const passed = await verifyTwoFactor(cookie, user.id)
         if (!passed) {
           const to = new URL("/login/2fa", request.nextUrl.origin)
-          to.searchParams.set("next", request.nextUrl.pathname)
+          to.searchParams.set("next", pathname)
           return Response.redirect(to)
         }
       }
