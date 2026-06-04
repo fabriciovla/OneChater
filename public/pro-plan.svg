@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#070810"/>
+      <stop offset="50%"  stop-color="#0c0d1c"/>
+      <stop offset="100%" stop-color="#070810"/>
+    </linearGradient>
+    <radialGradient id="glowTop" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(800 300) scale(700 420)">
+      <stop offset="0%"   stop-color="#6d28d9" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#6d28d9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBot" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(800 900) scale(600 320)">
+      <stop offset="0%"   stop-color="#4f46e5" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="priceGrad" x1="600" y1="0" x2="1000" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#a5b4fc"/>
+      <stop offset="50%"  stop-color="#f0abfc"/>
+      <stop offset="100%" stop-color="#a5b4fc"/>
+    </linearGradient>
+    <linearGradient id="badgeGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#6366f1"/>
+      <stop offset="50%"  stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="divGrad" x1="300" y1="0" x2="1300" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#8b5cf6" stop-opacity="0"/>
+      <stop offset="50%"  stop-color="#8b5cf6" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cardBorder" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#8b5cf6" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.2"/>
+    </linearGradient>
+    <filter id="glow6" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="dots" x="0" y="0" width="36" height="36" patternUnits="userSpaceOnUse">
+      <circle cx="18" cy="18" r="0.8" fill="white"/>
+    </pattern>
+  </defs>
+
+  <!-- Base + dots -->
+  <rect width="1600" height="1200" fill="url(#bg)"/>
+  <rect width="1600" height="1200" fill="url(#dots)" opacity="0.055"/>
+
+  <!-- Ambient glows -->
+  <ellipse cx="800" cy="300" rx="700" ry="420" fill="url(#glowTop)"/>
+  <ellipse cx="800" cy="900" rx="600" ry="320" fill="url(#glowBot)"/>
+
+  <!-- ───────────────────────────── LOGO ─────────────────────────────── -->
+  <!-- isotipo scale=1.9, centered at (800, 116)
+       x-range raw=[18,82] → scaled=[34,156] → 122px wide, center_x_raw=100*1.9=190 → nope
+       center_x_raw = (18+82)/2 * 1.9 = 50*1.9=95
+       center_y_raw = (22+84)/2 * 1.9 = 53*1.9=100.7
+       Want isotipo center at x=694, y=116
+       offset_x = 694-95=599,  offset_y = 116-100.7=15.3→15
+       isotipo right edge = 599 + 82*1.9 = 599+155.8 = 754.8 → 755
+       Gap=20 → wordmark at x=775
+       Wordmark "OneChater" at 52px ≈ 252px → right edge ≈ 1027
+       Total: 599+34=633 left → 1027 right = 394px, center=(633+1027)/2=830... bit off
+       Adjust: offset_x=580 → left edge=580+34=614, right edge=1007, center=810... closer
+       Let me try offset_x=574 → left=574+34=608, right=1001, center=804 ✓ close enough
+  -->
+  <g transform="translate(552, 15) scale(1.9)">
+    <path d="M 32 22 Q 18 26 18 40 Q 20 54 34 54 Q 48 52 46 38 Q 44 24 32 22 Z" fill="white"/>
+    <path d="M 68 26 Q 56 28 54 40 Q 56 54 70 54 Q 84 52 82 38 Q 80 26 68 26 Z" fill="white" opacity="0.66"/>
+    <path d="M 50 56 Q 36 58 36 72 Q 38 86 52 84 Q 66 82 64 68 Q 62 56 50 56 Z" fill="white" opacity="0.40"/>
+  </g>
+  <!-- Wordmark: left edge at x=759 (574+82*1.9+20=574+155.8+20=749.8→750), baseline at y=130 -->
+  <text x="728" y="130"
+    font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="52" font-weight="600" letter-spacing="-1.4" fill="white">
+    One<tspan font-weight="300" opacity="0.64">Chater</tspan>
+  </text>
+
+  <!-- ─────────────────────────── PRO BADGE ──────────────────────────── -->
+  <!-- Pill centered at x=800, y=210 -->
+  <rect x="706" y="182" width="188" height="46" rx="23" fill="url(#badgeGrad)"
+    style="filter: drop-shadow(0 8px 24px rgba(139,92,246,0.55))"/>
+  <text x="800" y="213"
+    font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="18" font-weight="700" letter-spacing="5"
+    fill="white" text-anchor="middle">★  PRO</text>
+
+  <!-- ─────────────────────────── PRICE CARD ─────────────────────────── -->
+  <!-- Card: x=450, y=270, width=700, height=250, rx=28 -->
+  <rect x="450" y="270" width="700" height="250" rx="28"
+    fill="rgba(255,255,255,0.03)" stroke="url(#cardBorder)" stroke-width="1.5"/>
+  <!-- Inner glow -->
+  <ellipse cx="800" cy="395" rx="280" ry="100" fill="rgba(139,92,246,0.08)"/>
+
+  <!-- "$15" — $ smaller + 15 large, optical center at x=800 -->
+  <text text-anchor="middle" x="800" y="388"
+    font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    fill="url(#priceGrad)" filter="url(#glow6)">
+    <tspan font-size="80" font-weight="600" baseline-shift="40" dy="-18">$</tspan><tspan font-size="150" font-weight="700" letter-spacing="-4">15</tspan>
+  </text>
+
+  <!-- /mo -->
+  <text x="800" y="435"
+    font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="24" font-weight="400" letter-spacing="1"
+    fill="rgba(255,255,255,0.38)" text-anchor="middle">per month</text>
+
+  <!-- Annual note -->
+  <text x="800" y="488"
+    font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="18" font-weight="500" letter-spacing="0.4"
+    fill="rgba(74,222,128,0.85)" text-anchor="middle">Annual plan: $12/mo · save $36/year</text>
+
+  <!-- ───────────────────────── DESCRIPTION ──────────────────────────── -->
+  <text x="800" y="562"
+    font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="22" font-weight="400" letter-spacing="0.3"
+    fill="rgba(255,255,255,0.42)" text-anchor="middle">For professionals who live in AI every day</text>
+
+  <!-- Divider -->
+  <rect x="300" y="594" width="1000" height="1" fill="url(#divGrad)"/>
+
+  <!-- ─────────────────────────── FEATURES ───────────────────────────── -->
+  <!--
+    Left col icon x=348, text x=408
+    Right col icon x=948, text x=1008
+    Rows: y=648, 720, 792, 864  (left), y=648, 720, 792 (right)
+    Icon circle r=18, checkmark inside
+  -->
+
+  <!-- Feature helper macro (repeated):
+       Circle + check at (cx, cy), label at (tx, ty) -->
+
+  <!-- LEFT COL -->
+  <!-- row 1: Every provider -->
+  <circle cx="348" cy="648" r="18" fill="rgba(99,102,241,0.18)" stroke="rgba(99,102,241,0.45)" stroke-width="1.2"/>
+  <path d="M340,648 L346,654 L357,641" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="384" y="656" font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="24" font-weight="500" fill="rgba(255,255,255,0.88)">Every provider — bring any API key</text>
+
+  <!-- row 2: Unlimited memory -->
+  <circle cx="348" cy="720" r="18" fill="rgba(99,102,241,0.18)" stroke="rgba(99,102,241,0.45)" stroke-width="1.2"/>
+  <path d="M340,720 L346,726 L357,713" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="384" y="728" font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="24" font-weight="500" fill="rgba(255,255,255,0.88)">Unlimited memory profile</text>
+
+  <!-- row 3: Semantic history search -->
+  <circle cx="348" cy="792" r="18" fill="rgba(99,102,241,0.18)" stroke="rgba(99,102,241,0.45)" stroke-width="1.2"/>
+  <path d="M340,792 L346,798 L357,785" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="384" y="800" font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="24" font-weight="500" fill="rgba(255,255,255,0.88)">Semantic history search</text>
+
+  <!-- row 4: Unlimited projects -->
+  <circle cx="348" cy="864" r="18" fill="rgba(99,102,241,0.18)" stroke="rgba(99,102,241,0.45)" stroke-width="1.2"/>
+  <path d="M340,864 L346,870 L357,857" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="384" y="872" font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="24" font-weight="500" fill="rgba(255,255,255,0.88)">Unlimited projects</text>
+
+  <!-- RIGHT COL -->
+  <!-- row 1: Cross-device sync -->
+  <circle cx="948" cy="648" r="18" fill="rgba(99,102,241,0.18)" stroke="rgba(99,102,241,0.45)" stroke-width="1.2"/>
+  <path d="M940,648 L946,654 L957,641" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="984" y="656" font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="24" font-weight="500" fill="rgba(255,255,255,0.88)">Cross-device sync</text>
+
+  <!-- row 2: Full spend dashboard -->
+  <circle cx="948" cy="720" r="18" fill="rgba(99,102,241,0.18)" stroke="rgba(99,102,241,0.45)" stroke-width="1.2"/>
+  <path d="M940,720 L946,726 L957,713" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="984" y="728" font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="24" font-weight="500" fill="rgba(255,255,255,0.88)">Full spend dashboard</text>
+
+  <!-- row 3: Priority support -->
+  <circle cx="948" cy="792" r="18" fill="rgba(99,102,241,0.18)" stroke="rgba(99,102,241,0.45)" stroke-width="1.2"/>
+  <path d="M940,792 L946,798 L957,785" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="984" y="800" font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="24" font-weight="500" fill="rgba(255,255,255,0.88)">Priority support</text>
+
+  <!-- ─────────────────────────── FOOTER ─────────────────────────────── -->
+  <rect x="300" y="972" width="1000" height="1" fill="url(#divGrad)" opacity="0.5"/>
+
+  <!-- "No credit card · Cancel anytime" -->
+  <text x="800" y="1024"
+    font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="20" font-weight="400" letter-spacing="1"
+    fill="rgba(255,255,255,0.28)" text-anchor="middle">No credit card required · Cancel anytime</text>
+
+  <!-- onechater.com -->
+  <text x="800" y="1086"
+    font-family="Sora, ui-sans-serif, system-ui, sans-serif"
+    font-size="22" font-weight="500" letter-spacing="0.6"
+    fill="rgba(167,139,250,0.55)" text-anchor="middle">onechater.com</text>
+</svg>

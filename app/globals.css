@@ -961,10 +961,12 @@ html.dark .step-card-premium::before { background-image: radial-gradient(rgba(25
 /* ── Memory section: flow diagram ─────────────────────────────────── */
 /* Dashes travel along the connector → suggests context flowing
    Usuario → Memoria → modelos. */
-@keyframes dashFlow { to { stroke-dashoffset: -16; } }
+/* Travel distance (-22) is an exact multiple of the dash period (5+6=11),
+   so the loop tiles seamlessly — no stutter/jump when it restarts. */
+@keyframes dashFlow { to { stroke-dashoffset: -22; } }
 .flow-path {
   stroke-dasharray: 5 6;
-  animation: dashFlow 0.75s linear infinite;
+  animation: dashFlow 1s linear infinite;
 }
 /* Soft breathing glow behind the central Memoria Personal node. */
 @keyframes memoryPulse {
@@ -972,6 +974,42 @@ html.dark .step-card-premium::before { background-image: radial-gradient(rgba(25
   50%      { transform: scale(1.07); opacity: 0.8; }
 }
 .memory-hub-pulse { animation: memoryPulse 3.4s ease-in-out infinite; }
+
+/* ── Fusion section: engine diagram ───────────────────────────────── */
+/* Streaming shimmer travelling across a model's answer line. */
+@keyframes fzStream {
+  0%   { background-position: 150% 0; }
+  100% { background-position: -150% 0; }
+}
+.fz-stream {
+  background-size: 220% 100%;
+  animation: fzStream 2s linear infinite;
+}
+/* A bright dot travelling down a connector → context flowing into fusion. */
+@keyframes fzDrop {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(900%); opacity: 0; }
+}
+.fz-drop { animation: fzDrop 1.8s cubic-bezier(0.45,0,0.55,1) infinite; }
+/* Expanding rings radiating from the fusion core. */
+@keyframes fzRing {
+  0%   { transform: scale(0.55); opacity: 0.6; }
+  100% { transform: scale(1.9);  opacity: 0; }
+}
+.fz-ring { animation: fzRing 2.8s ease-out infinite; }
+/* Gentle bob for the core orb. */
+@keyframes fzFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+.fz-float { animation: fzFloat 4.5s ease-in-out infinite; }
+/* Dashed energy flowing along the converging connectors into the core.
+   Travel distance (-20) is an exact multiple of the dash period (3+7=10),
+   so the loop tiles seamlessly — no stutter/jump when the animation restarts. */
+@keyframes fzFlow { to { stroke-dashoffset: -20; } }
+.fz-flow { stroke-dasharray: 3 7; animation: fzFlow 1s linear infinite; }
 
 /* ── Chat Page Animations ────────────────────────────────────────── */
 
@@ -1399,6 +1437,7 @@ html.dark [class*="border-black"] { border-color: var(--border) !important; }
   .gradient-text, .gradient-text-premium,
   .fusion-progress-bar, .fusion-logo-pulse, .typing-dot-glow,
   .flow-path, .memory-hub-pulse,
+  .fz-stream, .fz-drop, .fz-ring, .fz-float, .fz-flow,
   .pricing-pro::after, .input-card-loading::before {
     animation: none !important;
   }

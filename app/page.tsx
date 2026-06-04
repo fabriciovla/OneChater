@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import ThemeToggle from "./components/ThemeToggle";
 import UserMenu from "./components/UserMenu";
 import { useLang, useT, LangToggle } from "@/lib/i18n";
@@ -12,32 +12,16 @@ import { useLang, useT, LangToggle } from "@/lib/i18n";
 
 const LP = {
   en: {
-    nav: { features: "Features", how: "How it works", memory: "Memory", pricing: "Pricing", signIn: "Sign in", startFree: "Start free", goToChat: "Go to chat", menu: "Menu", openMenu: "Open menu", closeMenu: "Close menu", home: "OneChater home" },
+    nav: { features: "Features", how: "How it works", memory: "Memory", fusion: "Fusion", pricing: "Pricing", signIn: "Sign in", startFree: "Start free", goToChat: "Go to chat", menu: "Menu", openMenu: "Open menu", closeMenu: "Close menu", home: "OneChater home" },
     hero: {
       new: "New", badge: "Persistent memory across models",
       srH1: "OneChater — AI chat with GPT, Claude and Gemini in one place, with a persistent memory that follows you across every model",
       line1: "One memory.", line2: "Every AI.",
       subA: "The only AI chat app that doesn't forget you when you switch models.", subBold: " GPT, Claude and Gemini", subC: " in one place, with a memory that travels with you.",
-      startFree: "Start free", goToChat: "Go to chat", continueGitHub: "Continue with GitHub",
+      startFree: "Start free", goToChat: "Go to chat", profile: "@fabriciovla",
       proWorldwide: "professionals worldwide", byok: "BYOK · 0% fee", worksWith: "Works with",
     },
     preview: { activeMemory: "Active memory:", chips: "Next.js · Banking client · Short answers", userQ: "How do I optimize this Postgres query?", sent: "Sent to 3 models", now: "Just now", gpt: "Add a composite index on", gptB: "and run EXPLAIN ANALYZE to verify...", claude: "With pgvector on your Supabase you can use", claudeB: "indexes for more efficient searches...", full: "Full answer →", gen: "Generating response...", ask: "Ask every model at once...", send: "Send message" },
-    feat: {
-      label: "Features", title: "Never start from scratch again",
-      subtitle: "Every time you switch models, you lose context. OneChater remembers everything, across every model, forever.",
-      items: {
-        memory: { name: "Living memory", badge: "Differentiator", long: "The only memory system that works across every model you use. It captures your projects, stack, decisions and tone automatically.",
-          bullets: [["Automatic capture", "Stack and decisions, effortlessly."], ["Editable profile", "Add, edit and delete what it knows about you."], ["Semantic search", "The exact answer in seconds."], ["Portable", "Every model knows you the same."]] },
-        multi: { name: "Multi-model chat", long: "Write once and get answers from GPT, Claude and Gemini in parallel. Compare them side by side and keep the best.",
-          bullets: [["Parallel streaming", "Three answers at once."], ["Compare view", "Differences highlighted instantly."], ["Pick your models", "Toggle them on or off per chat."], ["Fork an answer", "Take the best one and keep going."]] },
-        byok: { name: "Your own API keys", long: "Paste your OpenAI, Anthropic and Google keys. They're encrypted with AES-256 and tied to your account, so they follow you across devices. No markup, no middlemen.",
-          bullets: [["Encrypted at rest", "AES-256 — only you can use them."], ["Synced across devices", "Log in anywhere, keys restored."], ["Easy rotation", "Change or delete them anytime."], ["Multi-provider", "OpenAI, Anthropic, Google and more."]] },
-        projects: { name: "Isolated projects", long: "Separate contexts by project. Each one with its own memory, history and configuration. No cross-contamination between clients.",
-          bullets: [["Isolated memory", "No mixing between clients."], ["Keys per project", "Assign different API keys."], ["Scoped search", "Filter by the active project."], ["Custom config", "Model and tone per project."]] },
-        spend: { name: "Spend dashboard", long: "Track spend by model, by project, by day. Set limits and rest easy knowing you'll never be overcharged.",
-          bullets: [["Live tracking", "Every request, in real time."], ["Configurable limits", "Cut off when you hit the cap."], ["Deep breakdown", "By model, project or day."], ["Smart alerts", "A heads-up if something spikes."]] },
-      },
-    },
     how: {
       label: "How it works", title1: "Up and running in", title2: "60 seconds",
       subtitle: "No complicated setup. No subscriptions to manage. Paste your keys and get started.", step: "Step",
@@ -96,6 +80,15 @@ const LP = {
       cta: "Try Fusion mode",
       tagGPT: "GPT-4o", tagClaude: "Claude 3.5", tagGemini: "Gemini Pro", tagFusion: "Fused answer",
       note: "Fusion mode uses your own API keys — you pay providers directly, zero markup.",
+      synth: "Synthesized",
+      promptText: "How should I structure this database for scale?",
+      youLabel: "You", askLabel: "Asked once", liveLabel: "live",
+      qualities: ["More accurate", "More complete", "Fewer hallucinations"],
+      stats: [
+        { v: "3 → 1", l: "models merged into one answer" },
+        { v: "1 prompt", l: "no tab-switching, no copy-paste" },
+        { v: "0% markup", l: "your keys, you pay providers direct" },
+      ],
     },
     cta: { title1: "Ready to unify your", title2: "AI workflow?", subtitle: "Join thousands of professionals and freelancers who use OneChater to get the most out of every AI model — with one memory that connects them all.", startFree: "Start for free", goToChat: "Go to chat", seePricing: "See pricing", micro: "No credit card · Set up in 60 seconds · Cancel anytime" },
     footer: {
@@ -106,32 +99,16 @@ const LP = {
     },
   },
   es: {
-    nav: { features: "Funcionalidades", how: "Cómo funciona", memory: "Memoria", pricing: "Precios", signIn: "Iniciar sesión", startFree: "Empezar gratis", goToChat: "Ir al chat", menu: "Menú", openMenu: "Abrir menú", closeMenu: "Cerrar menú", home: "Inicio de OneChater" },
+    nav: { features: "Funcionalidades", how: "Cómo funciona", memory: "Memoria", fusion: "Fusión", pricing: "Precios", signIn: "Iniciar sesión", startFree: "Empezar gratis", goToChat: "Ir al chat", menu: "Menú", openMenu: "Abrir menú", closeMenu: "Cerrar menú", home: "Inicio de OneChater" },
     hero: {
       new: "Nuevo", badge: "Memoria persistente entre modelos",
       srH1: "OneChater — chat con IA: GPT, Claude y Gemini en un solo lugar, con una memoria persistente que te sigue en todos los modelos",
       line1: "Una memoria.", line2: "Todas las IAs.",
       subA: "La única app de chat con IA que no te olvida cuando cambiás de modelo.", subBold: " GPT, Claude y Gemini", subC: " en un solo lugar, con una memoria que viaja con vos.",
-      startFree: "Empezar gratis", goToChat: "Ir al chat", continueGitHub: "Continuar con GitHub",
+      startFree: "Empezar gratis", goToChat: "Ir al chat", profile: "@fabriciovla",
       proWorldwide: "profesionales en todo el mundo", byok: "BYOK · 0% de comisión", worksWith: "Compatible con",
     },
     preview: { activeMemory: "Memoria activa:", chips: "Next.js · Cliente bancario · Respuestas cortas", userQ: "¿Cómo optimizo esta query de Postgres?", sent: "Enviado a 3 modelos", now: "Hace un momento", gpt: "Agregá un índice compuesto en", gptB: "y usá EXPLAIN ANALYZE para verificar...", claude: "Con pgvector en tu Supabase podés usar índices", claudeB: "para búsquedas más eficientes...", full: "Respuesta completa →", gen: "Generando respuesta...", ask: "Preguntale a todos los modelos a la vez...", send: "Enviar mensaje" },
-    feat: {
-      label: "Funcionalidades", title: "Nunca más empezar de cero",
-      subtitle: "Cada vez que cambiás de modelo, perdés contexto. OneChater lo recuerda todo, en todos los modelos, para siempre.",
-      items: {
-        memory: { name: "Memoria viva", badge: "Diferenciador", long: "El único sistema de memoria que funciona entre todos tus modelos. Captura proyectos, stack, decisiones y tono automáticamente.",
-          bullets: [["Captura automática", "Stack y decisiones, sin esfuerzo."], ["Perfil editable", "Agregás, editás y borrás qué sabe de vos."], ["Búsqueda semántica", "Respuesta exacta en segundos."], ["Portable", "Todos los modelos te conocen igual."]] },
-        multi: { name: "Chat multi-modelo", long: "Escribí una vez y recibí respuestas en paralelo de GPT, Claude y Gemini. Comparalas lado a lado y quedate con la mejor.",
-          bullets: [["Streaming paralelo", "Tres respuestas a la vez."], ["Vista comparativa", "Diferencias resaltadas al toque."], ["Modelos a elección", "Activá o desactivá por chat."], ["Fork de respuesta", "Tomá la mejor y seguí."]] },
-        byok: { name: "Tus propias API keys", long: "Pegá tus keys de OpenAI, Anthropic y Google. Se cifran con AES-256 y quedan atadas a tu cuenta, así te siguen entre dispositivos. Sin markup, sin intermediarios.",
-          bullets: [["Cifradas en reposo", "AES-256 — solo vos las usás."], ["Sync entre dispositivos", "Entrá desde donde sea y se restauran."], ["Rotación fácil", "Cambiá o borrá cuando quieras."], ["Multi-proveedor", "OpenAI, Anthropic, Google y más."]] },
-        projects: { name: "Proyectos aislados", long: "Separá contextos por proyecto. Cada uno con su propia memoria, historial y configuración. Sin contaminación entre clientes.",
-          bullets: [["Memoria aislada", "Sin mezcla entre clientes."], ["Keys por proyecto", "Asigná API keys distintas."], ["Búsqueda scoped", "Filtrá por proyecto activo."], ["Config custom", "Modelo y tono por proyecto."]] },
-        spend: { name: "Dashboard de gasto", long: "Visualizá el gasto por modelo, por proyecto, por día. Poné límites y dormí tranquilo sabiendo que no te van a cobrar de más.",
-          bullets: [["Tracking en vivo", "Cada request al toque."], ["Límites configurables", "Cortá al llegar al techo."], ["Breakdown profundo", "Por modelo, proyecto o día."], ["Alertas inteligentes", "Aviso si algo se dispara."]] },
-      },
-    },
     how: {
       label: "Cómo funciona", title1: "Funcionando en", title2: "60 segundos",
       subtitle: "Sin setup complicado. Sin suscripciones que gestionar. Pegás tus keys y empezás.", step: "Paso",
@@ -190,6 +167,15 @@ const LP = {
       cta: "Probar Fusión",
       tagGPT: "GPT-4o", tagClaude: "Claude 3.5", tagGemini: "Gemini Pro", tagFusion: "Respuesta fusionada",
       note: "El modo Fusión usa tus propias API keys — pagás directo a los proveedores, sin markup.",
+      synth: "Sintetizada",
+      promptText: "¿Cómo estructuro esta base de datos para escalar?",
+      youLabel: "Vos", askLabel: "Preguntás una vez", liveLabel: "en vivo",
+      qualities: ["Más precisa", "Más completa", "Menos alucinaciones"],
+      stats: [
+        { v: "3 → 1", l: "modelos fusionados en una respuesta" },
+        { v: "1 prompt", l: "sin cambiar pestañas, sin copiar/pegar" },
+        { v: "0% markup", l: "tus keys, pagás directo a los proveedores" },
+      ],
     },
     cta: { title1: "¿Listo para unificar tu", title2: "flujo de trabajo con IA?", subtitle: "Unite a miles de profesionales y freelancers que usan OneChater para aprovechar al máximo cada modelo de IA, con una memoria que los conecta a todos.", startFree: "Empezar gratis", goToChat: "Ir al chat", seePricing: "Ver precios", micro: "Sin tarjeta de crédito · Listo en 60 segundos · Cancelá cuando quieras" },
     footer: {
@@ -319,16 +305,6 @@ function IconZap() {
   );
 }
 
-function IconShuffle() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-      <polyline points="16 3 21 3 21 8" />
-      <line x1="4" y1="20" x2="21" y2="3" />
-      <polyline points="21 16 21 21 16 21" />
-      <line x1="15" y1="15" x2="21" y2="21" />
-    </svg>
-  );
-}
 
 function IconPencil() {
   return (
@@ -482,9 +458,9 @@ function Navbar() {
   type NavItem = { label: string; sectionId: string };
 
   const navItems: NavItem[] = [
-    { label: t.nav.features, sectionId: "features" },
     { label: t.nav.how,      sectionId: "how-it-works" },
     { label: t.nav.memory,   sectionId: "memoria" },
+    { label: t.nav.fusion,   sectionId: "fusion" },
     { label: t.nav.pricing,  sectionId: "pricing" },
   ];
 
@@ -765,277 +741,33 @@ function ChatPreview() {
   );
 }
 
-// â"€â"€â"€ Features â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// ─── How It Works ──────────────────────────────────────────────────────────
 
-// ── Feature showcase config ──────────────────────────────────────────
+type StepDef = { n: string; eyebrow: string; title: string; description: string; tags: string[]; gradient: string; iconBg: string; shadow: string; tone: string; glow: string; icon: React.ReactNode };
 
-type FeatureAccent = {
-  from: string;
-  to: string;
-  glow: string;
-  text: string;
-  ring: string;
-  bar: string;
-};
-
-type FeatureDef = {
-  id: string;
-  n: string;
-  name: string;
-  short: string;
-  badge?: string;
-  long: string;
-  icon: React.ReactNode;
-  accent: FeatureAccent;
-};
-
-const FEATURES: FeatureDef[] = [
+const STEPS: StepDef[] = [
   {
-    id: "memory",
-    n: "01",
-    name: "Living memory",
-    short: "Context that's always on",
-    badge: "Differentiator",
-    long: "The only memory system that works across every model you use. It captures your projects, stack, decisions and tone automatically.",
-    icon: <IconBrain />,
-    accent: {
-      from: "from-orange-500",
-      to: "to-amber-500",
-      glow: "rgba(249,115,22,0.45)",
-      text: "text-orange-600",
-      ring: "rgba(249,115,22,0.25)",
-      bar: "from-orange-500 to-amber-400",
-    },
-  },
-  {
-    id: "multi",
-    n: "02",
-    name: "Multi-model chat",
-    short: "One message, 3 answers",
-    long: "Write once and get answers from GPT, Claude and Gemini in parallel. Compare them side by side and keep the best.",
-    icon: <IconMessages />,
-    accent: {
-      from: "from-blue-500",
-      to: "to-cyan-500",
-      glow: "rgba(59,130,246,0.45)",
-      text: "text-blue-600",
-      ring: "rgba(59,130,246,0.25)",
-      bar: "from-blue-500 to-cyan-400",
-    },
-  },
-  {
-    id: "byok",
-    n: "03",
-    name: "Your own API keys",
-    short: "0% fee, pay providers direct",
-    long: "Paste your OpenAI, Anthropic and Google keys. They're encrypted with AES-256 and tied to your account, so they follow you across devices. No markup, no middlemen.",
-    icon: <IconKey />,
-    accent: {
-      from: "from-violet-500",
-      to: "to-purple-600",
-      glow: "rgba(139,92,246,0.45)",
-      text: "text-violet-600",
-      ring: "rgba(139,92,246,0.25)",
-      bar: "from-violet-500 to-purple-500",
-    },
-  },
-  {
-    id: "projects",
-    n: "04",
-    name: "Isolated projects",
-    short: "Every client, its own space",
-    long: "Separate contexts by project. Each one with its own memory, history and configuration. No cross-contamination between clients.",
-    icon: <IconFolder />,
-    accent: {
-      from: "from-green-500",
-      to: "to-emerald-600",
-      glow: "rgba(34,197,94,0.45)",
-      text: "text-emerald-600",
-      ring: "rgba(34,197,94,0.25)",
-      bar: "from-emerald-500 to-green-400",
-    },
-  },
-  {
-    id: "spend",
-    n: "05",
-    name: "Spend dashboard",
-    short: "Know exactly what you spend",
-    long: "Track spend by model, by project, by day. Set limits and rest easy knowing you'll never be overcharged.",
-    icon: <IconBarChart />,
-    accent: {
-      from: "from-orange-400",
-      to: "to-amber-500",
-      glow: "rgba(245,158,11,0.45)",
-      text: "text-amber-600",
-      ring: "rgba(245,158,11,0.25)",
-      bar: "from-orange-400 to-amber-400",
-    },
-  },
-];
-
-// Icons per feature card (order matches the bullets in the LP dictionary).
-const FEATURE_BULLET_ICONS: Record<string, React.ReactNode[]> = {
-  memory:   [<IconZap key="z" />, <IconPencil key="p" />, <IconSearch key="s" />, <IconShuffle key="h" />],
-  multi:    [<IconZap key="z" />, <IconSearch key="s" />, <IconShuffle key="h" />, <IconPencil key="p" />],
-  byok:     [<IconShield key="d" />, <IconZap key="z" />, <IconKey key="k" />, <IconShuffle key="h" />],
-  projects: [<IconFolder key="f" />, <IconKey key="k" />, <IconSearch key="s" />, <IconPencil key="p" />],
-  spend:    [<IconBarChart key="b" />, <IconShield key="d" />, <IconSearch key="s" />, <IconZap key="z" />],
-};
-
-type FeatureText = { name: string; long: string; badge?: string; bullets: string[][] };
-
-// ── Static feature card (no inner interactivity) ────────────────────
-function FeatureCard({ f, span }: { f: FeatureDef; span: boolean }) {
-  const fi = (useT(LP).feat.items as Record<string, FeatureText>)[f.id];
-  const icons = FEATURE_BULLET_ICONS[f.id] ?? [];
-  const bullets = fi.bullets.map((b, i) => ({ icon: icons[i], label: b[0], desc: b[1] }));
-  return (
-    <div className={`feature-card relative rounded-2xl p-7 md:p-8 h-full overflow-hidden`}>
-      {/* faint static corner accent */}
-      <div
-        className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 rounded-full opacity-40"
-        style={{ background: `radial-gradient(circle, ${f.accent.glow}, transparent 65%)`, filter: "blur(44px)" }}
-      />
-      <div className="relative">
-        {/* header */}
-        <div className="flex items-center gap-3 mb-5">
-          <div
-            className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${f.accent.from} ${f.accent.to} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40`}
-            style={{ boxShadow: `0 10px 28px -6px ${f.accent.glow}, inset 0 1px 0 rgba(255,255,255,0.25)` }}
-          >
-            {f.icon}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`text-[11px] font-mono font-bold tracking-widest ${f.accent.text}`}>{f.n}</span>
-            {fi.badge && (
-              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
-                {fi.badge}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <h3 className="display text-xl md:text-2xl font-semibold text-gray-900 tracking-tight leading-tight">{fi.name}</h3>
-        <p className="hidden sm:block mt-3 text-gray-500 text-[14px] leading-relaxed text-pretty">{fi.long}</p>
-
-        {/* capabilities — static list (enlarged on the wide span card) */}
-        <div className={`grid ${span ? "mt-5 sm:mt-7 gap-x-6 gap-y-3 sm:gap-y-5 sm:grid-cols-2" : "mt-4 sm:mt-6 gap-x-5 gap-y-2.5 sm:gap-y-3.5 grid-cols-1"}`}>
-          {bullets.map((b) => (
-            <div key={b.label} className={`flex items-start ${span ? "gap-3 sm:gap-3.5 p-2.5 sm:p-3 rounded-xl" : "gap-2 sm:gap-2.5"}`}
-              style={span ? { background: "var(--overlay)", border: "1px solid var(--border-soft)" } : undefined}>
-              <span
-                className={`rounded-lg flex items-center justify-center flex-shrink-0 ${f.accent.text} ${
-                  span ? "mt-0.5 w-8 h-8 sm:w-10 sm:h-10 [&_svg]:w-[16px] [&_svg]:h-[16px] sm:[&_svg]:w-[20px] sm:[&_svg]:h-[20px]" : "mt-0.5 w-6 h-6 [&_svg]:w-3.5 [&_svg]:h-3.5"
-                }`}
-                style={{ background: f.accent.ring }}
-              >
-                {b.icon}
-              </span>
-              <div className="min-w-0">
-                <div className={`font-semibold text-gray-900 leading-snug ${span ? "text-[14px] sm:text-[15px]" : "text-[12.5px]"}`}>{b.label}</div>
-                <div className={`hidden sm:block text-gray-500 leading-relaxed mt-0.5 ${span ? "text-[13px]" : "text-[11.5px]"}`}>{b.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* static bottom accent */}
-        <div className={`${span ? "mt-7" : "mt-6"} h-1 w-12 rounded-full bg-gradient-to-r ${f.accent.bar} opacity-60`} />
-      </div>
-    </div>
-  );
-}
-
-function FeaturesSection() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [inView, setInView] = useState(false);
-  const tf = useT(LP).feat;
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } },
-      { threshold: 0.08 }
-    );
-    if (sectionRef.current) obs.observe(sectionRef.current);
-    return () => obs.disconnect();
-  }, []);
-
-  return (
-    <section ref={sectionRef} id="features" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
-      <div className="max-w-7xl mx-auto">
-
-        {/* Header */}
-        <div className={`text-center mb-8 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <span className="section-label">{tf.label}</span>
-          <h2 className="display mt-4 md:mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
-            {tf.title}
-          </h2>
-          <p className="hidden md:block mt-5 text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">
-            {tf.subtitle}
-          </p>
-        </div>
-
-        {/* Bento grid — static cards, no inner interactivity.
-            auto-rows-fr only from sm+ (where there are real columns); on a
-            single-column mobile layout it would stretch every card to the
-            tallest one's height, leaving dead space below the shorter cards. */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:auto-rows-fr">
-          {FEATURES.map((f, i) => (
-            <div
-              key={f.id}
-              className={`card-item${inView ? " in-view" : ""} ${f.id === "memory" ? "lg:col-span-2" : ""}`}
-              style={inView ? { animationDelay: `${i * 90}ms` } : {}}
-            >
-              <FeatureCard f={f} span={f.id === "memory"} />
-            </div>
-          ))}
-        </div>
-
-      </div>
-    </section>
-  );
-}
-
-// â"€â"€â"€ How It Works â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-
-const steps = [
-  {
-    n: "01",
-    eyebrow: "Setup",
-    title: "Connect your API keys",
+    n: "01", eyebrow: "Setup", title: "Connect your API keys",
     description: "Paste your OpenAI, Anthropic or Google keys. They're encrypted and tied to your account, restored on any device when you log in. Set it up once, forever.",
     tags: ["OpenAI", "Anthropic", "Google", "Encrypted"],
-    gradient: "from-violet-500 to-purple-600",
-    iconBg: "bg-gradient-to-br from-violet-500 to-purple-600",
-    shadow: "rgba(139,92,246,0.4)",
-    tone: "tone-violet",
-    glow: "glow-violet",
+    gradient: "from-violet-500 to-purple-600", iconBg: "bg-gradient-to-br from-violet-500 to-purple-600",
+    shadow: "rgba(139,92,246,0.4)", tone: "tone-violet", glow: "glow-violet",
     icon: <IconKey />,
   },
   {
-    n: "02",
-    eyebrow: "Chat",
-    title: "Chat with every model",
+    n: "02", eyebrow: "Chat", title: "Chat with every model",
     description: "Write once and get answers from GPT, Claude and Gemini in real time, side by side. Compare them and pick the best.",
     tags: ["Real-time streaming", "Compare view", "Zero friction"],
-    gradient: "from-blue-500 to-cyan-500",
-    iconBg: "bg-gradient-to-br from-blue-500 to-cyan-500",
-    shadow: "rgba(59,130,246,0.4)",
-    tone: "tone-blue",
-    glow: "glow-blue",
+    gradient: "from-blue-500 to-cyan-500", iconBg: "bg-gradient-to-br from-blue-500 to-cyan-500",
+    shadow: "rgba(59,130,246,0.4)", tone: "tone-blue", glow: "glow-blue",
     icon: <IconMessages />,
   },
   {
-    n: "03",
-    eyebrow: "Memory",
-    title: "Memory learns as you go",
+    n: "03", eyebrow: "Memory", title: "Memory learns as you go",
     description: "After every chat, OneChater extracts what matters: projects, preferences, decisions. Next time, every model already knows you.",
     tags: ["Automatic capture", "Editable profile", "Portable across models"],
-    gradient: "from-orange-500 to-amber-500",
-    iconBg: "bg-gradient-to-br from-orange-500 to-amber-500",
-    shadow: "rgba(249,115,22,0.4)",
-    tone: "tone-orange",
-    glow: "glow-orange",
+    gradient: "from-orange-500 to-amber-500", iconBg: "bg-gradient-to-br from-orange-500 to-amber-500",
+    shadow: "rgba(249,115,22,0.4)", tone: "tone-orange", glow: "glow-orange",
     icon: <IconBrain />,
   },
 ];
@@ -1083,7 +815,7 @@ function HowItWorksSection() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {steps.map((step, i) => {
+            {STEPS.map((step, i) => {
               const st = stepsT[i];
               return (
               <div
@@ -1686,6 +1418,11 @@ function FusionSection() {
 
   const steps = [tf.step1, tf.step2, tf.step3];
   const STEP_COLORS = ["#6366f1", "#8b5cf6", "#a855f7"];
+  const MODELS = [
+    { tag: tf.tagGPT,    color: "#10a37f", logo: <OpenAILogo /> },
+    { tag: tf.tagClaude, color: "#d97757", logo: <AnthropicLogo /> },
+    { tag: tf.tagGemini, color: "#4285f4", logo: <GoogleLogo /> },
+  ];
 
   return (
     <section ref={sectionRef} id="fusion" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
@@ -1697,74 +1434,150 @@ function FusionSection() {
 
       <div className="max-w-7xl mx-auto relative">
         {/* Header */}
-        <div className={`text-center mb-10 md:mb-16 card-item${inView ? " in-view" : ""}`}>
-          <span className="section-label flex items-center justify-center gap-2">
-            {tf.label}
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-white"
-              style={{ background: "linear-gradient(135deg,#6366f1,#a855f7)" }}>
+        <div className={`text-center mb-8 md:mb-14 card-item${inView ? " in-view" : ""}`}>
+          <div className="inline-flex items-center gap-2">
+            <span className="section-label">{tf.label}</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white"
+              style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7)", boxShadow: "0 6px 16px -6px rgba(139,92,246,0.6), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5">
+                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
+              </svg>
               {tf.badge}
             </span>
-          </span>
-          <h2 className="display mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
+          </div>
+          <h2 className="display mt-4 md:mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             {tf.title1}{" "}
             <span className="gradient-text">{tf.title2}</span>
           </h2>
-          <p className="mt-5 text-gray-500 max-w-2xl mx-auto text-[15px] md:text-lg leading-relaxed">
+          <p className="hidden md:block mt-5 text-gray-500 max-w-2xl mx-auto text-[15px] md:text-lg leading-relaxed">
             {tf.subtitle}
           </p>
         </div>
 
-        {/* Visual diagram: 3 models → fusion */}
-        <div className={`mb-12 md:mb-16 card-item${inView ? " in-view" : ""}`} style={inView ? { animationDelay: "80ms" } : {}}>
-          <div className="rounded-3xl overflow-hidden" style={{ background: "linear-gradient(160deg, #14161B 0%, #0E0F12 100%)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 30px 80px -20px rgba(99,102,241,0.25), 0 12px 40px -12px rgba(0,0,0,0.5)" }}>
-            <div className="p-6 md:p-10">
-              {/* Three model bubbles + arrows */}
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
-                {[
-                  { tag: tf.tagGPT,    color: "#10a37f", icon: "G" },
-                  { tag: tf.tagClaude, color: "#d97757", icon: "C" },
-                  { tag: tf.tagGemini, color: "#4285f4", icon: "✦" },
-                ].map((m, i) => (
-                  <div key={i} className="flex flex-col items-center gap-3 w-full md:w-auto md:flex-1 max-w-[200px]">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-                      style={{ background: m.color, boxShadow: `0 8px 24px -8px ${m.color}66` }}>
-                      {m.icon}
+        {/* Fusion showcase — ask once → three models → one fused answer */}
+        <div className={`relative rounded-[28px] p-5 sm:p-8 md:p-11 surface-light overflow-hidden card-item${inView ? " in-view" : ""}`}
+          style={inView ? { animationDelay: "80ms" } : {}}>
+          {/* dot grid backdrop + violet glow */}
+          <div className="absolute inset-0 opacity-[0.5] pointer-events-none"
+            style={{ backgroundImage: "radial-gradient(var(--border-strong) 1px, transparent 1px)", backgroundSize: "26px 26px", maskImage: "radial-gradient(ellipse 75% 70% at 50% 42%, #000 30%, transparent 75%)", WebkitMaskImage: "radial-gradient(ellipse 75% 70% at 50% 42%, #000 30%, transparent 75%)" }} />
+          <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[560px] h-[320px] rounded-full"
+            style={{ background: "radial-gradient(ellipse, rgba(139,92,246,0.16), transparent 70%)" }} />
+
+          {/* Prompt — asked once */}
+          <div className="relative flex flex-col items-center mb-7 md:mb-9">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.18em] uppercase mb-3" style={{ color: "var(--text-3)" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#a855f7" }} />
+              {tf.askLabel}
+            </span>
+            <div className="w-full max-w-md rounded-2xl px-4 py-3.5 flex items-center gap-3"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-soft)" }}>
+              <span className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>{tf.youLabel[0]}</span>
+              <span className="flex-1 text-left text-[13px] md:text-sm truncate" style={{ color: "var(--text-2)" }}>{tf.promptText}</span>
+              <span className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-white"
+                style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </span>
+            </div>
+          </div>
+
+          {/* Flow: three models → core → fused answer */}
+          <div className="relative flex flex-col md:flex-row md:items-stretch gap-4 md:gap-0">
+            {/* Three models in parallel */}
+            <div className="md:flex-1 flex flex-col justify-between gap-3 md:gap-4">
+              {MODELS.map((m, i) => (
+                <div key={i} className="relative rounded-2xl px-4 py-3 flex items-center gap-3"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-soft)" }}>
+                  <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${m.color}14`, border: `1px solid ${m.color}33`, color: m.color }}>
+                    {m.logo}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold truncate" style={{ color: "var(--text-1)" }}>{m.tag}</span>
+                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide" style={{ color: m.color }}>
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: m.color }} />{tf.liveLabel}
+                      </span>
                     </div>
-                    <div className="text-white/50 text-[11px] font-medium tracking-wide">{m.tag}</div>
-                    <div className="hidden md:flex flex-col gap-1.5 w-full">
-                      {[...Array(3)].map((_, j) => (
-                        <div key={j} className="h-2 rounded-full opacity-20" style={{ background: m.color, width: `${70 + j * 10}%` }} />
+                    <div className="mt-2 flex flex-col gap-1">
+                      {[100, 70].map((w, j) => (
+                        <div key={j} className="h-1.5 rounded-full fz-stream"
+                          style={{ width: `${w}%`, background: `linear-gradient(90deg,${m.color}1f,${m.color}cc,${m.color}1f)`, animationDelay: `${i * 0.2 + j * 0.25}s` }} />
                       ))}
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
+            </div>
 
-                {/* Arrow */}
-                <div className="flex items-center justify-center px-2 md:px-4 flex-shrink-0">
-                  <div className="flex flex-col items-center gap-1">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" className="w-6 h-6 rotate-90 md:rotate-0">
-                      <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span className="text-white/25 text-[10px] font-medium">Fusion</span>
+            {/* Connector + fusion core (desktop) */}
+            <div className="hidden md:block relative w-[120px] flex-shrink-0">
+              <svg viewBox="0 0 120 240" preserveAspectRatio="none" className="absolute inset-0 w-full h-full" fill="none">
+                <defs>
+                  <linearGradient id="fzIn" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stopColor="#6366f1" stopOpacity="0.12" />
+                    <stop offset="1" stopColor="#a855f7" stopOpacity="0.85" />
+                  </linearGradient>
+                  <linearGradient id="fzOut" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stopColor="#a855f7" />
+                    <stop offset="1" stopColor="#22c55e" />
+                  </linearGradient>
+                </defs>
+                <path d="M0 34 C 52 34, 38 120, 82 120" stroke="url(#fzIn)" strokeWidth="2" className="fz-flow" />
+                <path d="M0 120 L 82 120" stroke="url(#fzIn)" strokeWidth="2" className="fz-flow" />
+                <path d="M0 206 C 52 206, 38 120, 82 120" stroke="url(#fzIn)" strokeWidth="2" className="fz-flow" />
+                <path d="M82 120 L 120 120" stroke="url(#fzOut)" strokeWidth="2.5" />
+              </svg>
+              <div className="absolute top-1/2 -translate-y-1/2" style={{ left: "54%" }}>
+                <div className="relative w-14 h-14">
+                  <span className="absolute inset-0 rounded-full fz-ring" style={{ border: "1px solid rgba(168,85,247,0.5)" }} />
+                  <span className="absolute inset-0 rounded-full fz-ring" style={{ border: "1px solid rgba(99,102,241,0.5)", animationDelay: "1.4s" }} />
+                  <div className="fz-float absolute inset-0 rounded-2xl flex items-center justify-center text-white"
+                    style={{ background: "linear-gradient(135deg,#6366f1,#a855f7)", boxShadow: "0 12px 30px -6px rgba(139,92,246,0.7)" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Fused output */}
-                <div className="flex flex-col items-center gap-3 w-full md:w-auto md:flex-1 max-w-[220px]">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "linear-gradient(135deg,#6366f1,#a855f7)", boxShadow: "0 8px 24px -8px rgba(99,102,241,0.6)" }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="w-5 h-5">
-                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+            {/* Fusion core (mobile) */}
+            <div className="flex md:hidden flex-col items-center gap-1.5 py-1">
+              <div className="relative w-12 h-12">
+                <span className="absolute inset-0 rounded-full fz-ring" style={{ border: "1px solid rgba(168,85,247,0.5)" }} />
+                <div className="fz-float absolute inset-0 rounded-2xl flex items-center justify-center text-white"
+                  style={{ background: "linear-gradient(135deg,#6366f1,#a855f7)", boxShadow: "0 10px 26px -6px rgba(139,92,246,0.7)" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: "#a855f7" }}>Fusion</span>
+            </div>
+
+            {/* Fused answer (hero) */}
+            <div className="md:flex-1">
+              <div className="relative rounded-2xl p-[1.5px] h-full"
+                style={{ background: "linear-gradient(135deg,#6366f1,#a855f7,#22c55e)", boxShadow: "0 24px 60px -22px rgba(139,92,246,0.5)" }}>
+                <div className="h-full rounded-[15px] p-5 md:p-6 flex flex-col" style={{ background: "var(--surface)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
+                      style={{ background: "linear-gradient(135deg,#6366f1,#a855f7)" }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      {tf.tagFusion}
+                    </span>
+                    <span className="text-[11px] font-medium" style={{ color: "var(--text-3)" }}>{tf.synth}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
-                    style={{ background: "linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3))", border: "1px solid rgba(168,85,247,0.4)" }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                    {tf.tagFusion}
+                  <div className="flex flex-col gap-2 mb-5">
+                    {[100, 96, 90, 82, 64].map((w, j) => (
+                      <div key={j} className="h-2 rounded-full"
+                        style={{ width: `${w}%`, background: j === 0 ? "linear-gradient(90deg,#6366f1,#a855f7)" : "var(--surface-2)" }} />
+                    ))}
                   </div>
-                  <div className="w-full flex flex-col gap-1.5">
-                    {[...Array(4)].map((_, j) => (
-                      <div key={j} className="h-2 rounded-full" style={{ background: "linear-gradient(90deg,rgba(99,102,241,0.5),rgba(168,85,247,0.3))", width: `${85 - j * 8}%` }} />
+                  <div className="mt-auto flex flex-wrap gap-2">
+                    {tf.qualities.map((q, j) => (
+                      <span key={j} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium"
+                        style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" className="w-3 h-3"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        {q}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -1773,19 +1586,39 @@ function FusionSection() {
           </div>
         </div>
 
-        {/* 3-step flow */}
-        <div className="grid md:grid-cols-3 gap-6 mb-10">
-          {steps.map((s, i) => (
-            <div key={i} className={`premium-card rounded-2xl p-7 card-item${inView ? " in-view" : ""}`}
-              style={inView ? { animationDelay: `${160 + i * 100}ms` } : {}}>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-[11px] font-bold tracking-widest" style={{ color: STEP_COLORS[i] }}>{s.num}</span>
-                <div className="flex-1 h-px" style={{ background: `${STEP_COLORS[i]}30` }} />
+        {/* Stats — slim metric strip */}
+        <div className={`mt-7 md:mt-9 flex flex-col sm:flex-row items-center justify-center card-item${inView ? " in-view" : ""}`}
+          style={inView ? { animationDelay: "140ms" } : {}}>
+          {tf.stats.map((s, i) => (
+            <div key={i} className="flex items-center">
+              {i > 0 && <span className="hidden sm:block w-px h-10 mx-7" style={{ background: "var(--border)" }} />}
+              <div className="text-center py-2 sm:py-0">
+                <div className="display text-xl md:text-2xl font-semibold gradient-text">{s.v}</div>
+                <div className="text-[12px] mt-0.5" style={{ color: "var(--text-3)" }}>{s.l}</div>
               </div>
-              <h3 className="display text-[18px] font-semibold text-gray-900 mb-2">{s.title}</h3>
-              <p className="text-[14px] text-gray-500 leading-relaxed">{s.desc}</p>
             </div>
           ))}
+        </div>
+
+        {/* 3-step flow */}
+        <div className="grid md:grid-cols-3 gap-5 mt-12 md:mt-16 mb-12">
+          {steps.map((s, i) => {
+            const glow = ["glow-indigo", "glow-violet", "glow-green"][i];
+            return (
+              <div key={i} className={`premium-card ${glow} rounded-2xl p-7 card-item${inView ? " in-view" : ""}`}
+                style={inView ? { animationDelay: `${160 + i * 100}ms` } : {}}>
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0"
+                    style={{ background: `linear-gradient(135deg,${STEP_COLORS[i]},${STEP_COLORS[i]}cc)`, boxShadow: `0 8px 20px -6px ${STEP_COLORS[i]}99` }}>
+                    {s.num}
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg,${STEP_COLORS[i]}55,transparent)` }} />
+                </div>
+                <h3 className="display text-[19px] font-semibold text-gray-900 mb-2">{s.title}</h3>
+                <p className="hidden sm:block text-[14px] text-gray-500 leading-relaxed">{s.desc}</p>
+              </div>
+            );
+          })}
         </div>
 
         {/* CTA */}
@@ -2141,7 +1974,6 @@ function Footer() {
   const tf = useT(LP).footer;
   const groups: { id: keyof typeof tf.groups; items: { label: string; href: string }[] }[] = [
     { id: "Product", items: [
-      { label: tf.links.features, href: "#features" },
       { label: tf.links.how,      href: "#how-it-works" },
       { label: tf.links.pricing,  href: "#pricing" },
       { label: tf.links.models,   href: "#models" },
@@ -2296,17 +2128,17 @@ function HeroSection() {
           <a href="/chat" className="btn-primary text-[15px] px-8 py-3.5">
             {session?.user ? th.goToChat : th.startFree} <IconArrowRight />
           </a>
-          {!session?.user && (
-            <button
-              onClick={() => signIn("github", { callbackUrl: "/" })}
-              className="btn-ghost text-[15px] px-7 py-3.5 flex items-center gap-2.5"
-            >
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true">
-                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-              </svg>
-              {th.continueGitHub}
-            </button>
-          )}
+          <a
+            href="https://github.com/fabriciovla"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-ghost text-[15px] px-7 py-3.5 flex items-center gap-2.5"
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+            </svg>
+            {th.profile}
+          </a>
         </div>
 
         {/* Social proof + Stats */}
@@ -2472,7 +2304,6 @@ function HomeInner() {
       </Suspense>
       <Navbar />
       <HeroSection />
-      <FeaturesSection />
       <HowItWorksSection />
       <MemorySection />
       <ModelsSection />
