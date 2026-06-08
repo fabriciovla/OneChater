@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+    #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+    .slide {
+      position: absolute; inset: 0;
+      width: 1080px; height: 1920px;
+      border: 0;
+      opacity: 0;
+      transform: scale(1.0);
+      transition: opacity 0.6s ease;
+      will-change: opacity, transform;
+    }
+    .slide.active {
+      opacity: 1;
+      animation: ken 3.3s ease-out forwards;
+    }
+    @keyframes ken { from { transform: scale(1.0); } to { transform: scale(1.05); } }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <iframe class="slide" src="scene-1.html" scrolling="no"></iframe>
+    <iframe class="slide" src="scene-2.html" scrolling="no"></iframe>
+    <iframe class="slide" src="scene-3.html" scrolling="no"></iframe>
+    <iframe class="slide" src="scene-4.html" scrolling="no"></iframe>
+    <iframe class="slide" src="scene-5.html" scrolling="no"></iframe>
+    <iframe class="slide" src="scene-6.html" scrolling="no"></iframe>
+  </div>
+
+  <script>
+    window.__reelDone = false;
+    let started = false;
+    function startReel() {
+      if (started) return;
+      started = true;
+      const slides = [...document.querySelectorAll('.slide')];
+      let idx = 0;
+      slides[0].classList.add('active');
+      const t = setInterval(() => {
+        if (idx >= slides.length - 1) {     // último plano: mantener (CTA) y parar
+          clearInterval(t);
+          window.__reelDone = true;
+          return;
+        }
+        slides[idx].classList.remove('active');
+        idx++;
+        slides[idx].classList.add('active');
+      }, 3000);
+    }
+    // Autoplay (sirve para grabar y para previsualizar en el navegador)
+    window.addEventListener('load', () => setTimeout(startReel, 900));
+  </script>
+</body>
+</html>

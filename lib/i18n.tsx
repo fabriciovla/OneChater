@@ -9,51 +9,67 @@ type Ctx = { lang: Lang; setLang: (l: Lang) => void; toggle: () => void }
 const LanguageContext = createContext<Ctx>({ lang: "en", setLang: () => {}, toggle: () => {} })
 
 const STORAGE_KEY = "oc_lang"
+const ONE_YEAR = 60 * 60 * 24 * 365
 
 function detect(): Lang {
   if (typeof navigator === "undefined") return "en"
   return navigator.language?.toLowerCase().startsWith("es") ? "es" : "en"
 }
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  // The inline <script> in layout.tsx already sets document.documentElement.lang
-  // before React hydrates, so we can read it synchronously on the client to
-  // avoid the EN→ES flash. On the server, document is undefined → default "en".
-  const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof document !== "undefined") {
-      const l = document.documentElement.lang
-      if (l === "es" || l === "en") return l
-    }
-    return "en"
-  })
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null
+  const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  return m ? decodeURIComponent(m[1]) : null
+}
+
+// Persist the choice everywhere the app reads it from: localStorage (client),
+// a cookie (so the SERVER can render the right language on the next request and
+// keep SSR === first client render), and the <html lang> attribute.
+function persist(l: Lang) {
+  try { localStorage.setItem(STORAGE_KEY, l) } catch {}
+  document.cookie = `${STORAGE_KEY}=${l};path=/;max-age=${ONE_YEAR};samesite=lax`
+  document.documentElement.lang = l
+}
+
+export function LanguageProvider({
+  children,
+  initialLang = "en",
+}: {
+  children: React.ReactNode
+  initialLang?: Lang
+}) {
+  // `initialLang` is read from the `oc_lang` cookie on the SERVER (layout.tsx),
+  // so the server HTML and the first client render use the exact same language.
+  // The old code read document.documentElement.lang inside useState during the
+  // initial render — but the server always defaulted to "en", so an "es" visitor
+  // hydrated in Spanish over English markup → "Text content does not match
+  // server-rendered HTML." Deriving the initial state from a server-provided prop
+  // removes the mismatch (and the EN→ES flash) entirely.
+  const [lang, setLangState] = useState<Lang>(initialLang)
 
   useEffect(() => {
-    // Keep in sync if localStorage was updated externally (rare, but safe).
-    let initial: Lang
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Lang | null
-      initial = stored === "es" || stored === "en" ? stored : detect()
-    } catch {
-      initial = detect()
-    }
-    if (initial !== lang) {
-      setLangState(initial)
-      document.documentElement.lang = initial
-    }
+    // Resolve the persisted choice in the same priority the server used, so the
+    // effect never disagrees with the cookie that drove SSR:
+    //   localStorage (explicit client choice) → cookie (what SSR used) → browser.
+    // First-time visitors (none set) fall back to the browser language.
+    let stored: string | null = null
+    try { stored = localStorage.getItem(STORAGE_KEY) } catch {}
+    const persisted = stored ?? readCookie(STORAGE_KEY)
+    const next: Lang = persisted === "es" || persisted === "en" ? persisted : detect()
+    if (next !== lang) setLangState(next)
+    persist(next)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l)
-    try { localStorage.setItem(STORAGE_KEY, l) } catch {}
-    document.documentElement.lang = l
+    persist(l)
   }, [])
 
   const toggle = useCallback(() => {
     setLangState((prev) => {
       const next: Lang = prev === "en" ? "es" : "en"
-      try { localStorage.setItem(STORAGE_KEY, next) } catch {}
-      document.documentElement.lang = next
+      persist(next)
       return next
     })
   }, [])

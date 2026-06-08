@@ -1,0 +1,47 @@
+{
+  "name": "onechater",
+  "version": "0.1.0",
+  "description": "OneChater CLI — multi-model terminal with fusion mode, persistent memory and workspace tools (BYOK)",
+  "type": "module",
+  "bin": {
+    "onechater": "dist/index.js",
+    "och": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "llm",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "groq",
+    "multi-model",
+    "fusion",
+    "terminal",
+    "byok",
+    "agent"
+  ],
+  "author": "Fabricio Varela",
+  "license": "UNLICENSED",
+  "homepage": "https://onechater.app",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}

@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect, KeyboardEvent, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { logoutAction } from "@/lib/actions/logout"
+import { signOut } from "next-auth/react"
+import { clearTwofaCookie } from "@/lib/actions/logout"
+
+async function handleSignOut() {
+  await clearTwofaCookie()
+  await signOut({ callbackUrl: "/" })
+}
 
 // Only allow same-origin relative paths (block open redirects). Falls back to /.
 function safeNext(raw: string | null): string {
@@ -135,7 +141,7 @@ function TwoFactorInner() {
           </button>
         </div>
 
-        <button onClick={() => logoutAction("/")}
+        <button onClick={handleSignOut}
           className="w-full text-center text-[12px] text-gray-400 hover:text-gray-600 transition-colors cursor-pointer mt-6">
           Sign in with a different account
         </button>

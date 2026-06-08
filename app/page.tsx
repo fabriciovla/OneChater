@@ -18,7 +18,7 @@ const LP = {
       srH1: "OneChater — AI chat with GPT, Claude and Gemini in one place, with a persistent memory that follows you across every model",
       line1: "One memory.", line2: "Every AI.",
       subA: "The only AI chat app that doesn't forget you when you switch models.", subBold: " GPT, Claude and Gemini", subC: " in one place, with a memory that travels with you.",
-      startFree: "Start free", goToChat: "Go to chat", profile: "@fabriciovla",
+      startFree: "Start free", goToChat: "Go to chat", profile: "@fabriciovla", copied: "Copied!",
       proWorldwide: "professionals worldwide", byok: "BYOK · 0% fee", worksWith: "Works with",
     },
     preview: { activeMemory: "Active memory:", chips: "Next.js · Banking client · Short answers", userQ: "How do I optimize this Postgres query?", sent: "Sent to 3 models", now: "Just now", gpt: "Add a composite index on", gptB: "and run EXPLAIN ANALYZE to verify...", claude: "With pgvector on your Supabase you can use", claudeB: "indexes for more efficient searches...", full: "Full answer →", gen: "Generating response...", ask: "Ask every model at once...", send: "Send message" },
@@ -105,7 +105,7 @@ const LP = {
       srH1: "OneChater — chat con IA: GPT, Claude y Gemini en un solo lugar, con una memoria persistente que te sigue en todos los modelos",
       line1: "Una memoria.", line2: "Todas las IAs.",
       subA: "La única app de chat con IA que no te olvida cuando cambiás de modelo.", subBold: " GPT, Claude y Gemini", subC: " en un solo lugar, con una memoria que viaja con vos.",
-      startFree: "Empezar gratis", goToChat: "Ir al chat", profile: "@fabriciovla",
+      startFree: "Empezar gratis", goToChat: "Ir al chat", profile: "@fabriciovla", copied: "¡Copiado!",
       proWorldwide: "profesionales en todo el mundo", byok: "BYOK · 0% de comisión", worksWith: "Compatible con",
     },
     preview: { activeMemory: "Memoria activa:", chips: "Next.js · Cliente bancario · Respuestas cortas", userQ: "¿Cómo optimizo esta query de Postgres?", sent: "Enviado a 3 modelos", now: "Hace un momento", gpt: "Agregá un índice compuesto en", gptB: "y usá EXPLAIN ANALYZE para verificar...", claude: "Con pgvector en tu Supabase podés usar índices", claudeB: "para búsquedas más eficientes...", full: "Respuesta completa →", gen: "Generando respuesta...", ask: "Preguntale a todos los modelos a la vez...", send: "Enviar mensaje" },
@@ -501,6 +501,13 @@ function Navbar() {
               </button>
             ))}
             <span className="nav-separator mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
+            <a href="https://github.com/fabriciovla" target="_blank" rel="noopener noreferrer"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/[0.05] transition-all"
+              style={{ color: "var(--text-2)" }} aria-label="GitHub">
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true">
+                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              </svg>
+            </a>
             <LangToggle className="!h-8" />
             <ThemeToggle className="!w-8 !h-8" />
             {session?.user ? (
@@ -577,6 +584,23 @@ function Navbar() {
             </button>
           ))}
         </nav>
+
+        {/* GitHub link */}
+        <div className="px-5 mt-6">
+          <a href="https://github.com/fabriciovla" target="_blank" rel="noopener noreferrer"
+            className="nav-overlay-link w-full text-left"
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span className="inline-flex items-center gap-2">
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
+                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              </svg>
+              @fabriciovla
+            </span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
 
         {/* Bottom CTAs */}
         <div className="px-5 mt-8 flex flex-col gap-3">
@@ -2021,6 +2045,15 @@ function Footer() {
 function HeroSection() {
   const th = useT(LP).hero;
   const { data: session } = useSession();
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyInstall = () => {
+    navigator.clipboard?.writeText("npm install -g onechater").catch(() => {});
+    setCopied(true);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 2000);
+  };
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-32 pb-10 md:pb-12 overflow-hidden">
       {/* Subtle dot grid */}
@@ -2084,17 +2117,29 @@ function HeroSection() {
           <a href="/chat" className="btn-primary text-[15px] px-8 py-3.5">
             {session?.user ? th.goToChat : th.startFree} <IconArrowRight />
           </a>
-          <a
-            href="https://github.com/fabriciovla"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-ghost text-[15px] px-7 py-3.5 flex items-center gap-2.5"
+          <button
+            onClick={copyInstall}
+            className="btn-ghost group relative text-[15px] pl-5 pr-3.5 py-3.5 flex items-center gap-2.5 font-mono select-none"
+            aria-label={`Copy command: npm install -g onechater. ${copied ? th.copied : ""}`}
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true">
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-            </svg>
-            {th.profile}
-          </a>
+            <span className="opacity-40" aria-hidden="true">$</span>
+            <span><span className="opacity-55">npm install -g</span> onechater</span>
+            <span
+              aria-hidden="true"
+              className="ml-1 inline-flex items-center justify-center w-7 h-7 rounded-md transition-all group-hover:bg-black/[0.05]"
+              style={{ color: "var(--text-4)" }}
+            >
+              {copied ? (
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              )}
+            </span>
+          </button>
         </div>
 
         {/* Hero visual — desktop-only live demo (mobile stays text-first, no card) */}

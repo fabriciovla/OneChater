@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Sora, Lora } from "next/font/google";
+import { cookies } from "next/headers";
 import { SessionProvider } from "next-auth/react";
-import { LanguageProvider } from "@/lib/i18n";
+import { LanguageProvider, type Lang } from "@/lib/i18n";
 import "./globals.css";
 
 const inter = Inter({
@@ -104,6 +105,12 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Read the persisted language on the server so SSR renders the correct
+  // language up-front. This keeps the server HTML and the first client render
+  // in sync (no hydration text mismatch, no EN→ES flash).
+  const cookieLang = cookies().get("oc_lang")?.value;
+  const lang: Lang = cookieLang === "es" || cookieLang === "en" ? cookieLang : "en";
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -126,16 +133,11 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" className={`${inter.variable} ${sora.variable} ${lora.variable}`} suppressHydrationWarning>
+    <html lang={lang} className={`${inter.variable} ${sora.variable} ${lora.variable}`} suppressHydrationWarning>
       <body className="noise">
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var l=localStorage.getItem('oc_lang');if(l!=='es'&&l!=='en'){l=(navigator.language||'').toLowerCase().indexOf('es')===0?'es':'en';}document.documentElement.lang=l;}catch(e){}})();`,
           }}
         />
         <script

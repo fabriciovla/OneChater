@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
-import { logoutAction } from "@/lib/actions/logout";
+import { useSession, signOut } from "next-auth/react";
+import { clearTwofaCookie } from "@/lib/actions/logout";
+
+async function handleSignOut() {
+  await clearTwofaCookie();
+  await signOut({ callbackUrl: "/" });
+}
 
 const PLAN_LABEL: Record<string, { label: string; color: string }> = {
   free: { label: "Free",  color: "#6b7280" },
@@ -93,7 +98,7 @@ export default function UserMenu() {
 
           <div style={{ borderTop: "1px solid var(--border, #e5e7eb)" }} className="py-1.5">
             <button
-              onClick={() => logoutAction("/")}
+              onClick={handleSignOut}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors cursor-pointer hover:bg-red-50 text-red-500"
             >
               <IconSignOut />
