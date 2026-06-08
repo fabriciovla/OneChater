@@ -169,7 +169,7 @@ html.dark body {
   }
 
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200 cursor-pointer relative;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200 cursor-pointer relative;
     background: linear-gradient(180deg, #1F2025 0%, #0E0F12 100%);
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.12),
@@ -180,16 +180,17 @@ html.dark body {
 
   .btn-primary:hover {
     background: linear-gradient(180deg, #2A2B30 0%, #16171B 100%);
+    transform: translateY(-2px);
+    filter: brightness(1.05);
     box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.16),
+      inset 0 1px 0 rgba(255,255,255,0.18),
       inset 0 -1px 0 rgba(0,0,0,0.5),
-      0 2px 4px rgba(14,15,18,0.25),
-      0 16px 40px -10px rgba(14,15,18,0.45);
-    transform: translateY(-1px);
+      0 4px 10px rgba(14,15,18,0.20),
+      0 20px 50px -12px rgba(14,15,18,0.55);
   }
 
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-gray-700 transition-all duration-200 cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-gray-700 transition-all duration-200 cursor-pointer;
     background: rgba(255,255,255,0.7);
     border: 1px solid rgba(14,15,18,0.10);
     backdrop-filter: blur(10px);
@@ -199,8 +200,8 @@ html.dark body {
     background: rgba(255,255,255,0.95);
     border-color: rgba(14,15,18,0.18);
     color: #0E0F12;
-    transform: translateY(-1px);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset, 0 6px 18px -6px rgba(14,15,18,0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset, 0 12px 32px -10px rgba(14,15,18,0.18);
   }
 
   .section-label {
@@ -450,6 +451,12 @@ html.dark body {
   from { opacity: 0; transform: translateY(28px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes langFadeIn {
+  0%   { opacity: 0.55; filter: blur(3px); }
+  100% { opacity: 1;    filter: blur(0);   }
+}
+.lang-switch { animation: langFadeIn 0.35s ease-out; }
 
 .card-item { opacity: 0; }
 .card-item.in-view {
@@ -702,6 +709,26 @@ html.dark .bg-gray-200\/60 { background-color: rgba(55,65,81,0.40) !important; }
   transition: background 0.22s ease, background-color 0.22s ease,
               border-color 0.22s ease, color 0.18s ease, box-shadow 0.22s ease !important;
 }
+/* Premium button hover: smooth elevation. The transform/box-shadow ride a
+   refined cubic-bezier (no snap) for a confident, weighty feel; color/filter
+   ease quicker so the brightness change reads instantly. */
+.btn-primary, .btn-ghost {
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.18s ease,
+              box-shadow 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+              filter 0.2s ease !important;
+}
+/* The highlighted Pro CTA has a white background + box-shadow set inline, so the
+   class hover can't reach them. Override with !important to give it the same
+   elevation: lift + deep glow shadow + a touch of darken. */
+.pricing-cta-pro:hover {
+  transform: translateY(-2px);
+  filter: brightness(0.97);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1),
+    0 6px 16px -6px rgba(99,102,241,0.35),
+    0 20px 48px -14px rgba(99,102,241,0.45) !important;
+}
 
 /* ── Smooth theme switch ─────────────────────────────────────────────
    While toggling, kill every element transition so nothing janks, and let
@@ -716,12 +743,21 @@ html.theme-switching * { transition: none !important; }
 }
 
 /* ── Dark-mode variants for classes with baked-in light surfaces ── */
-html.dark .surface-light,
-html.dark .premium-card,
 html.dark .step-card-premium,
 html.dark .plan-card-light {
   background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
   border-color: var(--border);
+}
+html.dark .premium-card,
+html.dark .surface-light {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+html.dark .mem-node {
+  background: transparent !important;
+  border-color: var(--border) !important;
+  box-shadow: none !important;
 }
 html.dark .plan-card-light:hover { border-color: var(--border-strong); }
 html.dark .chip {
@@ -745,7 +781,15 @@ html.dark .btn-primary {
   color: #0E0F12;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 8px 24px -8px rgba(0,0,0,0.5);
 }
-html.dark .btn-primary:hover { background: linear-gradient(180deg, #FFFFFF 0%, #DCDDE0 100%); color: #0E0F12; }
+html.dark .btn-primary:hover {
+  background: linear-gradient(180deg, #FFFFFF 0%, #DCDDE0 100%);
+  color: #0E0F12;
+  filter: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    0 4px 12px -4px rgba(0,0,0,0.5),
+    0 22px 52px -12px rgba(0,0,0,0.7);
+}
 html.dark ::-webkit-scrollbar-track { background: var(--surface-2); }
 
 .plan-card-pro {
@@ -838,6 +882,29 @@ html.dark .hero-video-outer {
   background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%) !important;
   border-color: var(--border) !important;
   box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 30px 80px -20px rgba(14,15,18,0.5), 0 12px 32px -8px rgba(99,102,241,0.08) !important;
+}
+
+/* ── Responsive demo video embed ─────────────────────────────────────────────
+   The demo HTML renders at a fixed 900×600 logical size; we scale the whole
+   iframe to the container width so it stays sharp and proportional on any
+   screen (desktop → mobile). Uses container-query units for the scale factor. */
+.video-embed {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 900 / 600;
+  overflow: hidden;
+}
+.video-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 900px;
+  height: 600px;
+  border: 0;
+  display: block;
+  transform-origin: top left;
+  /* --vscale (container width / 900) is set in JS via ResizeObserver */
+  transform: scale(var(--vscale, 1));
 }
 
 /* ── Footer dark hover ───────────────────────────────────────────────────── */

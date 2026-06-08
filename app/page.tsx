@@ -510,7 +510,7 @@ function Navbar() {
                 <a href="/login" className="px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all cursor-pointer">
                   {t.nav.signIn}
                 </a>
-                <a href="/login" className="ml-1 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold text-white transition-all duration-200 cursor-pointer hover:-translate-y-px"
+                <a href="/login" className="ml-1 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold text-white transition-all duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] cursor-pointer hover:-translate-y-0.5 hover:brightness-110"
                   style={{ background: "linear-gradient(180deg, #1F2025 0%, #0E0F12 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(14,15,18,0.2), 0 6px 18px -6px rgba(14,15,18,0.35)" }}>
                   {t.nav.startFree} <IconArrowRight />
                 </a>
@@ -788,7 +788,7 @@ function HowItWorksSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="how-it-works" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="how-it-works" className="relative py-12 md:py-20 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] opacity-[0.04] rounded-full"
@@ -807,62 +807,29 @@ function HowItWorksSection() {
           </p>
         </div>
 
-        <div className="relative">
-          {/* Horizontal connector line (desktop) */}
-          <div className="hidden md:block absolute top-[3.75rem] left-[calc(16.66%+2rem)] right-[calc(16.66%+2rem)] h-[2px]">
-            <div className="w-full h-full bg-gradient-to-r from-violet-300/40 via-blue-300/40 to-orange-300/40 rounded-full" />
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-400/60 via-blue-400/60 to-orange-400/60 rounded-full blur-sm" />
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {STEPS.map((step, i) => {
-              const st = stepsT[i];
-              return (
-              <div
-                key={step.n}
-                className={`step-card-premium group rounded-2xl p-8 card-item${inView ? " in-view" : ""}`}
-                style={{
-                  ...(inView ? { animationDelay: `${i * 180}ms` } : {}),
-                }}
-              >
-                {/* Giant numeral background flourish */}
-                <div className="absolute top-4 right-5 pointer-events-none select-none">
-                  <span className={`step-numeral ${step.tone} text-[5.5rem] opacity-[0.10] group-hover:opacity-[0.18] transition-opacity duration-700`}>
-                    {step.n}
-                  </span>
+        <div className="grid md:grid-cols-3 gap-10 md:gap-12">
+          {STEPS.map((step, i) => {
+            const st = stepsT[i];
+            return (
+            <div
+              key={step.n}
+              className={`relative card-item${inView ? " in-view" : ""} md:px-2 text-center md:text-left`}
+              style={inView ? { animationDelay: `${i * 120}ms` } : {}}
+            >
+              <div className="flex items-center justify-center md:justify-start gap-4 mb-6">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}
+                >
+                  {step.icon}
                 </div>
-
-                {/* Icon + eyebrow row */}
-                <div className="flex items-center gap-4 mb-7">
-                  <div
-                    className={`step-number w-14 h-14 rounded-2xl ${step.iconBg} flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40`}
-                    style={{ boxShadow: `0 10px 28px -4px ${step.shadow}, inset 0 1px 0 rgba(255,255,255,0.25)` }}
-                  >
-                    {step.icon}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="eyebrow text-gray-400">{th.step} {step.n}</span>
-                    <span className={`text-[11px] font-semibold ${step.tone === "tone-violet" ? "text-violet-600" : step.tone === "tone-blue" ? "text-blue-600" : "text-orange-600"}`}>{st.eyebrow}</span>
-                  </div>
-                </div>
-
-                <h3 className="display text-lg md:text-xl font-semibold text-gray-900 tracking-tight mb-3 group-hover:text-gray-700 transition-colors">{st.title}</h3>
-                <p className="hidden sm:block text-gray-500 leading-relaxed mb-6 text-[15px]">{st.desc}</p>
-
-                <div className="flex flex-wrap gap-2">
-                  {st.tags.map((tag) => (
-                    <span key={tag} className="text-xs px-3 py-1.5 rounded-lg bg-white text-gray-600 font-medium border border-black/8 shadow-sm group-hover:border-black/16 group-hover:-translate-y-0.5 transition-all">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Bottom gradient accent */}
-                <div className={`mt-7 h-1 w-12 rounded-full bg-gradient-to-r ${step.gradient} opacity-50 group-hover:opacity-100 group-hover:w-24 transition-all duration-500`} />
+                <span className="eyebrow text-gray-400">{th.step} {step.n}</span>
               </div>
-              );
-            })}
-          </div>
+              <h3 className="display text-xl md:text-2xl font-semibold text-gray-900 tracking-tight mb-3">{st.title}</h3>
+              <p className="text-gray-500 leading-relaxed text-[15px]">{st.desc}</p>
+            </div>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -1034,28 +1001,17 @@ function MemorySection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="memoria" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="memoria" className="relative py-12 md:py-20 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[820px] h-[440px] opacity-[0.04] rounded-full"
-          style={{ background: "radial-gradient(ellipse, #f97316, transparent 70%)" }} />
+          style={{ background: "radial-gradient(ellipse, #6366f1, transparent 70%)" }} />
       </div>
 
       <div className="max-w-7xl mx-auto relative">
         {/* Header */}
         <div className={`text-center mb-8 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <div className="inline-flex items-center gap-2">
-            <span className="section-label">{tm.label}</span>
-            <span
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white"
-              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)", boxShadow: "0 6px 16px -6px rgba(139,92,246,0.6), inset 0 1px 0 rgba(255,255,255,0.3)" }}
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5">
-                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
-              </svg>
-              {tm.premium}
-            </span>
-          </div>
+          <span className="section-label">{tm.label}</span>
           <h2 className="display mt-4 md:mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             {tm.title1}{" "}
             <span className="gradient-text">{tm.title2}</span>
@@ -1067,7 +1023,7 @@ function MemorySection() {
 
         {/* Conceptual visualization: Usuario → Memoria Personal → GPT / Claude / Gemini */}
         <div
-          className={`relative rounded-[28px] p-6 md:p-12 surface-light overflow-hidden card-item${inView ? " in-view" : ""}`}
+          className={`relative rounded-[20px] sm:rounded-[28px] p-4 sm:p-6 md:p-12 surface-light overflow-hidden card-item${inView ? " in-view" : ""}`}
           style={inView ? { animationDelay: "80ms" } : {}}
         >
           {/* dot grid backdrop */}
@@ -1081,7 +1037,7 @@ function MemorySection() {
 
           <div className="relative flex flex-col md:flex-row items-center justify-center gap-1 md:gap-3">
             {/* Usuario */}
-            <div className="rounded-3xl px-6 py-5 text-center w-[150px] flex-shrink-0"
+            <div className="mem-node rounded-3xl px-6 py-5 text-center w-[150px] flex-shrink-0"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-soft)" }}>
               <div className="mx-auto w-12 h-12 rounded-2xl flex items-center justify-center"
                 style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}>
@@ -1096,11 +1052,11 @@ function MemorySection() {
             {/* Memoria Personal (hub) */}
             <div className="relative flex-shrink-0">
               <div aria-hidden="true" className="memory-hub-pulse absolute -inset-3 rounded-[32px]"
-                style={{ background: "radial-gradient(circle, rgba(249,115,22,0.28), transparent 70%)", zIndex: 0 }} />
-              <div className="relative rounded-3xl px-6 py-6 text-center w-[210px]"
+                style={{ background: "radial-gradient(circle, rgba(99,102,241,0.28), transparent 70%)", zIndex: 0 }} />
+              <div className="mem-node relative rounded-3xl px-6 py-6 text-center w-[210px]"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-mid)", zIndex: 1 }}>
-                <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white ring-1 ring-white/40"
-                  style={{ boxShadow: "0 10px 28px -6px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.25)" }}>
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white ring-1 ring-white/40"
+                  style={{ boxShadow: "0 10px 28px -6px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.25)" }}>
                   <IconBrain />
                 </div>
                 <div className="mt-3.5 text-[15px] font-semibold text-gray-900">{tm.personal}</div>
@@ -1123,7 +1079,7 @@ function MemorySection() {
                 { name: "Claude", logo: <AnthropicLogo /> },
                 { name: "Gemini", logo: <GoogleLogo /> },
               ].map((m) => (
-                <div key={m.name} className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5 w-[180px]"
+                <div key={m.name} className="mem-node flex items-center gap-2.5 rounded-2xl px-4 py-2.5 w-[180px]"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-soft)" }}>
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
                     style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
@@ -1142,30 +1098,29 @@ function MemorySection() {
           </p>
         </div>
 
-        {/* Feature cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-12 md:mt-16">
+        {/* Feature list — clean, no boxes */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-10 mt-14 md:mt-20">
           {MEMORY_CARDS.map((c, i) => (
             <div
               key={c.id}
-              className={`premium-card ${c.glow} rounded-2xl p-7 card-item${inView ? " in-view" : ""}`}
-              style={inView ? { animationDelay: `${120 + i * 80}ms` } : {}}
+              className={`card-item${inView ? " in-view" : ""} text-center md:text-left`}
+              style={inView ? { animationDelay: `${120 + i * 60}ms` } : {}}
             >
               <div
-                className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${c.from} ${c.to} flex items-center justify-center text-white ring-1 ring-white/40`}
-                style={{ boxShadow: `0 10px 28px -6px ${c.glowColor}, inset 0 1px 0 rgba(255,255,255,0.25)` }}
+                className="w-11 h-11 rounded-xl flex items-center justify-center mx-auto md:mx-0"
+                style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}
               >
                 {c.icon}
               </div>
-              <h3 className="display mt-5 text-lg md:text-xl font-semibold text-gray-900 tracking-tight leading-tight">{cardsT[c.id].name}</h3>
-              <p className="mt-2.5 text-[14px] text-gray-500 leading-relaxed text-pretty">{cardsT[c.id].desc}</p>
-              <div className={`accent-bar bg-gradient-to-r ${c.bar}`} />
+              <h3 className="display mt-4 text-lg font-semibold text-gray-900 tracking-tight leading-tight">{cardsT[c.id].name}</h3>
+              <p className="mt-2 text-[14px] text-gray-500 leading-relaxed text-pretty">{cardsT[c.id].desc}</p>
             </div>
           ))}
         </div>
 
         {/* Important note */}
         <div className={`mt-12 md:mt-16 card-item${inView ? " in-view" : ""}`} style={inView ? { animationDelay: "200ms" } : {}}>
-          <div className="relative rounded-2xl p-6 md:p-7 flex items-start gap-4 surface-light overflow-hidden">
+          <div className="relative rounded-2xl p-5 md:p-7 flex items-start gap-3.5 md:gap-4 surface-light overflow-hidden">
             <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-40"
               style={{ background: "radial-gradient(circle, rgba(99,102,241,0.35), transparent 65%)", filter: "blur(44px)" }} />
             <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white flex-shrink-0 ring-1 ring-white/40"
@@ -1268,7 +1223,7 @@ function ModelsSection() {
   const rowB = supportedModels.slice(half);
 
   return (
-    <section ref={sectionRef} id="models" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="models" className="relative py-12 md:py-20 px-5 md:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto relative">
         <div className={`text-center mb-10 md:mb-14 card-item${inView ? " in-view" : ""}`}>
           <span className="section-label">{tmo.label}</span>
@@ -1385,9 +1340,9 @@ const plans: Plan[] = [
     cta: "Coming soon",
     comingSoon: true,
     highlighted: false,
-    gradient: "from-blue-500 to-cyan-500",
-    accentBar: "from-blue-500 to-cyan-400",
-    iconBg: "bg-gradient-to-br from-blue-500 to-cyan-500",
+    gradient: "from-gray-500 to-gray-600",
+    accentBar: "from-gray-300 to-gray-400",
+    iconBg: "bg-gradient-to-br from-gray-700 to-gray-900",
     icon: (
       // 5 blobs conectados = equipo
       <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -1404,7 +1359,9 @@ const plans: Plan[] = [
 function FusionSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const tf = useT(LP).fusion;
+  const { lang } = useLang()
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -1416,8 +1373,16 @@ function FusionSection() {
     return () => obs.disconnect();
   }, []);
 
+  // Desktop-only: only load the demo video on ≥md screens (mobile shows the static diagram).
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => setIsDesktop(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const steps = [tf.step1, tf.step2, tf.step3];
-  const STEP_COLORS = ["#6366f1", "#8b5cf6", "#a855f7"];
   const MODELS = [
     { tag: tf.tagGPT,    color: "#10a37f", logo: <OpenAILogo /> },
     { tag: tf.tagClaude, color: "#d97757", logo: <AnthropicLogo /> },
@@ -1425,7 +1390,7 @@ function FusionSection() {
   ];
 
   return (
-    <section ref={sectionRef} id="fusion" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="fusion" className="relative py-12 md:py-20 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-[0.05] rounded-full"
@@ -1435,16 +1400,7 @@ function FusionSection() {
       <div className="max-w-7xl mx-auto relative">
         {/* Header */}
         <div className={`text-center mb-8 md:mb-14 card-item${inView ? " in-view" : ""}`}>
-          <div className="inline-flex items-center gap-2">
-            <span className="section-label">{tf.label}</span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white"
-              style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7)", boxShadow: "0 6px 16px -6px rgba(139,92,246,0.6), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5">
-                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
-              </svg>
-              {tf.badge}
-            </span>
-          </div>
+          <span className="section-label">{tf.label}</span>
           <h2 className="display mt-4 md:mt-6 text-[1.75rem] sm:text-3xl md:text-[3.25rem] font-semibold text-gray-900 leading-[1.1] md:leading-[1.05] text-balance">
             {tf.title1}{" "}
             <span className="gradient-text">{tf.title2}</span>
@@ -1454,8 +1410,26 @@ function FusionSection() {
           </p>
         </div>
 
-        {/* Fusion showcase — ask once → three models → one fused answer */}
-        <div className={`relative rounded-[28px] p-5 sm:p-8 md:p-11 surface-light overflow-hidden card-item${inView ? " in-view" : ""}`}
+        {/* Desktop: live Fusion demo video */}
+        <div className={`hidden md:flex justify-center card-item${inView ? " in-view" : ""}`}
+          style={inView ? { animationDelay: "80ms" } : {}}>
+          <div className="relative flex justify-center w-full" style={{ maxWidth: "1040px" }}>
+            <div className="hero-orb-1" style={{ position: "absolute", inset: "-10%", background: "radial-gradient(ellipse at center, rgba(139,92,246,0.18) 0%, rgba(99,102,241,0.10) 38%, transparent 72%)", filter: "blur(80px)", borderRadius: "50%", pointerEvents: "none", zIndex: 0 }} />
+            <div className="hero-video-outer relative w-full rounded-[16px] md:rounded-[20px] p-1 md:p-1.5">
+              <div className="video-embed rounded-[12px] md:rounded-[14px]" style={{ background: "#0E0F12", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
+                <iframe
+                  id="fusion-video"
+                  title="OneChater Fusion demo"
+                  src={inView && isDesktop ? `/video-fusion-demo.html?lang=${lang}` : undefined}
+                  style={{ background: "#0E0F12" }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Fusion showcase — hidden (video is desktop-only; mobile stays clean) */}
+        <div className={`hidden relative rounded-[28px] p-5 sm:p-8 surface-light overflow-hidden card-item${inView ? " in-view" : ""}`}
           style={inView ? { animationDelay: "80ms" } : {}}>
           {/* dot grid backdrop + violet glow */}
           <div className="absolute inset-0 opacity-[0.5] pointer-events-none"
@@ -1587,38 +1561,30 @@ function FusionSection() {
         </div>
 
         {/* Stats — slim metric strip */}
-        <div className={`mt-7 md:mt-9 flex flex-col sm:flex-row items-center justify-center card-item${inView ? " in-view" : ""}`}
+        <div className={`mt-7 md:mt-9 grid grid-cols-3 card-item${inView ? " in-view" : ""}`}
           style={inView ? { animationDelay: "140ms" } : {}}>
           {tf.stats.map((s, i) => (
-            <div key={i} className="flex items-center">
-              {i > 0 && <span className="hidden sm:block w-px h-10 mx-7" style={{ background: "var(--border)" }} />}
-              <div className="text-center py-2 sm:py-0">
-                <div className="display text-xl md:text-2xl font-semibold gradient-text">{s.v}</div>
-                <div className="text-[12px] mt-0.5" style={{ color: "var(--text-3)" }}>{s.l}</div>
-              </div>
+            <div key={i} className="relative flex flex-col items-center text-center px-2 py-3">
+              {i > 0 && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-8" style={{ background: "var(--border)" }} />}
+              <div className="display text-lg md:text-2xl font-semibold gradient-text">{s.v}</div>
+              <div className="text-[11px] md:text-[12px] mt-1 leading-tight" style={{ color: "var(--text-3)" }}>{s.l}</div>
             </div>
           ))}
         </div>
 
         {/* 3-step flow */}
-        <div className="grid md:grid-cols-3 gap-5 mt-12 md:mt-16 mb-12">
-          {steps.map((s, i) => {
-            const glow = ["glow-indigo", "glow-violet", "glow-green"][i];
-            return (
-              <div key={i} className={`premium-card ${glow} rounded-2xl p-7 card-item${inView ? " in-view" : ""}`}
-                style={inView ? { animationDelay: `${160 + i * 100}ms` } : {}}>
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg,${STEP_COLORS[i]},${STEP_COLORS[i]}cc)`, boxShadow: `0 8px 20px -6px ${STEP_COLORS[i]}99` }}>
-                    {s.num}
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg,${STEP_COLORS[i]}55,transparent)` }} />
-                </div>
-                <h3 className="display text-[19px] font-semibold text-gray-900 mb-2">{s.title}</h3>
-                <p className="hidden sm:block text-[14px] text-gray-500 leading-relaxed">{s.desc}</p>
+        <div className="grid md:grid-cols-3 gap-10 md:gap-12 mt-14 md:mt-20 mb-12">
+          {steps.map((s, i) => (
+            <div key={i} className={`relative card-item${inView ? " in-view" : ""} md:px-2`}
+              style={inView ? { animationDelay: `${160 + i * 100}ms` } : {}}>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="display text-2xl font-semibold text-gray-300">{s.num}</span>
+                <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
               </div>
-            );
-          })}
+              <h3 className="display text-xl font-semibold text-gray-900 mb-2">{s.title}</h3>
+              <p className="text-[14px] text-gray-500 leading-relaxed">{s.desc}</p>
+            </div>
+          ))}
         </div>
 
         {/* CTA */}
@@ -1678,7 +1644,7 @@ function PricingSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="pricing" className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} id="pricing" className="relative py-12 md:py-20 px-5 md:px-6 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-[0.03] rounded-full"
@@ -1733,15 +1699,12 @@ function PricingSection() {
               {plan.highlighted && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30">
                   <span
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-bold text-white tracking-wide whitespace-nowrap"
+                    className="inline-flex items-center px-4 py-1.5 rounded-full text-[11px] font-bold text-white tracking-wide whitespace-nowrap"
                     style={{
-                      background: "linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)",
-                      boxShadow: "0 10px 24px -6px rgba(139,92,246,0.55), inset 0 1px 0 rgba(255,255,255,0.3)",
+                      background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                      boxShadow: "0 10px 24px -6px rgba(139,92,246,0.5)",
                     }}
                   >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
-                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
-                    </svg>
                     {tp.mostPopular}
                   </span>
                 </div>
@@ -1827,7 +1790,9 @@ function PricingSection() {
                   className={`relative w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
                     plan.comingSoon
                       ? "cursor-not-allowed"
-                      : "cursor-pointer btn-primary"
+                      : plan.highlighted
+                        ? "cursor-pointer btn-primary pricing-cta-pro"
+                        : "cursor-pointer btn-primary"
                   }`}
                   style={
                     plan.comingSoon
@@ -1893,7 +1858,7 @@ function CTASection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative py-10 md:py-14 px-5 md:px-6 overflow-hidden">
+    <section ref={sectionRef} className="relative py-12 md:py-20 px-5 md:px-6 overflow-hidden">
       <div className="max-w-5xl mx-auto text-center">
         <div
           className={`relative rounded-[28px] p-8 md:p-20 overflow-hidden card-item${inView ? " in-view" : ""}`}
@@ -1913,13 +1878,6 @@ function CTASection() {
             style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
 
           <div className="relative z-10">
-            <div className="flex justify-center gap-1 mb-6" role="img" aria-label="Rated 5 out of 5 stars">
-              {[...Array(5)].map((_, i) => (
-                <svg key={i} viewBox="0 0 24 24" fill="#FBBF24" className="w-4 h-4">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              ))}
-            </div>
             <h2 className="display text-4xl md:text-[3.25rem] font-semibold text-white leading-[1.05] tracking-tight text-balance">
               {tc.title1}
               <br className="hidden sm:block" />{" "}
@@ -1938,7 +1896,7 @@ function CTASection() {
               {tc.subtitle}
             </p>
             <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-              <a href="/chat" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-[#0E0F12] transition-all cursor-pointer hover:-translate-y-0.5"
+              <a href="/chat" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-[15px] text-[#0E0F12] transition-all duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] cursor-pointer hover:-translate-y-0.5 hover:brightness-[0.97] hover:shadow-[0_22px_50px_-14px_rgba(255,255,255,0.5)]"
                 style={{
                   background: "linear-gradient(180deg, #FFFFFF 0%, #F3F4F6 100%)",
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px var(--border), 0 10px 30px -10px rgba(255,255,255,0.4)",
@@ -2064,7 +2022,7 @@ function HeroSection() {
   const th = useT(LP).hero;
   const { data: session } = useSession();
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-32 pb-20 overflow-hidden">
+    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-32 pb-10 md:pb-12 overflow-hidden">
       {/* Subtle dot grid */}
       <div className="hero-dot-grid absolute inset-0 animate-fade-in opacity-[0.4] pointer-events-none"
         style={{
@@ -2083,19 +2041,17 @@ function HeroSection() {
       <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col items-center">
         {/* Eyebrow badge */}
         <div className="animate-fade-up delay-100 mb-7">
-          <button onClick={() => { const el = document.getElementById("features"); if(el) el.scrollIntoView({behavior:"smooth"}); }} className="hero-badge group inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-medium text-gray-700 transition-all cursor-pointer"
+          <button onClick={() => { const el = document.getElementById("how-it-works"); if(el) el.scrollIntoView({behavior:"smooth"}); }} className="hero-badge group inline-flex items-center gap-2 pl-2.5 pr-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all cursor-pointer"
             style={{
-              background: "linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,247,245,0.85))",
-              border: "1px solid rgba(14,15,18,0.10)",
-              boxShadow: "0 1px 0 rgba(255,255,255,0.8) inset, 0 1px 2px rgba(14,15,18,0.04), 0 8px 24px -10px rgba(99,102,241,0.20)",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              color: "var(--text-2)",
+              boxShadow: "var(--shadow-soft)",
             }}
           >
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-widest uppercase text-white"
-              style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
-              {th.new}
-            </span>
-            <span className="hero-badge-inner-text text-gray-700">{th.badge}</span>
-            <span className="transition-transform group-hover:translate-x-0.5 text-gray-500">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#6366f1" }} />
+            <span className="hero-badge-inner-text">{th.badge}</span>
+            <span className="transition-transform group-hover:translate-x-0.5" style={{ color: "var(--text-4)" }}>
               <IconArrowRight />
             </span>
           </button>
@@ -2109,7 +2065,7 @@ function HeroSection() {
           {/* soft glow behind headline for depth */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[115%] h-[170%]"
             style={{ background: "radial-gradient(58% 48% at 50% 50%, rgba(99,102,241,0.12), rgba(139,92,246,0.06) 45%, transparent 72%)", filter: "blur(22px)" }} />
-          <span className="relative block font-light text-gray-800">
+          <span className="relative block font-medium text-gray-900">
             {th.line1}
           </span>
           <span className="relative block font-semibold mt-1 sm:mt-2 gradient-text-premium">
@@ -2141,77 +2097,16 @@ function HeroSection() {
           </a>
         </div>
 
-        {/* Social proof + Stats */}
-        <div className="animate-fade-up delay-500 mt-10 flex flex-col sm:flex-row items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-2.5">
-              {["#4F46E5", "#7C3AED", "#2563EB", "#0891B2", "#059669"].map(
-                (c, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full border-[2.5px] border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
-                    style={{ background: c }}
-                  >
-                    {["F", "M", "J", "A", "L"][i]}
-                  </div>
-                )
-              )}
-            </div>
-            <span className="text-sm text-gray-500">
-              <span className="text-gray-900 font-semibold">2,400+</span>{" "}
-              {th.proWorldwide}
-            </span>
-          </div>
-
-          <div className="hidden sm:block w-px h-6 bg-gray-200" />
-
-          <div className="flex items-center gap-5">
-            <span className="flex items-center gap-1.5 text-sm text-gray-500">
-              <div className="flex gap-0.5">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} viewBox="0 0 24 24" fill="#FBBF24" className="w-3.5 h-3.5">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                ))}
-              </div>
-              <span className="text-gray-900 font-semibold">4.9</span>
-            </span>
-            <span className="flex items-center gap-1.5 text-sm text-gray-500">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-green-500">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              {th.byok}
-            </span>
-          </div>
-        </div>
-
-        {/* Trust bar — providers */}
-        <div className="animate-fade-up delay-600 mt-12 w-full max-w-4xl">
-          <div className="flex items-center gap-3 mb-5 justify-center">
-            <span className="h-px w-12 bg-gradient-to-r from-transparent to-gray-300" />
-            <span className="eyebrow text-gray-400">{th.worksWith}</span>
-            <span className="h-px w-12 bg-gradient-to-l from-transparent to-gray-300" />
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5 opacity-70 grayscale">
-            <div className="flex items-center gap-2 text-gray-600"><OpenAILogo /><span className="text-sm font-semibold">OpenAI</span></div>
-            <div className="flex items-center gap-2 text-gray-600"><AnthropicLogo /><span className="text-sm font-semibold">Anthropic</span></div>
-            <div className="flex items-center gap-2 text-gray-600"><GoogleLogo /><span className="text-sm font-semibold">Google</span></div>
-            <div className="flex items-center gap-2 text-gray-600"><MistralLogo /><span className="text-sm font-semibold">Mistral</span></div>
-            <div className="flex items-center gap-2 text-gray-600"><MetaLogo /><span className="text-sm font-semibold">Meta</span></div>
-            <div className="flex items-center gap-2 text-gray-600"><XAILogo /><span className="text-sm font-semibold">xAI</span></div>
-          </div>
-        </div>
-
-        {/* Video — hidden on mobile */}
-        <div className="animate-fade-up delay-600 w-full mt-16 hidden md:flex justify-center px-4">
-          <div className="relative flex justify-center" style={{ maxWidth: "980px", width: "100%" }}>
+        {/* Hero visual — desktop-only live demo (mobile stays text-first, no card) */}
+        <div className="animate-fade-up delay-500 hidden md:flex w-full mt-16 justify-center">
+          <div className="relative flex justify-center w-full" style={{ maxWidth: "1040px" }}>
             {/* Glow behind video */}
             <div
               className="hero-orb-1"
               style={{
                 position: "absolute",
-                inset: "-120px",
-                background: "radial-gradient(ellipse at center, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.15) 30%, rgba(168,85,247,0.08) 55%, transparent 75%)",
+                inset: "-10%",
+                background: "radial-gradient(ellipse at center, rgba(99,102,241,0.18) 0%, rgba(139,92,246,0.10) 35%, transparent 72%)",
                 filter: "blur(80px)",
                 borderRadius: "50%",
                 pointerEvents: "none",
@@ -2220,23 +2115,35 @@ function HeroSection() {
             />
             {/* Outer ring */}
             <div className="hero-video-outer relative w-full rounded-[20px] p-1.5">
-              {/* Window chrome */}
+              {/* Window chrome — fixed 900×600 demo scaled to fit (see .video-embed) */}
               <div
-                className="relative w-full rounded-[14px] overflow-hidden"
+                className="video-embed rounded-[14px]"
                 style={{
                   background: "#0E0F12",
                   border: "1px solid rgba(255,255,255,0.08)",
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
                 }}
               >
-                <iframe
-                  id="demo-video"
-                  className="w-full block"
-                  style={{ height: "600px", background: "#0E0F12" }}
-                />
+                <iframe id="demo-video" title="OneChater demo" style={{ background: "#0E0F12" }} />
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Works with — quiet trust strip */}
+        <div className="animate-fade-up delay-600 mt-12 md:mt-16 w-full max-w-4xl">
+          <p className="text-center eyebrow text-gray-400 mb-5 md:mb-6">{th.worksWith}</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-4 sm:gap-x-10 sm:gap-y-5 opacity-60 grayscale">
+            <div className="flex items-center gap-2 text-gray-600"><OpenAILogo /><span className="hidden sm:inline text-sm font-semibold">OpenAI</span></div>
+            <div className="flex items-center gap-2 text-gray-600"><AnthropicLogo /><span className="hidden sm:inline text-sm font-semibold">Anthropic</span></div>
+            <div className="flex items-center gap-2 text-gray-600"><GoogleLogo /><span className="hidden sm:inline text-sm font-semibold">Google</span></div>
+            <div className="flex items-center gap-2 text-gray-600"><MistralLogo /><span className="hidden sm:inline text-sm font-semibold">Mistral</span></div>
+            <div className="flex items-center gap-2 text-gray-600"><MetaLogo /><span className="hidden sm:inline text-sm font-semibold">Meta</span></div>
+            <div className="flex items-center gap-2 text-gray-600"><XAILogo /><span className="hidden sm:inline text-sm font-semibold">xAI</span></div>
+          </div>
+          <p className="mt-7 md:mt-8 text-center text-[13px] text-gray-400 px-4">
+            <span className="text-gray-700 font-semibold">2,400+</span> {th.proWorldwide} · {th.byok}
+          </p>
         </div>
       </div>
     </section>
@@ -2270,7 +2177,27 @@ function SectionScrollHandler() {
 }
 
 function HomeInner() {
+  const { lang } = useLang()
+  const [animating, setAnimating] = useState(false)
+  const prevLangRef = useRef(lang)
+  const langRef = useRef(lang)
+  langRef.current = lang
+
+  // Trigger animation + reload demo-video on lang change
   useEffect(() => {
+    if (lang === prevLangRef.current) return
+    prevLangRef.current = lang
+    setAnimating(true)
+    const t = setTimeout(() => setAnimating(false), 400)
+    const iframe = document.getElementById("demo-video") as HTMLIFrameElement
+    if (iframe?.src) iframe.src = `/video-demo.html?lang=${lang}`
+    return () => clearTimeout(t)
+  }, [lang])
+
+  useEffect(() => {
+    // Desktop-only: don't load the demo video on mobile (fallback preview shows instead).
+    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 768px)").matches) return;
+
     const iframe = document.getElementById("demo-video") as HTMLIFrameElement;
     if (!iframe) return;
 
@@ -2278,14 +2205,12 @@ function HomeInner() {
 
     const handleScroll = () => {
       if (hasPlayed) return;
-      const scrollY = window.scrollY;
       const videoSection = iframe.closest("section");
       if (videoSection) {
         const rect = videoSection.getBoundingClientRect();
         if (rect.top <= window.innerHeight * 0.7) {
           hasPlayed = true;
-          iframe.src = "/video-demo.html?autoplay=false";
-          iframe.contentWindow?.postMessage("play-video", "*");
+          iframe.src = `/video-demo.html?lang=${langRef.current}`;
           window.removeEventListener("scroll", handleScroll);
         }
       }
@@ -2297,8 +2222,21 @@ function HomeInner() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Scale each fixed-size demo iframe (900×600) to its container width so the
+  // videos stay sharp and proportional on every screen, mobile included.
+  useEffect(() => {
+    const embeds = Array.from(document.querySelectorAll<HTMLElement>(".video-embed"));
+    if (!embeds.length) return;
+    const update = () =>
+      embeds.forEach((el) => el.style.setProperty("--vscale", String(el.clientWidth / 900)));
+    update();
+    const ro = new ResizeObserver(update);
+    embeds.forEach((el) => ro.observe(el));
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <main>
+    <main className={animating ? "lang-switch" : ""}>
       <Suspense fallback={null}>
         <SectionScrollHandler />
       </Suspense>

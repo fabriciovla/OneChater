@@ -9,7 +9,7 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
     html, body { overflow: hidden; height: 100%; margin: 0; }
-    body { background: #0E0F12; height: 600px; display: flex; align-items: center; justify-content: center; }
+    body { background: #0E0F12; width: 100%; height: 100%; }
 
     /* macOS traffic lights */
     .tl { width: 12px; height: 12px; border-radius: 50%; position: relative; flex-shrink: 0; }
@@ -85,11 +85,11 @@
 </head>
 <body>
 
-<div id="outerWrapper" class="relative" style="width: 900px; height: 600px; transition: transform 0.65s cubic-bezier(0.33, 1, 0.68, 1);">
+<div id="outerWrapper" class="relative" style="width: 100%; height: 100%; transform-origin: center; transition: transform 0.65s cubic-bezier(0.33, 1, 0.68, 1);">
   <div id="card" class="w-full h-full rounded-xl overflow-hidden card-shadow" style="background:#0E0F12;">
 
     <!-- macOS Titlebar -->
-    <div class="mac-toolbar flex items-center px-4 gap-3" style="height:40px; border-bottom:1px solid rgba(255,255,255,0.05);">
+    <div class="mac-toolbar relative flex items-center px-4 gap-3" style="height:40px; border-bottom:1px solid rgba(255,255,255,0.05);">
 
       <!-- Traffic lights -->
       <div class="traffic-lights flex items-center gap-1.5">
@@ -107,18 +107,18 @@
         </svg>
       </button>
 
-      <!-- Spacer + centered title -->
-      <div class="flex-1 flex items-center justify-center gap-1.5" style="margin-left:-48px;">
+      <!-- Centered title — absolute so it ignores sidebar/pill widths -->
+      <div class="absolute inset-0 flex items-center justify-center gap-1.5 pointer-events-none">
         <svg viewBox="0 0 100 100" fill="none" width="15" height="15" style="opacity:0.85;">
           <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white"/>
           <path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="rgba(255,255,255,0.7)"/>
           <path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="rgba(255,255,255,0.5)"/>
         </svg>
-        <span style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.5);letter-spacing:0.01em;">OneChat</span>
+        <span style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.5);letter-spacing:0.01em;">OneChater</span>
       </div>
 
-      <!-- Model pills -->
-      <div class="flex items-center gap-1.5">
+      <!-- Model pills pushed to the right -->
+      <div class="ml-auto flex items-center gap-1.5">
         <span class="model-tag tag-gpt">GPT-4o</span>
         <span class="model-tag tag-claude">Claude</span>
         <span class="model-tag tag-gemini">Gemini</span>
@@ -135,7 +135,7 @@
         <div class="px-3 pt-3 pb-2">
           <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:11px;font-weight:500;cursor:default;">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-            Nuevo chat
+            <span id="uiNewChat">Nuevo chat</span>
           </button>
         </div>
 
@@ -149,24 +149,24 @@
             <p id="activeChatSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;"></p>
           </div>
 
-          <div class="sidebar-chat px-2 py-2">
-            <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">App en Next.js 14</p>
-            <p style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">La estructura del proyecto...</p>
+          <div id="chatNextjs" class="sidebar-chat px-2 py-2">
+            <p id="chatNextjsTitle" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">App en Next.js 14</p>
+            <p id="chatNextjsSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">La estructura del proyecto...</p>
           </div>
 
-          <div class="sidebar-chat px-2 py-2">
+          <div id="chatLanding" class="sidebar-chat px-2 py-2">
             <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Landing page copy</p>
-            <p style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">El headline ideal sería...</p>
+            <p id="chatLandingSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">El headline ideal sería...</p>
           </div>
 
-          <div class="sidebar-chat px-2 py-2">
+          <div id="chatApiKeys" class="sidebar-chat px-2 py-2">
             <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">API keys setup</p>
-            <p style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">Para configurar tus keys...</p>
+            <p id="chatApiKeysSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">Para configurar tus keys...</p>
           </div>
 
-          <div class="sidebar-chat px-2 py-2">
-            <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Resumen del cliente</p>
-            <p style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">El banco requiere que...</p>
+          <div id="chatResumen" class="sidebar-chat px-2 py-2">
+            <p id="chatResumenTitle" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Resumen del cliente</p>
+            <p id="chatResumenSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">El banco requiere que...</p>
           </div>
         </div>
 
@@ -181,7 +181,7 @@
               <path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="white"/>
             </svg>
           </div>
-          <span style="font-size:11px;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">OneChat</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">OneChater</span>
           <svg style="margin-left:auto;flex-shrink:0;opacity:0.25;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
         </div>
       </div>
@@ -194,8 +194,8 @@
           <span class="relative" style="width:6px;height:6px;border-radius:50%;background:white;box-shadow:0 0 8px rgba(255,255,255,0.5);flex-shrink:0;">
             <span class="absolute inset-0 rounded-full pulse-ring" style="background:white;"></span>
           </span>
-          <span style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);">Estas usando:</span>
-          <span style="font-size:11px;color:rgba(255,255,255,0.45);">Claude - GPT-4o y Gemini</span>
+          <span id="uiUsing" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);">Estas usando:</span>
+          <span id="uiUsingModels" style="font-size:11px;color:rgba(255,255,255,0.45);">Claude · GPT-4o · Gemini</span>
         </div>
 
         <!-- Messages area -->
@@ -209,7 +209,7 @@
               <span id="inputText" style="font-size:13px;color:rgba(255,255,255,0.9);"></span>
               <span id="inputCursor" class="cursor" style="color:rgba(255,255,255,0.6);font-weight:300;">|</span>
             </div>
-            <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.18);flex-shrink:0;">3 modelos</span>
+            <span id="uiModelCount" style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.18);flex-shrink:0;">3 modelos</span>
             <button id="sendBtn" class="btn-send" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;border:none;cursor:pointer;">
               <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
             </button>
@@ -232,17 +232,91 @@
 </div>
 
 <script>
-const fullText  = "¿Qué hace OneChater?";
-const bestResp  = "OneChater fusiona GPT-4o, Claude y Gemini en un chat. Con memoria de tus proyectos, consulto los tres en paralelo y te devuelvo la mejor respuesta usando tus propias API keys.";
+const _lang = new URLSearchParams(window.location.search).get('lang') || 'es';
+const _S = {
+  en: {
+    ui: {
+      newChat: 'New chat',
+      using: 'Using:',
+      usingModels: 'Claude · GPT-4o · Gemini',
+      models: '3 models',
+      sidebar: {
+        nextjs:  { title: 'App in Next.js 14',   sub: 'Project structure...' },
+        landing: { sub: 'Best headline...' },
+        apikeys: { sub: 'Setting up keys...' },
+        resumen: { title: 'Client summary',       sub: 'Key points from...' },
+      },
+    },
+    q1: "What does OneChater do?",
+    a1: "OneChater merges GPT-4o, Claude and Gemini in one chat. With memory of your projects, I query all three in parallel and deliver the best answer using your own API keys.",
+    q2: "How does Fusion Mode work?",
+    a2: "Enable all three models with one click. Our synthesizer filters redundancy and delivers a single polished answer combining the power of OpenAI, Anthropic and Google.",
+    q3: "Do I lose context when I switch or add another AI?",
+    a3: "Never. Context lives in our database, not in the AIs. You can jump between models or fuse them any time — your conversation thread and files stay intact.",
+    q4: "How much does OneChater cost?",
+    a4: "The platform costs $9 USD/month for infrastructure and Supabase memory. Token usage is never charged — bring your own API keys and pay providers directly for only what you consume.",
+    chats: {
+      nextjs: { q: "How should I structure a Next.js 14 App Router project?", a: "Use app/ for nested routes with layouts, app/api/ for Route Handlers, components/ for reusable UI, and lib/ for utilities. Add layout.tsx to share UI across routes and loading.tsx / error.tsx for loading and error states. For global state, Zustand or Jotai fit better than Redux in medium-sized projects." },
+      landing: { q: "What's the best headline for the landing page?", a: "Three options: (1) 'One memory. Every AI.' — short, rhythmic, globally legible. (2) 'Stop repeating yourself to every AI.' — speaks directly to the pain point. (3) 'GPT, Claude and Gemini. One chat.' My pick is (1): it's memorable and the memory angle sets it apart from every other multi-model tool." },
+      apikeys: { q: "How are my API keys stored securely?", a: "Keys are encrypted with AES-256-GCM before hitting the database — never stored in plain text. They travel over HTTPS and are only used server-side for API calls. To revoke: Settings → Providers → Remove key. Demo keys are wiped automatically on sign-out." },
+      resumen: { q: "Summarize the key points from the client meeting.", a: "(1) Dashboard redesign approved for next sprint. (2) Stripe integration pushed to Q3 due to tax requirement changes. (3) Activation KPI: target 40 %, currently at 28 %. (4) Follow-up meeting in two weeks. Action: send wireframe proposal before Friday." },
+    },
+  },
+  es: {
+    ui: {
+      newChat: 'Nuevo chat',
+      using: 'Estas usando:',
+      usingModels: 'Claude · GPT-4o · Gemini',
+      models: '3 modelos',
+      sidebar: {
+        nextjs:  { title: 'App en Next.js 14',         sub: 'La estructura del proyecto...' },
+        landing: { sub: 'El headline ideal sería...' },
+        apikeys: { sub: 'Para configurar tus keys...' },
+        resumen: { title: 'Resumen del cliente',        sub: 'El banco requiere que...' },
+      },
+    },
+    q1: "¿Qué hace OneChater?",
+    a1: "OneChater fusiona GPT-4o, Claude y Gemini en un chat. Con memoria de tus proyectos, consulto los tres en paralelo y te devuelvo la mejor respuesta usando tus propias API keys.",
+    q2: "¿Cómo funciona el Modo Fusión?",
+    a2: "Activás los tres modelos con un solo clic. Nuestro árbitro filtra las repeticiones y te entrega una única respuesta impecable con el poder combinado de OpenAI, Anthropic y Google.",
+    q3: "¿Pierdo el contexto si cambio o agrego otra IA?",
+    a3: "Nunca. El contexto se almacena en nuestra base de datos, no en las IAs. Podés saltar entre modelos o fusionarlos cuando quieras; el hilo de la conversación y tus archivos se mantienen siempre intactos.",
+    q4: "¿Cuánto cuesta usar OneChater?",
+    a4: "La plataforma cuesta $9 USD al mes por la infraestructura y la memoria en Supabase. No cobran por el uso de palabras: vos traés tus propias API keys y pagás directo a OpenAI, Anthropic o Google solo los centavos que consumas. ¿Estás listo?",
+    chats: {
+      nextjs: { q: "¿Cómo estructuro un proyecto en Next.js 14 con App Router?", a: "Usá app/ para rutas con layouts anidados, app/api/ para Route Handlers, components/ para UI reutilizable y lib/ para utilidades. Agregá layout.tsx para compartir UI entre rutas y loading.tsx / error.tsx para estados de carga y error. Para estado global, Zustand o Jotai encajan mejor que Redux en proyectos medianos." },
+      landing: { q: "¿Cuál sería el headline ideal para la landing page?", a: "Tres opciones: (1) 'One memory. Every AI.' — directo, memorable, funciona en inglés global. (2) 'Stop repeating yourself to every AI.' — apela al dolor. (3) 'GPT, Claude and Gemini. One chat.' — descripción pura. Mi recomendación es la primera: corta, con ritmo, y la memoria la diferencia de los competidores." },
+      apikeys: { q: "¿Cómo configuro mis API keys de forma segura?", a: "Tus keys se cifran con AES-256-GCM antes de guardarse — nunca en texto plano. Viajan por HTTPS y se usan solo en el servidor. Para revocarlas: Configuración → Proveedores → Eliminar key. Las keys de demo se borran automáticamente al cerrar sesión." },
+      resumen: { q: "Resume los puntos clave de la reunión del cliente.", a: "(1) El cliente aprueba el rediseño del dashboard para el próximo sprint. (2) Integración de Stripe se pospone a Q3 por cambios en requisitos fiscales. (3) KPI de activación: meta 40 %, actual 28 %. (4) Próxima reunión en dos semanas. Acción: enviar wireframes antes del viernes." },
+    },
+  },
+}[_lang] || {};
 
-const fullText2 = "¿Cómo funciona el Modo Fusión?";
-const bestResp2 = "Activás los tres modelos con un solo clic. Nuestro árbitro filtra las repeticiones y te entrega una única respuesta impecable con el poder combinado de OpenAI, Anthropic y Google.";
+// Patch static UI text
+;(function() {
+  var ui = _S.ui; if (!ui) return;
+  function t(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
+  t('uiNewChat',       ui.newChat);
+  t('activeChatTitle', ui.newChat);
+  t('chatNextjsTitle', ui.sidebar.nextjs.title);
+  t('chatNextjsSub',   ui.sidebar.nextjs.sub);
+  t('chatLandingSub',  ui.sidebar.landing.sub);
+  t('chatApiKeysSub',  ui.sidebar.apikeys.sub);
+  t('chatResumenTitle',ui.sidebar.resumen.title);
+  t('chatResumenSub',  ui.sidebar.resumen.sub);
+  t('uiUsing',         ui.using);
+  t('uiUsingModels',   ui.usingModels);
+  t('uiModelCount',    ui.models);
+})();
 
-const fullText3 = "¿Pierdo el contexto si cambio o agrego otra IA?";
-const bestResp3 = "Nunca. El contexto se almacena en nuestra base de datos, no en las IAs. Podés saltar entre modelos o fusionarlos cuando quieras; el hilo de la conversación y tus archivos se mantienen siempre intactos.";
-
-const fullText4 = "¿Cuánto cuesta usar OneChater?";
-const bestResp4 = "La plataforma cuesta $9 USD al mes por la infraestructura y la memoria en Supabase. No cobran por el uso de palabras: vos traés tus propias API keys y pagás directo a OpenAI, Anthropic o Google solo los centavos que consumas. ¿Estás listo?";
+const fullText  = _S.q1;
+const bestResp  = _S.a1;
+const fullText2 = _S.q2;
+const bestResp2 = _S.a2;
+const fullText3 = _S.q3;
+const bestResp3 = _S.a3;
+const fullText4 = _S.q4;
+const bestResp4 = _S.a4;
 
 
 
@@ -263,6 +337,33 @@ function userBubbleHTML(text) {
       </div>
     </div>
   `;
+}
+
+function staticAnswerHTML(text) {
+  return `
+    <div style="max-width:93%;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+          <svg viewBox="0 0 100 100" fill="none" width="18" height="18">
+            <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white" opacity="0.9"/>
+            <path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="white" opacity="0.9"/>
+            <path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="white" opacity="0.9"/>
+          </svg>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span class="fusion-badge">Fusión</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">·</span>
+            <span style="font-size:10px;color:#34d399;font-weight:500;">GPT-4o</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">+</span>
+            <span style="font-size:10px;color:#fb923c;font-weight:500;">Claude</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">+</span>
+            <span style="font-size:10px;color:#60a5fa;font-weight:500;">Gemini</span>
+          </div>
+          <p style="margin:0;font-size:13px;color:rgba(203,213,225,0.9);line-height:1.6;">${text}</p>
+        </div>
+      </div>
+    </div>`;
 }
 
 function responseCardHTML(id, textId) {
@@ -313,7 +414,8 @@ function newInputHTML() {
 
 function cameraTo(cx, cy, s = 1.22) {
   const outer = document.getElementById("outerWrapper");
-  const W = 900, H = 600;
+  const card  = document.getElementById("card");
+  const W = card.clientWidth, H = card.clientHeight;
 
   const bottomExcess = Math.max(0, cy + (H - cy) * s - H);
   const rightExcess  = Math.max(0, cx + (W - cx) * s - W);
@@ -321,8 +423,8 @@ function cameraTo(cx, cy, s = 1.22) {
   const compX = (rightExcess  / W * 100).toFixed(2);
   const compY = (bottomExcess / H * 100).toFixed(2);
 
-  const ox = ((cx - 450) / W * 100).toFixed(2);
-  const oy = ((cy - 300) / H * 100).toFixed(2);
+  const ox = ((cx - W / 2) / W * 100).toFixed(2);
+  const oy = ((cy - H / 2) / H * 100).toFixed(2);
 
   outer.style.transform =
     `translate(-${compX}%, -${compY}%) translate(${ox}%, ${oy}%) scale(${s}) translate(${-ox}%, ${-oy}%)`;
@@ -629,7 +731,50 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-main();
+// ── Post-animation interactivity ─────────────────────────────────────────────
+
+let activeChat = 'activeChatItem';
+
+function switchChat(chatId) {
+  if (chatId === activeChat) return;
+  const sessions = window._chatSessions;
+  if (!sessions || !sessions[chatId]) return;
+
+  document.getElementById(activeChat)?.classList.remove('active');
+  document.getElementById(chatId)?.classList.add('active');
+  activeChat = chatId;
+
+  const area = document.getElementById('messagesArea');
+  area.style.transition = 'opacity 0.18s ease';
+  area.style.opacity = '0';
+  setTimeout(() => {
+    area.innerHTML = sessions[chatId];
+    area.scrollTop = area.scrollHeight;
+    area.style.transition = 'opacity 0.22s ease';
+    area.style.opacity = '1';
+  }, 180);
+}
+
+main().then(() => {
+  document.getElementById('cursor').style.transition = 'opacity 0.4s ease';
+  document.getElementById('cursor').style.opacity = '0';
+
+  window._chatSessions = {
+    activeChatItem: document.getElementById('messagesArea').innerHTML,
+
+    chatNextjs:   userBubbleHTML(_S.chats.nextjs.q)  + staticAnswerHTML(_S.chats.nextjs.a),
+    chatLanding:  userBubbleHTML(_S.chats.landing.q) + staticAnswerHTML(_S.chats.landing.a),
+    chatApiKeys:  userBubbleHTML(_S.chats.apikeys.q) + staticAnswerHTML(_S.chats.apikeys.a),
+    chatResumen:  userBubbleHTML(_S.chats.resumen.q) + staticAnswerHTML(_S.chats.resumen.a),
+  };
+
+  ['activeChatItem', 'chatNextjs', 'chatLanding', 'chatApiKeys', 'chatResumen'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => switchChat(id));
+  });
+});
 </script>
 </body>
 </html>

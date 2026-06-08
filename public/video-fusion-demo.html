@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneChater - Fusion Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    html, body { overflow: hidden; height: 100%; margin: 0; }
+    body { background: #0E0F12; width: 100%; height: 100%; }
+
+    /* macOS traffic lights */
+    .tl { width: 12px; height: 12px; border-radius: 50%; position: relative; flex-shrink: 0; }
+    .tl-red   { background: #FF5F57; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.18); }
+    .tl-yellow{ background: #FEBC2E; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.18); }
+    .tl-green { background: #28C840; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.18); }
+
+    @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .cursor { animation: cursor-blink 0.8s ease-in-out infinite; }
+
+    @keyframes pulse-ring { 0%{transform:scale(1);opacity:1} 100%{transform:scale(2.5);opacity:0} }
+    .pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .animate-fadeIn { animation: fadeInUp 0.3s ease-out forwards; }
+
+    @keyframes dot-bounce { 0%,60%,100%{transform:translateY(0);opacity:0.5} 30%{transform:translateY(-4px);opacity:1} }
+    @keyframes streamMove { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    @keyframes fzpulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.35);opacity:0.7} }
+
+    .card-shadow { box-shadow: 0 40px 120px rgba(0,0,0,0.75), 0 0 0 0.5px rgba(255,255,255,0.07); }
+    .btn-send { background: #0E0F12; box-shadow: 0 2px 10px rgba(0,0,0,0.5); transition: all 0.15s; }
+
+    #messagesArea { scrollbar-width: none; }
+    #messagesArea::-webkit-scrollbar { display: none; }
+
+    .sidebar-chat { transition: background 0.15s; border-radius: 8px; }
+    .sidebar-chat:hover { background: rgba(255,255,255,0.04); }
+    .sidebar-chat.active { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
+
+    .mac-toolbar { background: rgba(14,15,18,0.98); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+    .mac-sidebar { background: rgba(10,11,13,0.95); }
+    .mac-chat   { background: rgba(12,13,15,0.98); }
+
+    .input-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); transition: border-color 0.2s; }
+
+    .model-tag { font-size: 10px; font-weight: 600; letter-spacing: 0.01em; padding: 2px 6px; border-radius: 5px; transition: opacity 0.4s ease; }
+    .tag-gpt    { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+    .tag-claude { background: rgba(251,146,60,0.12);  color: #fb923c; border: 1px solid rgba(251,146,60,0.2); }
+    .tag-gemini { background: rgba(96,165,250,0.12);  color: #60a5fa; border: 1px solid rgba(96,165,250,0.2); }
+
+    .fusion-badge { font-size: 10px; font-weight: 600; background: rgba(139,92,246,0.18); border: 1px solid rgba(139,92,246,0.4); color: #c4b5fd; padding: 1px 7px; border-radius: 20px; }
+    .divider { height: 1px; background: rgba(255,255,255,0.04); margin: 6px 0; }
+
+    /* Connect panel */
+    .connect-panel { background: rgba(18,19,23,0.96); border: 1px solid rgba(255,255,255,0.09); border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,0.55); width: 560px; padding: 22px; }
+    .provider-row { display:flex; align-items:center; gap:12px; padding:11px 13px; border-radius:12px; background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); transition: border-color .3s, background .3s; }
+    .provider-row.connected { border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.06); }
+    .prov-logo { width:30px; height:30px; border-radius:9px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .key-field { flex:1; min-width:0; display:flex; align-items:center; gap:6px; padding:7px 10px; border-radius:9px; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); transition: border-color .2s; overflow:hidden; }
+    .key-field.active { border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.06); }
+    .key-text { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color: rgba(255,255,255,0.85); white-space:nowrap; }
+    .prov-check { font-size:11px; color:#34d399; font-weight:600; display:flex; align-items:center; gap:3px; opacity:0; transition:opacity .35s; flex-shrink:0; width:84px; justify-content:flex-end; }
+    .start-btn { margin-top:4px; width:100%; padding:10px; border-radius:11px; font-size:12.5px; font-weight:600; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.3); transition:all .35s; display:flex; align-items:center; justify-content:center; gap:7px; }
+    .start-btn.ready { background:linear-gradient(180deg,#fff,#e9e9ec); color:#0E0F12; border-color:transparent; box-shadow:0 8px 24px -8px rgba(255,255,255,0.35); }
+
+    .stream-bar { height:6px; border-radius:4px; background-size:200% 100%; animation: streamMove 1.1s linear infinite; }
+    .fz-orb { width:7px; height:7px; border-radius:50%; background:linear-gradient(135deg,#6366f1,#a855f7); box-shadow:0 0 8px rgba(139,92,246,0.7); animation: fzpulse 1s ease-in-out infinite; flex-shrink:0; }
+  </style>
+</head>
+<body>
+
+<div id="outerWrapper" class="relative" style="width: 100%; height: 100%; transform-origin: center; transition: transform 0.65s cubic-bezier(0.33, 1, 0.68, 1);">
+  <div id="card" class="w-full h-full rounded-xl overflow-hidden card-shadow" style="background:#0E0F12;">
+
+    <!-- macOS Titlebar -->
+    <div class="mac-toolbar relative flex items-center px-4 gap-3" style="height:40px; border-bottom:1px solid rgba(255,255,255,0.05);">
+      <div class="flex items-center gap-1.5">
+        <div class="tl tl-red"></div><div class="tl tl-yellow"></div><div class="tl tl-green"></div>
+      </div>
+      <button style="opacity:0.3;padding:3px;border-radius:4px;background:transparent;border:none;cursor:default;">
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none">
+          <rect y="0" width="14" height="1.5" rx="0.75" fill="white"/><rect y="5" width="14" height="1.5" rx="0.75" fill="white"/><rect y="10" width="14" height="1.5" rx="0.75" fill="white"/>
+        </svg>
+      </button>
+      <div class="absolute inset-0 flex items-center justify-center gap-1.5 pointer-events-none">
+        <svg viewBox="0 0 100 100" fill="none" width="15" height="15" style="opacity:0.85;">
+          <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white"/>
+          <path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="rgba(255,255,255,0.7)"/>
+          <path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="rgba(255,255,255,0.5)"/>
+        </svg>
+        <span style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.5);letter-spacing:0.01em;">OneChater</span>
+      </div>
+      <div class="ml-auto flex items-center gap-1.5">
+        <span id="pillGpt" class="model-tag tag-gpt" style="opacity:0.3;">GPT-4o</span>
+        <span id="pillClaude" class="model-tag tag-claude" style="opacity:0.3;">Claude</span>
+        <span id="pillGemini" class="model-tag tag-gemini" style="opacity:0.3;">Gemini</span>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="flex" style="height:calc(100% - 40px);">
+
+      <!-- Sidebar -->
+      <div class="mac-sidebar flex flex-col flex-shrink-0" style="width:168px; border-right:1px solid rgba(255,255,255,0.05);">
+        <div class="px-3 pt-3 pb-2">
+          <button id="newChatBtn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:11px;font-weight:500;cursor:default;transition:background 0.2s,color 0.2s;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            <span id="uiNewChat">Nuevo chat</span>
+          </button>
+        </div>
+        <div class="divider mx-3"></div>
+        <div class="flex-1 px-2 pb-2 space-y-0.5 overflow-hidden">
+          <div id="activeChatItem" class="sidebar-chat active px-2 py-2">
+            <p id="activeChatTitle" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-style:italic;">Nuevo chat</p>
+            <p id="activeChatSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;"></p>
+          </div>
+          <div id="chatMarketing" class="sidebar-chat px-2 py-2">
+            <p id="chatMarketingTitle" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Ideas de marketing</p>
+            <p id="chatMarketingSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">Campaña de lanzamiento...</p>
+          </div>
+          <div id="chatViaje" class="sidebar-chat px-2 py-2">
+            <p id="chatViajeTitle" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Plan de viaje</p>
+            <p id="chatViajeSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">Tres días en la costa...</p>
+          </div>
+          <div id="chatReunion" class="sidebar-chat px-2 py-2">
+            <p id="chatReunionTitle" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">Resumen de reunión</p>
+            <p id="chatReunionSub" style="font-size:10px;color:rgba(255,255,255,0.18);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;">Puntos clave del equipo...</p>
+          </div>
+        </div>
+        <div class="divider mx-3"></div>
+        <div class="px-3 py-2.5 flex items-center gap-2">
+          <div style="width:24px;height:24px;border-radius:50%;background:#0E0F12;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 100 100" fill="none" width="14" height="14">
+              <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white"/><path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="white"/><path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="white"/>
+            </svg>
+          </div>
+          <span style="font-size:11px;color:rgba(255,255,255,0.9);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">OneChater</span>
+          <svg style="margin-left:auto;flex-shrink:0;opacity:0.25;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+
+      <!-- Chat area -->
+      <div id="chatArea" class="mac-chat flex-1 flex flex-col" style="padding:12px;position:relative;">
+
+        <!-- Memory chip (hidden until chat phase) -->
+        <div id="memoryChip" style="display:none;align-items:center;gap:8px;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);width:fit-content;margin-bottom:10px;">
+          <span class="relative" style="width:6px;height:6px;border-radius:50%;background:white;box-shadow:0 0 8px rgba(255,255,255,0.5);flex-shrink:0;">
+            <span class="absolute inset-0 rounded-full pulse-ring" style="background:white;"></span>
+          </span>
+          <span id="uiFusionLabel" style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);">Modo Fusión:</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.45);">GPT-4o · Claude · Gemini</span>
+        </div>
+
+        <!-- Messages area (hidden until chat phase) -->
+        <div id="messagesArea" class="flex-1" style="display:none;overflow-y:auto;min-height:0;"></div>
+
+        <!-- Input (hidden until chat phase) -->
+        <div id="inputWrapper" style="display:none;margin-top:8px;">
+          <div id="inputContainer" class="input-box" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;">
+            <svg style="opacity:0.2;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            <div style="flex:1;">
+              <span id="inputText" style="font-size:13px;color:rgba(255,255,255,0.9);"></span>
+              <span id="inputCursor" class="cursor" style="color:rgba(255,255,255,0.6);font-weight:300;">|</span>
+            </div>
+            <span id="uiModelCount" style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.18);flex-shrink:0;">3 modelos</span>
+            <button id="sendBtn" class="btn-send" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;border:none;cursor:pointer;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Connect panel (phase 1) -->
+        <div id="connectPanel" style="position:absolute;inset:12px;display:flex;align-items:center;justify-content:center;">
+          <div class="connect-panel">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:4px;">
+              <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 18px -6px rgba(139,92,246,0.7);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="15" height="15"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div id="uiConnectTitle" style="font-size:14px;font-weight:600;color:white;">Conectá tus modelos</div>
+                <div id="uiConnectSub" style="font-size:11px;color:rgba(255,255,255,0.4);">Pegá tu API key de cada proveedor — se cifran en tu cuenta.</div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:9px;margin-top:16px;">
+              <!-- OpenAI -->
+              <div id="rowGpt" class="provider-row">
+                <div class="prov-logo" style="color:#fff;">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.677l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.843-3.369 2.02-1.168a.076.076 0 0 1 .071 0l4.83 2.786a4.494 4.494 0 0 1-.676 8.105v-5.677a.79.79 0 0 0-.402-.677zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.778 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg>
+                </div>
+                <div style="width:80px;flex-shrink:0;">
+                  <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.92);">OpenAI</div>
+                  <div style="font-size:10px;color:rgba(255,255,255,0.35);">GPT-4o</div>
+                </div>
+                <div id="fieldGpt" class="key-field">
+                  <svg style="opacity:0.3;flex-shrink:0;" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span id="keyGptText" class="key-text"></span><span id="keyGptCursor" class="cursor" style="display:none;color:rgba(255,255,255,0.6);font-weight:300;">|</span>
+                </div>
+                <div id="checkGpt" class="prov-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span class="ui-connected">Conectado</span></div>
+              </div>
+
+              <!-- Anthropic -->
+              <div id="rowClaude" class="provider-row">
+                <div class="prov-logo" style="color:#d97757;">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M13.827 3.52h3.603L24 20h-3.603l-6.57-16.48zm-7.258 0h3.767L16.906 20h-3.674l-1.343-3.461H5.017L3.674 20H0L6.57 3.52zm4.132 9.959L8.453 7.687 6.205 13.48H10.7z"/></svg>
+                </div>
+                <div style="width:80px;flex-shrink:0;">
+                  <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.92);">Anthropic</div>
+                  <div style="font-size:10px;color:rgba(255,255,255,0.35);">Claude</div>
+                </div>
+                <div id="fieldClaude" class="key-field">
+                  <svg style="opacity:0.3;flex-shrink:0;" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span id="keyClaudeText" class="key-text"></span><span id="keyClaudeCursor" class="cursor" style="display:none;color:rgba(255,255,255,0.6);font-weight:300;">|</span>
+                </div>
+                <div id="checkClaude" class="prov-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span class="ui-connected">Conectado</span></div>
+              </div>
+
+              <!-- Google -->
+              <div id="rowGemini" class="provider-row">
+                <div class="prov-logo">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                </div>
+                <div style="width:80px;flex-shrink:0;">
+                  <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.92);">Google</div>
+                  <div style="font-size:10px;color:rgba(255,255,255,0.35);">Gemini</div>
+                </div>
+                <div id="fieldGemini" class="key-field">
+                  <svg style="opacity:0.3;flex-shrink:0;" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span id="keyGeminiText" class="key-text"></span><span id="keyGeminiCursor" class="cursor" style="display:none;color:rgba(255,255,255,0.6);font-weight:300;">|</span>
+                </div>
+                <div id="checkGemini" class="prov-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span class="ui-connected">Conectado</span></div>
+              </div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <button id="startBtn" class="start-btn">
+                <span id="uiStartBtn">Empezar a chatear</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Mouse cursor -->
+  <div id="cursor" style="position:absolute;left:-60px;top:-60px;pointer-events:none;z-index:9999;opacity:0;will-change:left,top;">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6)) drop-shadow(0 3px 8px rgba(0,0,0,0.35));">
+      <path d="M5 2L5 22L9 17.5L12.5 25.5L15.5 24L12 16.5L19 16.5Z" fill="white" stroke="#1a1a2e" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    <div id="cursorRipple" style="position:absolute;top:-4px;left:-4px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.25);transform:scale(0);opacity:0;pointer-events:none;"></div>
+  </div>
+</div>
+
+<script>
+const _lang = new URLSearchParams(window.location.search).get('lang') || 'es';
+const _FS = {
+  en: {
+    ui: {
+      newChat: 'New chat',
+      fusionLabel: 'Fusion Mode:',
+      models: '3 models',
+      connectTitle: 'Connect your models',
+      connectSub: 'Paste your API key from each provider — encrypted in your account.',
+      connected: 'Connected',
+      startBtn: 'Start chatting',
+      sidebar: {
+        marketing: { title: 'Marketing ideas',    sub: 'Launch campaign...' },
+        viaje:     { title: 'Tokyo trip',         sub: 'Three days in...' },
+        reunion:   { title: 'Meeting summary',    sub: 'Key team points...' },
+      },
+    },
+    question: "Plan the perfect weekend getaway to the mountains.",
+    answer: "Friday: drive up at sunset and settle in — keep dinner simple, something warm. Saturday: early hike to catch the sunrise from the ridge, then a lazy morning with coffee and a book; afternoon kayaking or a waterfall trail; end the night around a bonfire. Sunday: slow brunch, one last walk through the forest, and head back recharged. Pack layers — mountain temps drop fast at night.",
+    history: [
+      ["What does OneChater do?", "OneChater merges GPT-4o, Claude and Gemini in one chat. With memory of your projects, I query all three in parallel and deliver the best answer using your own API keys."],
+      ["How does Fusion Mode work?", "Enable all three models with one click. Our synthesizer filters redundancy and delivers a single polished answer combining the power of OpenAI, Anthropic and Google."],
+      ["Do I lose context when I switch models?", "Never. Context lives in our database, not in the AIs. You can jump between models or fuse them whenever — your thread and files stay intact."],
+    ],
+    chats: {
+      marketing: { q: "What marketing strategies do you recommend for the launch?", a: "Three levers: Product Hunt with a coordinated upvote campaign on launch day; a 60-second demo video for LinkedIn and X showing the Fusion flow live; and outreach to productivity and AI-tools newsletters. Best timing: Tuesday or Wednesday, 9 am EST for maximum visibility." },
+      viaje: { q: "Plan for a long weekend in Tokyo.", a: "Day 1 — Shibuya & Harajuku: arrive, explore Takeshita Street, dinner at a ramen bar in Shinjuku. Day 2 — Asakusa & Akihabara: morning at Senso-ji temple, afternoon tech culture, rooftop bar at sunset. Day 3 — Teamlab Planets + Odaiba: immersive digital art in the morning, waterfront lunch, flight-ready by evening. Book teamLab tickets in advance — they sell out weeks ahead." },
+      reunion: { q: "Summarize the key points from today's meeting.", a: "(1) Onboarding redesign approved for Q3. (2) Backend migrates to Edge Functions in two weeks — infra team responsible. (3) Retention rises to 68 %, target 75 % by end of quarter. (4) Investor demo on Thursday the 12th. Actions: prepare deck and review landing copy." },
+    },
+  },
+  es: {
+    ui: {
+      newChat: 'Nuevo chat',
+      fusionLabel: 'Modo Fusión:',
+      models: '3 modelos',
+      connectTitle: 'Conectá tus modelos',
+      connectSub: 'Pegá tu API key de cada proveedor — se cifran en tu cuenta.',
+      connected: 'Conectado',
+      startBtn: 'Empezar a chatear',
+      sidebar: {
+        marketing: { title: 'Ideas de marketing', sub: 'Campaña de lanzamiento...' },
+        viaje:     { title: 'Plan de viaje',      sub: 'Tres días en la costa...' },
+        reunion:   { title: 'Resumen de reunión', sub: 'Puntos clave del equipo...' },
+      },
+    },
+    question: "Planeá un fin de semana perfecto en la playa.",
+    answer: "Viernes: llegá al atardecer y cená algo liviano frente al mar. Sábado: caminata costera temprano, mañana de snorkel o kayak, almuerzo de mariscos y siesta bajo la sombrilla; cerrá la noche con una fogata. Domingo: brunch tranquilo, una última nadada y vuelta a casa. Llevá protector solar, mucha agua y una buena playlist para el viaje.",
+    history: [
+      ["¿Qué hace OneChater?", "OneChater fusiona GPT-4o, Claude y Gemini en un chat. Con memoria de tus proyectos, consulto los tres en paralelo y te devuelvo la mejor respuesta usando tus propias API keys."],
+      ["¿Cómo funciona el Modo Fusión?", "Activás los tres modelos con un solo clic. Nuestro árbitro filtra las repeticiones y te entrega una única respuesta impecable con el poder combinado de OpenAI, Anthropic y Google."],
+      ["¿Pierdo el contexto si cambio de modelo?", "Nunca. El contexto vive en tu memoria, no en las IAs. Podés saltar entre modelos o fusionarlos cuando quieras; el hilo y tus archivos se mantienen intactos."],
+    ],
+    chats: {
+      marketing: { q: "¿Qué estrategias de marketing recomendás para el lanzamiento?", a: "Tres palancas: Product Hunt con upvotes coordinados el día D; un video demo de 60 s con el flujo Fusión para LinkedIn y X; y outreach a newsletters de productividad y AI tools. Timing ideal: martes o miércoles a las 9 am EST para maximizar la visibilidad." },
+      viaje: { q: "Plan for a long weekend in Tokyo.", a: "Day 1 — Shibuya & Harajuku: arrive, explore Takeshita Street, dinner at a ramen bar in Shinjuku. Day 2 — Asakusa & Akihabara: morning at Senso-ji temple, afternoon tech culture, rooftop bar at sunset. Day 3 — Teamlab Planets + Odaiba: immersive digital art, waterfront lunch, flight-ready by evening. Book teamLab tickets in advance — they sell out weeks ahead." },
+      reunion: { q: "Resumí los puntos clave de la reunión de hoy.", a: "(1) Se aprueba el rediseño del onboarding para Q3. (2) Backend migra a Edge Functions en dos semanas — responsable: equipo infra. (3) Retención sube al 68 %, objetivo 75 % para fin de trimestre. (4) Demo con inversores el jueves 12. Acciones: preparar deck y revisar el copy del landing." },
+    },
+  },
+}[_lang] || {};
+
+// Patch static UI text
+;(function() {
+  var ui = _FS.ui; if (!ui) return;
+  function t(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
+  function tAll(cls, text) { document.querySelectorAll('.' + cls).forEach(function(el) { el.textContent = text; }); }
+  t('uiNewChat',         ui.newChat);
+  t('activeChatTitle',   ui.newChat);
+  t('chatMarketingTitle',ui.sidebar.marketing.title);
+  t('chatMarketingSub',  ui.sidebar.marketing.sub);
+  t('chatViajeTitle',    ui.sidebar.viaje.title);
+  t('chatViajeSub',      ui.sidebar.viaje.sub);
+  t('chatReunionTitle',  ui.sidebar.reunion.title);
+  t('chatReunionSub',    ui.sidebar.reunion.sub);
+  t('uiFusionLabel',     ui.fusionLabel);
+  t('uiModelCount',      ui.models);
+  t('uiConnectTitle',    ui.connectTitle);
+  t('uiConnectSub',      ui.connectSub);
+  tAll('ui-connected',   ui.connected);
+  t('uiStartBtn',        ui.startBtn);
+})();
+
+const QUESTION = _FS.question;
+const ANSWER   = _FS.answer;
+
+const OAI_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.677l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.843-3.369 2.02-1.168a.076.076 0 0 1 .071 0l4.83 2.786a4.494 4.494 0 0 1-.676 8.105v-5.677a.79.79 0 0 0-.402-.677zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08-4.778 2.758a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg>';
+const ANT_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M13.827 3.52h3.603L24 20h-3.603l-6.57-16.48zm-7.258 0h3.767L16.906 20h-3.674l-1.343-3.461H5.017L3.674 20H0L6.57 3.52zm4.132 9.959L8.453 7.687 6.205 13.48H10.7z"/></svg>';
+const GG_SVG  = '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>';
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function easeInOutQuart(t) { return t < 0.5 ? 8*t*t*t*t : 1 - Math.pow(-2*t+2, 4)/2; }
+function easeOutQuart(t) { return 1 - Math.pow(1-t, 4); }
+
+function cameraTo(cx, cy, s = 1.22) {
+  const outer = document.getElementById("outerWrapper");
+  const card  = document.getElementById("card");
+  const W = card.clientWidth, H = card.clientHeight;
+  const bottomExcess = Math.max(0, cy + (H - cy) * s - H);
+  const rightExcess  = Math.max(0, cx + (W - cx) * s - W);
+  const compX = (rightExcess  / W * 100).toFixed(2);
+  const compY = (bottomExcess / H * 100).toFixed(2);
+  const ox = ((cx - W / 2) / W * 100).toFixed(2);
+  const oy = ((cy - H / 2) / H * 100).toFixed(2);
+  outer.style.transform = `translate(-${compX}%, -${compY}%) translate(${ox}%, ${oy}%) scale(${s}) translate(${-ox}%, ${-oy}%)`;
+}
+function cameraReset() { document.getElementById("outerWrapper").style.transform = "scale(1)"; }
+
+function moveCursor(toX, toY, duration = 520, easeFn = easeInOutQuart) {
+  return new Promise(resolve => {
+    const cursor = document.getElementById("cursor");
+    const fromX  = parseFloat(cursor.style.left) || toX;
+    const fromY  = parseFloat(cursor.style.top)  || toY;
+    const t0 = performance.now();
+    function frame(now) {
+      const p = Math.min((now - t0) / duration, 1);
+      const e = easeFn(p);
+      cursor.style.left = (fromX + (toX - fromX) * e) + "px";
+      cursor.style.top  = (fromY + (toY - fromY) * e) + "px";
+      p < 1 ? requestAnimationFrame(frame) : resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+async function cursorClick() {
+  const cursor = document.getElementById("cursor");
+  const ripple = document.getElementById("cursorRipple");
+  cursor.style.transition = "transform 0.07s ease-in";
+  cursor.style.transform  = "scale(0.72)";
+  ripple.style.transition = "none";
+  ripple.style.transform  = "scale(0)";
+  ripple.style.opacity    = "1";
+  requestAnimationFrame(() => {
+    ripple.style.transition = "transform 0.35s ease-out, opacity 0.35s ease-out";
+    ripple.style.transform  = "scale(1.6)";
+    ripple.style.opacity    = "0";
+  });
+  await sleep(70);
+  cursor.style.transition = "transform 0.14s ease-out";
+  cursor.style.transform  = "scale(1)";
+  await sleep(120);
+  cursor.style.transition = "";
+}
+
+function getLocalPos(el, offsetX = 0, offsetY = 0) {
+  const outer = document.getElementById("outerWrapper");
+  const card  = document.getElementById("card");
+  const prevTransition = outer.style.transition;
+  const prevTransform  = outer.style.transform;
+  outer.style.transition = "none";
+  outer.style.transform  = "scale(1)";
+  outer.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  const elRect   = el.getBoundingClientRect();
+  outer.style.transform  = prevTransform;
+  outer.getBoundingClientRect();
+  outer.style.transition = prevTransition;
+  return { x: elRect.left - cardRect.left + offsetX, y: elRect.top - cardRect.top + offsetY };
+}
+
+async function typeInto(spanId, cursorId, text, charDelay = 30) {
+  const span = document.getElementById(spanId);
+  for (let i = 0; i <= text.length; i++) {
+    span.textContent = text.slice(0, i);
+    await sleep(charDelay);
+  }
+  if (cursorId) { const c = document.getElementById(cursorId); if (c) c.style.display = "none"; }
+}
+
+async function connectProvider(fieldId, keyTextId, keyCursorId, checkId, pillId, rowId, keyStr) {
+  const field = document.getElementById(fieldId);
+  const pos = getLocalPos(field, 34, field.offsetHeight / 2);
+  await moveCursor(pos.x, pos.y, 540, easeInOutQuart);
+  await cursorClick();
+  field.classList.add("active");
+  await sleep(140);
+  const kc = document.getElementById(keyCursorId); if (kc) kc.style.display = "inline";
+  await typeInto(keyTextId, keyCursorId, keyStr, 20);
+  await sleep(180);
+  field.classList.remove("active");
+  document.getElementById(rowId).classList.add("connected");
+  document.getElementById(checkId).style.opacity = "1";
+  const pill = document.getElementById(pillId); pill.style.opacity = "1";
+  await sleep(420);
+}
+
+function userBubbleHTML(text) {
+  return `
+    <div class="animate-fadeIn" style="display:flex;justify-content:flex-end;align-items:flex-end;gap:8px;margin-bottom:8px;">
+      <div style="padding:8px 12px;border-radius:16px;border-bottom-right-radius:4px;font-size:13px;color:white;background:#0E0F12;box-shadow:0 4px 16px rgba(0,0,0,0.4);max-width:fit-content;">
+        <p style="margin:0;line-height:1.5;font-weight:500;">${text}</p>
+      </div>
+      <div style="width:24px;height:24px;border-radius:50%;background:#0E0F12;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-bottom:2px;">
+        <svg viewBox="0 0 100 100" fill="none" width="14" height="14">
+          <path d="M32 22Q18 26 18 40Q20 54 34 54Q48 52 46 38Q44 24 32 22Z" fill="white"/><path d="M68 26Q56 28 54 40Q56 54 70 54Q84 52 82 38Q80 26 68 26Z" fill="white"/><path d="M50 56Q36 58 36 72Q38 86 52 84Q66 82 64 68Q62 56 50 56Z" fill="white"/>
+        </svg>
+      </div>
+    </div>`;
+}
+
+function fusionWorkHTML() {
+  const row = (name, c, svg) => `
+    <div style="display:flex;align-items:center;gap:9px;">
+      <div style="width:22px;height:22px;border-radius:7px;background:${c}1f;border:1px solid ${c}40;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${c};">${svg}</div>
+      <span style="font-size:11px;font-weight:600;color:${c};width:54px;flex-shrink:0;">${name}</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+        <div class="stream-bar" style="width:100%;background-image:linear-gradient(90deg,${c}1f,${c}cc,${c}1f);"></div>
+        <div class="stream-bar" style="width:70%;background-image:linear-gradient(90deg,${c}1f,${c}cc,${c}1f);animation-delay:0.3s;"></div>
+      </div>
+    </div>`;
+  return `
+    <div id="fusionWork" class="animate-fadeIn" style="max-width:94%;margin-bottom:10px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);">
+      <div id="fusionLabel" style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:11px;display:flex;align-items:center;gap:7px;">
+        <span class="fz-orb"></span> Consultando 3 modelos en paralelo…
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${row("GPT-4o", "#34d399", OAI_SVG)}
+        ${row("Claude", "#fb923c", ANT_SVG)}
+        ${row("Gemini", "#60a5fa", GG_SVG)}
+      </div>
+    </div>`;
+}
+
+function responseCardHTML(id, textId) {
+  return `
+    <div id="${id}" style="opacity:0;max-width:93%;margin-bottom:10px;" class="animate-fadeIn">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(168,85,247,0.25));border:1px solid rgba(139,92,246,0.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;color:#c4b5fd;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span class="fusion-badge">Fusión</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">·</span>
+            <span style="font-size:10px;color:#34d399;font-weight:500;">GPT-4o</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">+</span>
+            <span style="font-size:10px;color:#fb923c;font-weight:500;">Claude</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">+</span>
+            <span style="font-size:10px;color:#60a5fa;font-weight:500;">Gemini</span>
+          </div>
+          <p id="${textId}" style="margin:0;font-size:13px;color:rgba(203,213,225,0.92);line-height:1.6;"></p>
+        </div>
+      </div>
+    </div>`;
+}
+
+function staticAnswerHTML(answer) {
+  return `
+    <div style="max-width:93%;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(168,85,247,0.25));border:1px solid rgba(139,92,246,0.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;color:#c4b5fd;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span class="fusion-badge">Fusión</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">·</span>
+            <span style="font-size:10px;color:#34d399;font-weight:500;">GPT-4o</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">+</span>
+            <span style="font-size:10px;color:#fb923c;font-weight:500;">Claude</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.15);">+</span>
+            <span style="font-size:10px;color:#60a5fa;font-weight:500;">Gemini</span>
+          </div>
+          <p style="margin:0;font-size:13px;color:rgba(203,213,225,0.92);line-height:1.6;">${answer}</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function typeResponse(cardId, textId, responseText) {
+  const card = document.getElementById(cardId);
+  const el = document.getElementById(textId);
+  const messagesArea = document.getElementById("messagesArea");
+  card.style.opacity = "1";
+  card.style.transition = "opacity 0.3s ease";
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+  for (let i = 0; i <= responseText.length; i++) {
+    el.textContent = responseText.slice(0, i);
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+    await sleep(14);
+  }
+}
+
+async function main() {
+  await sleep(800);
+
+  // Reveal cursor near the first key field
+  const f0 = document.getElementById("fieldGpt");
+  const sp = getLocalPos(f0, 34, f0.offsetHeight / 2);
+  const cur = document.getElementById("cursor");
+  cur.style.left = (sp.x - 140) + "px";
+  cur.style.top  = (sp.y + 150) + "px";
+  cur.style.opacity = "1";
+  await sleep(250);
+
+  // Phase 1 — ONE zoom into the connect panel, then connect all three
+  const panel = document.getElementById("connectPanel");
+  const pc = getLocalPos(panel, panel.offsetWidth / 2, panel.offsetHeight / 2);
+  cameraTo(pc.x, pc.y, 1.14);
+  await sleep(720); // let the zoom finish before the cursor moves (smooth)
+
+  await connectProvider("fieldGpt",    "keyGptText",    "keyGptCursor",    "checkGpt",    "pillGpt",    "rowGpt",    "sk-proj-" + "•".repeat(16));
+  await connectProvider("fieldClaude", "keyClaudeText", "keyClaudeCursor", "checkClaude", "pillClaude", "rowClaude", "sk-ant-"  + "•".repeat(16));
+  await connectProvider("fieldGemini", "keyGeminiText", "keyGeminiCursor", "checkGemini", "pillGemini", "rowGemini", "AIza"     + "•".repeat(18));
+
+  // Enable + click "start" (still inside the same single zoom)
+  const startBtn = document.getElementById("startBtn");
+  startBtn.classList.add("ready");
+  await sleep(520);
+  const bp = getLocalPos(startBtn, startBtn.offsetWidth / 2, startBtn.offsetHeight / 2);
+  await moveCursor(bp.x, bp.y, 540, easeInOutQuart);
+  await cursorClick();
+  cameraReset();
+  await sleep(160);
+
+  // Transition to chat
+  panel.style.transition = "opacity 0.45s ease";
+  panel.style.opacity = "0";
+  await sleep(470);
+  panel.remove();
+  document.getElementById("memoryChip").style.display = "flex";
+  document.getElementById("messagesArea").style.display = "block";
+  document.getElementById("inputWrapper").style.display = "block";
+
+  // Continuation — the conversation from the hero video is already here (loaded from memory)
+  const messagesArea = document.getElementById("messagesArea");
+  const HISTORY = _FS.history;
+  let hist = "";
+  for (const [q, a] of HISTORY) hist += userBubbleHTML(q) + staticAnswerHTML(a);
+  messagesArea.insertAdjacentHTML("beforeend", hist);
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+  const t0 = document.getElementById("activeChatTitle");
+  const s0 = document.getElementById("activeChatSub");
+  if (t0) { t0.textContent = "¿Qué hace OneChater?"; t0.style.color = "rgba(255,255,255,0.85)"; t0.style.fontStyle = "normal"; }
+  if (s0) { s0.textContent = "GPT-4o · Claude · Gemini"; s0.style.color = "rgba(255,255,255,0.3)"; }
+  await sleep(950);
+
+  // Cursor creates a NEW chat, then asks there
+  const newChatBtn = document.getElementById("newChatBtn");
+  const ncp = getLocalPos(newChatBtn, newChatBtn.offsetWidth / 2, newChatBtn.offsetHeight / 2);
+  await moveCursor(ncp.x, ncp.y, 720, easeInOutQuart);
+  await cursorClick();
+  newChatBtn.style.background = "rgba(255,255,255,0.12)";
+  setTimeout(() => { newChatBtn.style.background = "rgba(255,255,255,0.05)"; }, 260);
+  messagesArea.innerHTML = "";
+  messagesArea.scrollTop = 0;
+  if (t0) { t0.textContent = "Nuevo chat"; t0.style.color = "rgba(255,255,255,0.4)"; t0.style.fontStyle = "italic"; }
+  if (s0) { s0.textContent = ""; }
+  await sleep(520);
+
+  // Phase 2 — type the question
+  const inputContainer = document.getElementById("inputContainer");
+  const ip = getLocalPos(inputContainer, 48, inputContainer.offsetHeight / 2);
+  cameraTo(ip.x, ip.y, 1.16);
+  await moveCursor(ip.x, ip.y, 780, easeOutQuart);
+  await cursorClick();
+  await sleep(130);
+  await typeInto("inputText", "inputCursor", QUESTION, 40);
+  await sleep(260);
+
+  // Click send
+  const sb = document.getElementById("sendBtn");
+  const spd = getLocalPos(sb, sb.offsetWidth / 2, sb.offsetHeight / 2);
+  cameraTo(spd.x, spd.y, 1.16);
+  await moveCursor(spd.x, spd.y, 520, easeInOutQuart);
+  await cursorClick();
+  cameraReset();
+  await sleep(120);
+
+  // Post the new question (in the fresh chat)
+  const at = document.getElementById("activeChatTitle");
+  const as = document.getElementById("activeChatSub");
+  if (at) { at.textContent = QUESTION; at.style.color = "rgba(255,255,255,0.85)"; at.style.fontStyle = "normal"; }
+  if (as) { as.textContent = "Fusionando GPT-4o, Claude…"; as.style.color = "rgba(255,255,255,0.3)"; }
+  document.getElementById("inputText").textContent = "";
+  document.getElementById("inputCursor").style.display = "inline";
+  messagesArea.insertAdjacentHTML("beforeend", userBubbleHTML(QUESTION));
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+  await sleep(320);
+
+  // Phase 3 — fusion: three models in parallel, then one answer
+  messagesArea.insertAdjacentHTML("beforeend", fusionWorkHTML());
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+  await sleep(2000);
+  document.getElementById("fusionLabel").innerHTML = '<span class="fz-orb"></span> Fusionando las 3 respuestas en una…';
+  await sleep(1000);
+  const work = document.getElementById("fusionWork");
+  work.style.transition = "opacity 0.35s ease";
+  work.style.opacity = "0";
+  await sleep(370);
+  work.remove();
+
+  messagesArea.insertAdjacentHTML("beforeend", responseCardHTML("responseCard", "responseText"));
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+  await sleep(160);
+  await typeResponse("responseCard", "responseText", ANSWER);
+}
+
+// ── Post-animation interactivity ─────────────────────────────────────────────
+
+let activeChat = 'activeChatItem';
+
+function switchChat(chatId) {
+  if (chatId === activeChat) return;
+  const sessions = window._chatSessions;
+  if (!sessions || !sessions[chatId]) return;
+
+  document.getElementById(activeChat)?.classList.remove('active');
+  document.getElementById(chatId)?.classList.add('active');
+  activeChat = chatId;
+
+  const area = document.getElementById('messagesArea');
+  area.style.transition = 'opacity 0.18s ease';
+  area.style.opacity = '0';
+  setTimeout(() => {
+    area.innerHTML = sessions[chatId];
+    area.scrollTop = area.scrollHeight;
+    area.style.transition = 'opacity 0.22s ease';
+    area.style.opacity = '1';
+    document.getElementById('inputText').textContent = '';
+    document.getElementById('inputCursor').style.display = 'inline';
+  }, 180);
+}
+
+main().then(() => {
+  // Hide cursor after animation ends
+  document.getElementById('cursor').style.transition = 'opacity 0.4s ease';
+  document.getElementById('cursor').style.opacity = '0';
+
+  // Capture the final state of the animated chat
+  window._chatSessions = {
+    activeChatItem: document.getElementById('messagesArea').innerHTML,
+
+    chatMarketing: userBubbleHTML(_FS.chats.marketing.q) + staticAnswerHTML(_FS.chats.marketing.a),
+    chatViaje:     userBubbleHTML(_FS.chats.viaje.q)     + staticAnswerHTML(_FS.chats.viaje.a),
+    chatReunion:   userBubbleHTML(_FS.chats.reunion.q)   + staticAnswerHTML(_FS.chats.reunion.a),
+  };
+
+  // Enable clicking on all sidebar items
+  ['activeChatItem', 'chatMarketing', 'chatViaje', 'chatReunion'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => switchChat(id));
+  });
+});
+</script>
+</body>
+</html>
