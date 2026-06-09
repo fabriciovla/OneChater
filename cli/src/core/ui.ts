@@ -27,6 +27,8 @@ export const C = {
 }
 
 const fg = ([r, g, b]: RGB) => `${ESC}38;2;${r};${g};${b}m`
+const bgc = ([r, g, b]: RGB) => `${ESC}48;2;${r};${g};${b}m`
+const DEFFG = `${ESC}39m` // reset foreground only (keeps any background)
 
 // Colorize text with a foreground rgb.
 export const paint = (rgb: RGB, s: string) => fg(rgb) + s + RESET
@@ -119,6 +121,19 @@ export function boxTop(): string {
 
 export function boxBottom(): string {
   return fullRule()
+}
+
+// The input's bottom rule, with the OneChater wordmark centered in it:
+//   ─────────────────────── OneChater ───────────────────────
+// Sits on the bottom border line (below the text), kept subtle so it never
+// competes with the user's input. Occupies the same single line as boxBottom()
+// so the input frame's redraw accounting is unchanged.
+export function inputFooter(): string {
+  const cols = Math.max(8, (stdout.columns || 80) - 1)
+  const plain = " OneChater " // padded label, for width math (strip styling)
+  const left = Math.max(0, Math.floor((cols - plain.length) / 2))
+  const right = Math.max(0, cols - plain.length - left)
+  return muted("─".repeat(left)) + dim(" OneChater ") + muted("─".repeat(right))
 }
 
 // The prompt printed before the cursor.
@@ -372,6 +387,83 @@ function diffLines(a: string[], b: string[]): DiffOp[] {
   return ops
 }
 
+// ─── Minimal syntax highlighting ───────────────────────────────────────────────
+// A tiny, language-agnostic tokenizer for the diff body: keywords, strings,
+// numbers, comments and Capitalized types get a color; everything else stays
+// default. Emits foreground-only codes (39m to reset) so it never clobbers the
+// diff line's background tint. Good enough for JS/TS/JSON/most C-like code.
+const SYN = {
+  keyword: hex("#c678dd"),
+  string: hex("#e5c07b"),
+  number: hex("#d19a66"),
+  comment: hex("#7a8290"),
+  literal: hex("#56b6c2"),
+  type: hex("#56b6c2"),
+}
+const KEYWORDS = new Set([
+  "const", "let", "var", "function", "return", "if", "else", "for", "while", "switch",
+  "case", "break", "continue", "new", "class", "extends", "implements", "import", "from",
+  "export", "default", "async", "await", "yield", "try", "catch", "finally", "throw",
+  "typeof", "instanceof", "in", "of", "do", "void", "delete", "this", "super", "static",
+  "get", "set", "public", "private", "protected", "readonly", "interface", "type", "enum",
+  "namespace", "as", "satisfies", "def", "lambda", "elif", "with", "pass", "raise", "fn",
+])
+const LITERALS = new Set([
+  "true", "false", "null", "undefined", "NaN", "Infinity", "None", "True", "False",
+])
+
+function highlightCode(line: string): string {
+  let out = ""
+  let i = 0
+  const n = line.length
+  while (i < n) {
+    const ch = line[i]
+    // `//` … line comment → rest of the line.
+    if (ch === "/" && line[i + 1] === "/") {
+      out += fg(SYN.comment) + line.slice(i) + DEFFG
+      break
+    }
+    // String literal — "...", '...', `...`. Honors backslash escapes.
+    if (ch === '"' || ch === "'" || ch === "`") {
+      let j = i + 1
+      while (j < n && line[j] !== ch) {
+        if (line[j] === "\\") j++
+        j++
+      }
+      out += fg(SYN.string) + line.slice(i, Math.min(n, j + 1)) + DEFFG
+      i = j + 1
+      continue
+    }
+    // Number (incl. hex / decimals).
+    if (ch >= "0" && ch <= "9") {
+      let j = i
+      while (j < n && /[0-9a-fA-FxX._]/.test(line[j])) j++
+      out += fg(SYN.number) + line.slice(i, j) + DEFFG
+      i = j
+      continue
+    }
+    // Identifier / keyword / type.
+    if (/[A-Za-z_$]/.test(ch)) {
+      let j = i
+      while (j < n && /[\w$]/.test(line[j])) j++
+      const word = line.slice(i, j)
+      const col = KEYWORDS.has(word)
+        ? SYN.keyword
+        : LITERALS.has(word)
+        ? SYN.literal
+        : /^[A-Z]/.test(word)
+        ? SYN.type
+        : null
+      out += (col ? fg(col) : DEFFG) + word + DEFFG
+      i = j
+      continue
+    }
+    out += DEFFG + ch
+    i++
+  }
+  return out
+}
+
 // Render a diff between old and new file content as colored terminal lines.
 // `title` is shown as a header (e.g. the file path). Unchanged runs longer than
 // 2·CONTEXT collapse to a `⋮` marker so big files stay scannable. Returns the
@@ -410,6 +502,26 @@ export function renderDiff(title: string, oldText: string, newText: string): str
   }
   const num = (n?: number) => (n == null ? " ".repeat(noW) : String(n).padStart(noW))
 
+  // Subtle green/red row tints so add/del read at a glance even with the code
+  // syntax-highlighted on top (the gutter + sign carry the same accent).
+  const bgAdd = bgc([13, 36, 22])
+  const bgDel = bgc([46, 20, 20])
+
+  // Build one diff row: colored line-number gutter + sign, then the code
+  // (syntax-highlighted for add/del, dim for context), padded so the tint spans
+  // the row. Foreground-only codes inside keep the background intact.
+  const row = (kind: "add" | "del" | "same", no: number | undefined, raw: string): string => {
+    const code = clip(raw)
+    const sign = kind === "add" ? "+" : kind === "del" ? "-" : " "
+    const accent = kind === "add" ? C.add : kind === "del" ? C.del : C.faint
+    const bg = kind === "add" ? bgAdd : kind === "del" ? bgDel : ""
+    const gutter = fg(accent) + num(no) + " " + sign + " "
+    const body = kind === "same" ? fg(C.faint) + code : highlightCode(code)
+    const visible = noW + 3 + code.length // num + space + sign + space + code
+    const pad = bg ? " ".repeat(Math.max(0, cols - 2 - visible)) : ""
+    return "  " + bg + gutter + body + pad + RESET
+  }
+
   const header =
     "  " + bold(white("▸ " + title)) + "  " +
     paint(C.add, `+${added}`) + " " + paint(C.del, `-${removed}`)
@@ -426,13 +538,9 @@ export function renderDiff(title: string, oldText: string, newText: string): str
       continue
     }
     collapsed = false
-    if (o.type === "del") {
-      out.push("  " + paint(C.del, "- " + num(o.oldNo) + "  " + clip(o.text)))
-    } else if (o.type === "add") {
-      out.push("  " + paint(C.add, "+ " + num(o.newNo) + "  " + clip(o.text)))
-    } else {
-      out.push("  " + dim("  " + num(o.oldNo) + "  " + clip(o.text)))
-    }
+    if (o.type === "del") out.push(row("del", o.oldNo, o.text))
+    else if (o.type === "add") out.push(row("add", o.newNo, o.text))
+    else out.push(row("same", o.oldNo, o.text))
   }
   return out
 }

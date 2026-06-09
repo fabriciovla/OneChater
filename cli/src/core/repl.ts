@@ -9,7 +9,10 @@ import {
   isProvider,
   getProviderConfig,
   activeProviders,
+  hasKey,
+  isActive,
   setProviderKey,
+  setProviderEnabled,
   setProviderModel,
   saveConfig,
   isFree,
@@ -18,9 +21,11 @@ import {
   toggleFavorite,
   orderedProviders,
   setWebSession,
+  modelsFor,
+  modelLabel,
 } from "./config.js"
 import { CLI_PAGE, WEB_BASE, loginUrl, openBrowser, createLoopback, syncFromWeb } from "./auth.js"
-import { type ChatMessage, streamChat, collectChat } from "./providers.js"
+import { type ChatMessage, streamChat, humanizeProviderError } from "./providers.js"
 import { type Turn, buildHistory, gatherFusion, buildSynthesisMessages } from "./fusion.js"
 import { loadMemory, MEMORY_PATH } from "./memory.js"
 import {
@@ -33,9 +38,12 @@ import {
   toolsSystemPrompt,
   createToolBlockHider,
   resolveInWorkspace,
+  applyEdit,
 } from "./tools.js"
+import { type Decision, audit, rateLimit, recentAudit, AUDIT_PATH } from "./security.js"
 import {
   C,
+  paint,
   bar,
   bold,
   dim,
@@ -47,6 +55,7 @@ import {
   kv,
   boxTop,
   boxBottom,
+  inputFooter,
   boxPrompt,
   createMarkdownStream,
   createWrapper,
@@ -58,21 +67,40 @@ type ReplOptions = {
   provider?: Provider
 }
 
+type Command = { name: string; args: string; desc: string }
+
 // Slash commands, shown in the command palette when the input starts with "/".
-const COMMANDS: { name: string; args: string; desc: string }[] = [
-  { name: "/login", args: "", desc: "link your onechater.app account" },
-  { name: "/connect", args: "<provider> [key]", desc: "connect a model" },
+// The auth row (/login vs /logout) is prepended dynamically by commandList().
+const COMMANDS: Command[] = [
   { name: "/disconnect", args: "<provider>", desc: "remove a model" },
   { name: "/providers", args: "", desc: "connected models & mode" },
   { name: "/model", args: "<prov> <model>", desc: "set a provider's model" },
   { name: "/default", args: "<provider>", desc: "pick the synthesizer" },
   { name: "/tools", args: "", desc: "list workspace tools" },
   { name: "/workspace", args: "", desc: "show the workspace dir" },
+  { name: "/audit", args: "", desc: "recent tool actions log" },
   { name: "/memory", args: "", desc: "show persistent memory" },
   { name: "/clear", args: "", desc: "reset the conversation" },
   { name: "/help", args: "", desc: "command list" },
   { name: "/exit", args: "", desc: "quit" },
 ]
+
+// The auth row reflects login state: signed in → /logout with the account email
+// in parens; signed out → /login. `web` is the current Config["web"] session.
+function authCommand(web: Config["web"]): Command {
+  return web
+    ? { name: "/logout", args: "", desc: `sign out  (${web.email ?? "signed in"})` }
+    : { name: "/login", args: "", desc: "link your onechater.app account" }
+}
+
+// Mirror of the current web session, so the command palette (which has no access
+// to cfg) can show the right auth row. The REPL refreshes it every turn.
+let webSession: Config["web"]
+
+// The full slash-command list with the live auth row first.
+function commandList(): Command[] {
+  return [authCommand(webSession), ...COMMANDS]
+}
 
 // The running version, read from package.json so the banner always matches the
 // installed build (dist/core/repl.js → ../../package.json).
@@ -115,6 +143,7 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
   banner(cfg, opts)
 
   while (true) {
+    webSession = cfg.web // keep the palette's auth row in sync with login state
     const raw = await readBoxedInput()
     if (raw === null) break
     const input = raw.trim()
@@ -126,7 +155,7 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
 
       if (cmd === "/exit" || cmd === "/quit") break
       if (cmd === "/help") {
-        printHelp()
+        printHelp(cfg)
         continue
       }
       if (cmd === "/clear") {
@@ -152,6 +181,32 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
         console.log("  " + dim("workspace  ") + white(WORKSPACE))
         continue
       }
+      if (cmd === "/audit") {
+        const entries = recentAudit(20)
+        console.log("")
+        console.log("  " + bold("Audit") + dim(`   ${AUDIT_PATH}`))
+        if (!entries.length) {
+          console.log("  " + dim("(no actions logged yet)"))
+        } else {
+          for (const e of entries) {
+            const clock = e.time.slice(11, 19) // HH:MM:SS from the ISO stamp
+            const mark =
+              e.status === "error"
+                ? muted("×")
+                : e.decision === "denied" || e.decision === "blocked"
+                  ? muted("✗")
+                  : white("✓")
+            const tag =
+              e.decision === "denied" || e.decision === "blocked" ? muted(e.decision) : dim(e.decision)
+            console.log(
+              "  " + mark + " " + dim(clock) + " " + tag + "  " + white(e.detail) +
+                (e.error ? "  " + muted(e.error) : "")
+            )
+          }
+        }
+        console.log("")
+        continue
+      }
       if (cmd === "/memory") {
         const m = loadMemory().trim()
         console.log("")
@@ -162,10 +217,6 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
       }
       if (cmd === "/login") {
         cfg = await cmdLogin(cfg)
-        continue
-      }
-      if (cmd === "/connect") {
-        cfg = await cmdConnect(cfg, rest)
         continue
       }
       if (cmd === "/logout") {
@@ -200,7 +251,7 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
     if (!forced && active.length === 0) {
       console.log(
         "\n  " + bar(C.text) + " " + bold(white("no models connected")) + "\n  " +
-          dim("connect one:  ") + white("/connect groq") + dim("   (free key: " + (FREE_KEY_URL.groq ?? "") + ")")
+          dim("add one:  ") + white("/providers") + dim("   (free key: " + (FREE_KEY_URL.groq ?? "") + ")")
       )
       continue
     }
@@ -218,8 +269,13 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
       }
       turns.push({ user: input, assistant: answer })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "unknown error"
-      console.log("\n  " + bar(C.text) + " " + bold(white("error")) + "  " + dim(msg))
+      // Explain what happened in plain language — never dump the raw HTTP/JSON
+      // blob at the user. For a single-model turn we know which provider failed;
+      // in fusion the per-model notes already cover it.
+      const prov = forced ?? (active.length >= 2 ? undefined : active[0])
+      const { summary, hint } = humanizeProviderError(err, prov ? PROVIDER_NAMES[prov] : "the model")
+      console.log("\n  " + bar(C.text) + " " + white(summary))
+      if (hint) console.log("  " + dim(hint))
     }
   }
 
@@ -228,28 +284,39 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
 
 // ─── Streaming a model answer to the terminal (markdown + word-wrap) ───────────
 
-async function streamInto(gen: AsyncGenerator<string>, hideTools = false): Promise<string> {
-  stdout.write("  ")
+// `leadGap`: when this step actually shows prose, prefix one blank line to
+// separate it from the block above. It only fires on real output, so a step
+// that is purely a (hidden) tool call stays gap-free — no stray blank lines.
+async function streamInto(
+  gen: AsyncGenerator<string>,
+  hideTools = false,
+  leadGap = false
+): Promise<string> {
   const md = createMarkdownStream()
   const wrap = createWrapper("  ")
   const hider = hideTools ? createToolBlockHider() : null
-  const show = (s: string) => stdout.write(wrap.write(md.write(hider ? hider.write(s) : s)))
+  // Emit the leading indent (and optional gap) lazily, on the first visible
+  // byte. A tool-only reply produces nothing here, so it leaves no blank line.
+  let wrote = false
+  const out = (s: string) => {
+    if (!s) return
+    if (!wrote) {
+      if (leadGap) stdout.write("\n")
+      stdout.write("  ")
+      wrote = true
+    }
+    stdout.write(s)
+  }
+  const show = (s: string) => out(wrap.write(md.write(hider ? hider.write(s) : s)))
   let answer = ""
   for await (const chunk of gen) {
     show(chunk)
     answer += chunk // raw text (incl. tool blocks) for history + parsing
   }
-  if (hider) stdout.write(wrap.write(md.write(hider.flush())))
-  stdout.write(wrap.write(md.flush()) + wrap.flush())
-  stdout.write("\n")
+  if (hider) out(wrap.write(md.write(hider.flush())))
+  out(wrap.write(md.flush()) + wrap.flush())
+  if (wrote) stdout.write("\n") // only close the line if we opened one
   return answer
-}
-
-// Render a full (already collected) answer through the markdown + wrap pipeline.
-function renderText(text: string) {
-  const md = createMarkdownStream()
-  const wrap = createWrapper("  ")
-  stdout.write("  " + wrap.write(md.write(text)) + wrap.write(md.flush()) + wrap.flush() + "\n")
 }
 
 // Single-model turn — an AGENT loop: the model can request tools, the user
@@ -267,6 +334,9 @@ async function agentLoop(
   const { apiKey, model } = getProviderConfig(cfg, provider)
   let text = await streamInto(streamChat(provider, apiKey, model, messages), true)
   let calls = parseToolCalls(text)
+  // Did the user ever see visible prose? (Tool blocks are hidden from the stream,
+  // so a reply that is ONLY a tool block shows nothing.)
+  let shownProse = stripToolBlocks(text).trim().length > 0
 
   let steps = 0
   while (calls.length && steps < 16) {
@@ -281,16 +351,39 @@ async function agentLoop(
     if (onlyRemember && hadAnswer) return text
 
     messages.push({ role: "user", content: "Tool results:\n\n" + results })
-    const stop = startSpinner("working…")
-    text = await collectChat(provider, apiKey, model, messages)
-    stop()
+    // Stream the model's NEXT step live too (not just the first), so the user
+    // always sees what it's doing between actions — "now I'll edit X", "running
+    // the build", etc. — instead of an opaque "working…" spinner. `leadGap`
+    // adds the separating blank line only if this step prints prose; a silent
+    // tool-only step adds nothing.
+    text = await streamInto(streamChat(provider, apiKey, model, messages), true, true)
+    if (stripToolBlocks(text).trim()) shownProse = true
     calls = parseToolCalls(text)
-    if (!calls.length && text.trim()) {
-      console.log("")
-      renderText(text) // final answer after tools
+  }
+
+  // Safety net: never leave the user staring at a blank turn. If nothing visible
+  // was ever shown and no tool ran, surface what happened instead of silence.
+  if (!shownProse) {
+    const raw = text.trim()
+    if (!raw) {
+      console.log(
+        "  " + dim(`(${PROVIDER_NAMES[provider]} returned an empty response — try again, or switch model with /model)`)
+      )
+    } else if (!parseToolCalls(text).length) {
+      // The reply was a malformed tool block (hidden, unparseable) — show it raw
+      // so the user sees the model DID respond, and can react.
+      console.log("  " + dim("(couldn't run the model's action — raw reply below)"))
+      renderText(raw)
     }
   }
   return text
+}
+
+// Render a full (already collected) answer through the markdown + wrap pipeline.
+function renderText(text: string) {
+  const md = createMarkdownStream()
+  const wrap = createWrapper("  ")
+  stdout.write("  " + wrap.write(md.write(text)) + wrap.write(md.flush()) + wrap.flush() + "\n")
 }
 
 // Single-model turn — the model can use tools (agent loop), or just chat.
@@ -303,11 +396,46 @@ async function singleTurn(
   active: Provider[]
 ): Promise<string> {
   const { apiKey, model } = getProviderConfig(cfg, provider)
-  if (!apiKey.trim()) throw new Error(`no API key for ${provider} — /connect ${provider}`)
+  if (!apiKey.trim()) throw new Error(`no API key for ${provider} — add it with /providers`)
 
   const messages = buildHistory(turns, active, provider, memory, question, toolsSystemPrompt())
   console.log("\n" + gutter(PROVIDER_NAMES[provider], C.text, model) + "\n")
   return agentLoop(cfg, provider, messages)
+}
+
+// A live output sink for streaming commands: indents each line of stdout/stderr
+// under a dim gutter as it arrives, preserving the program's own colors and its
+// carriage-return progress bars (git clone, npm…). `end()` finishes the last
+// line so following output starts clean.
+function liveSink() {
+  let atLineStart = true
+  const GUT = "  " + dim("│ ")
+  const sink = (chunk: string) => {
+    let out = ""
+    for (const ch of chunk) {
+      if (ch === "\n") {
+        out += "\n"
+        atLineStart = true
+        continue
+      }
+      if (ch === "\r") {
+        out += "\r"
+        atLineStart = true
+        continue
+      }
+      if (atLineStart) {
+        out += GUT
+        atLineStart = false
+      }
+      out += ch
+    }
+    stdout.write(out)
+  }
+  sink.end = () => {
+    if (!atLineStart) stdout.write("\n")
+    atLineStart = true
+  }
+  return sink
 }
 
 // Run a batch of tool calls: confirm the mutating ones once, then execute each
@@ -321,80 +449,117 @@ async function runToolCalls(calls: ToolCall[]): Promise<string> {
   for (const c of calls) {
     const tool = getTool(c.name)
     if (!tool) {
+      audit({ tool: c.name, detail: "(unknown tool)", decision: "blocked", status: "error", error: "unknown tool" })
       results.push(`${c.name}: unknown tool`)
       continue
     }
+    const detail = tool.describe(c.args)
     if (tool.mutates && !allowed) {
+      audit({ tool: c.name, detail, decision: "denied", status: "ok" })
       results.push(`${c.name}: DENIED by the user`)
       continue
     }
+    // Read-only tools run without a prompt → "auto"; mutating ones the user
+    // just approved → "allowed".
+    const decision: Decision = tool.mutates ? "allowed" : "auto"
     try {
-      // For file edits, snapshot the old content BEFORE running so we can show a
-      // red/green line diff (removed vs added) after the write lands.
-      const isEdit = c.name === "write_file" || c.name === "create_file"
-      let before: string | null = null
-      if (isEdit) {
-        try {
-          const p = resolveInWorkspace(String(c.args.path ?? ""))
-          before = existsSync(p) ? readFileSync(p, "utf8") : null
-        } catch {
-          before = null
-        }
+      // Cap the rate of mutating actions (write/delete/run) — a second brake on
+      // a runaway loop, on top of run_command's own per-command limit.
+      if (tool.mutates) rateLimit("mutation")
+
+      // Commands stream their output live (git clone, npm install…). Show the
+      // command like a shell prompt and pipe stdout/stderr to the screen as it
+      // runs, instead of waiting with a spinner. File edits already showed their
+      // diff in the approval panel, so here we just print the action + result.
+      const isCmd = c.name === "run_command"
+      let out: string
+      if (isCmd) {
+        console.log("  " + paint(C.add, "$ ") + white(String(c.args.command ?? "")))
+        const sink = liveSink()
+        out = await tool.run(c.args, sink)
+        sink.end()
+      } else {
+        console.log("  " + white("▸") + " " + dim(detail))
+        out = await tool.run(c.args)
       }
 
-      console.log("  " + white("▸") + " " + dim(tool.describe(c.args)))
-      const out = await tool.run(c.args)
-
-      if (isEdit) {
-        const after = String(c.args.content ?? "")
-        for (const line of renderDiff(String(c.args.path ?? ""), before ?? "", after)) {
-          console.log(line)
-        }
-      }
+      audit({ tool: c.name, detail, decision, status: "ok" })
       results.push(`${c.name} → ${out}`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : "error"
       console.log("  " + muted("×") + " " + dim(msg))
+      audit({ tool: c.name, detail, decision, status: "error", error: msg })
       results.push(`${c.name}: ERROR ${msg}`)
     }
   }
   return results.join("\n\n")
 }
 
-// The "OneChater wants to:" permission panel + [Allow]/[Deny].
-async function confirmActions(calls: ToolCall[]): Promise<boolean> {
-  console.log("\n  " + bold(white("OneChater wants to:")))
-  for (const c of calls) {
-    const tool = getTool(c.name)!
-    console.log("    " + dim("•") + " " + white(tool.describe(c.args)))
-  }
-  const ans = await readChoice("  " + dim("[a]llow  ·  [d]eny  › "))
-  const ok = ans === "a" || ans === "y" || ans === "\r" || ans === "\n"
-  console.log("  " + (ok ? white("✓ allowed") : muted("✗ denied")) + "\n")
-  return ok
+// Per-action glyph. Create = green +, delete = red −  (the same accents diffs
+// use, so "+ add / − remove" reads consistently); modify = ~, command = $.
+function actionGlyph(name: string): string {
+  if (name === "create_file" || name === "create_folder") return paint(C.add, "+")
+  if (name === "delete_file") return paint(C.del, "-")
+  if (name === "run_command" || name === "git_commit" || name === "git_checkout") return bold(white("$"))
+  if (name === "write_file" || name === "edit_file") return bold(white("~"))
+  return white("•")
 }
 
-// Read a single key (TTY) or a line (piped) for a yes/no style choice.
-function readChoice(promptText: string): Promise<string> {
-  stdout.write(promptText)
-  return new Promise((resolve) => {
-    if (!stdin.isTTY || typeof stdin.setRawMode !== "function") {
-      pipeReadLine().then((l) => resolve(((l ?? "").trim().toLowerCase()[0] ?? "d")))
-      return
+// Read the on-disk content of an edit target (empty if new/unreadable), so the
+// panel can preview the change as a diff before anything is written.
+function currentContent(pathArg: unknown): string {
+  try {
+    const p = resolveInWorkspace(String(pathArg ?? ""))
+    return existsSync(p) ? readFileSync(p, "utf8") : ""
+  } catch {
+    return ""
+  }
+}
+
+// The permission panel. Frames what OneChater is about to do, PREVIEWS each file
+// edit as a red/green diff *before* you approve (so you see the exact change up
+// front, not after it's written), shows commands verbatim, then reads one
+// allow/deny key. Enter = allow.
+async function confirmActions(calls: ToolCall[]): Promise<boolean> {
+  const n = calls.length
+  console.log("")
+  console.log(
+    "  " + bar(C.text) + " " + bold(white("Permission required")) +
+      dim(`   ${n} action${n === 1 ? "" : "s"} · review before allowing`)
+  )
+  console.log("")
+  for (const c of calls) {
+    const tool = getTool(c.name)!
+    console.log("  " + actionGlyph(c.name) + " " + white(tool.describe(c.args)))
+    // Edits get a diff preview so you see the exact change before approving.
+    if (c.name === "write_file" || c.name === "create_file") {
+      const before = currentContent(c.args.path)
+      const after = String(c.args.content ?? "")
+      for (const line of renderDiff(String(c.args.path ?? ""), before, after)) console.log(line)
+    } else if (c.name === "edit_file") {
+      const before = currentContent(c.args.path)
+      try {
+        const after = applyEdit(before, String(c.args.old ?? ""), String(c.args.new ?? ""))
+        for (const line of renderDiff(String(c.args.path ?? ""), before, after)) console.log(line)
+      } catch (err) {
+        // Can't compute the diff (snippet missing/ambiguous) — flag it; the tool
+        // will surface the same error if approved.
+        console.log("    " + dim("⚠ " + (err instanceof Error ? err.message : "cannot preview edit")))
+      }
     }
-    stdin.setRawMode(true)
-    stdin.resume()
-    stdin.setEncoding("utf8")
-    const on = (d: string) => {
-      stdin.setRawMode(false)
-      stdin.pause()
-      stdin.removeListener("data", on)
-      stdout.write("\n")
-      const c = d[0]
-      resolve(c === "\x03" ? "d" : c.toLowerCase())
-    }
-    stdin.on("data", on)
-  })
+    console.log("")
+  }
+  // Explicit choice: the user highlights Allow or Deny (↑↓ / j-k) and presses
+  // Enter to confirm — no single keypress auto-resolves. Esc / Ctrl-C → deny.
+  // Allow is highlighted first (the common case) but still needs Enter.
+  const choice = await selectMenuEx(
+    "Apply these actions?",
+    [{ label: "Allow" }, { label: "Deny" }],
+    "↑↓ choose · enter confirm · esc denies"
+  )
+  const ok = choice?.index === 0
+  console.log("  " + (ok ? white("✓ allowed") : muted("✗ denied")) + "\n")
+  return ok
 }
 
 // What a menu interaction resolved to: the highlighted row plus which key the
@@ -528,8 +693,10 @@ async function fusionTurn(
   const parts = await gatherFusion(turns, active, cfg, memory, question, toolsSystemPrompt())
   stop()
   // Only note models that failed; successes are implied by the answer below.
+  // Each gets a short, plain-language reason instead of a raw error.
   for (const p of parts.filter((x) => x.error)) {
-    console.log("  " + dim(`· ${PROVIDER_NAMES[p.provider]} unavailable`))
+    const { short } = humanizeProviderError(p.error, PROVIDER_NAMES[p.provider])
+    console.log("  " + dim(`· ${PROVIDER_NAMES[p.provider]} skipped — ${short}`))
   }
 
   if (!parts.some((p) => p.answer.trim())) throw new Error("no model returned an answer")
@@ -579,13 +746,14 @@ function cmdProviders(cfg: Config): Promise<Config> {
       const active = activeProviders(cfg)
       const lines: string[] = ["  " + bold(white("Providers"))]
       ord.forEach((p, i) => {
-        const on = !!getProviderConfig(cfg, p).apiKey.trim()
+        const keyed = hasKey(cfg, p)
+        const on = isActive(cfg, p)
         const onSel = i === sel
         const star = isFavorite(cfg, p) ? white("★") : " "
-        const dot = on ? "●" : "○"
-        const tags = [on ? "connected" : isFree(p) ? "free" : "", on && p === active[0] ? "synth" : ""]
-          .filter(Boolean)
-          .join(" · ")
+        // ● on · ◯ off-but-key-saved · ○ no key
+        const dot = on ? "●" : keyed ? "◯" : "○"
+        const state = on ? "connected" : keyed ? "off · key saved" : isFree(p) ? "free" : ""
+        const tags = [state, on && p === active[0] ? "synth" : ""].filter(Boolean).join(" · ")
         const label = `${star} ${dot} ${PROVIDER_NAMES[p]}`
         lines.push(
           "  " + (onSel ? white("›") : " ") + " " +
@@ -604,7 +772,7 @@ function cmdProviders(cfg: Config): Promise<Config> {
       } else {
         const n = active.length
         lines.push("  " + dim(n >= 2 ? `fusion · ${n} models` : n === 1 ? "single model" : "no models connected"))
-        lines.push("  " + dim("↑↓ move · enter connect/disconnect · f favorite · esc done"))
+        lines.push("  " + dim("↑↓ move · enter on/off · f favorite · x remove key · esc done"))
       }
       let out = ""
       if (!firstTime) out += `\x1b[${drawn}A`
@@ -672,12 +840,23 @@ function cmdProviders(cfg: Config): Promise<Config> {
         if (ch === "\x03") return finish()
         if (ch === "\r" || ch === "\n") {
           const p = orderedProviders(cfg)[sel]
-          if (getProviderConfig(cfg, p).apiKey.trim()) {
-            cfg = setProviderKey(cfg, p, "") // disconnect in place
+          if (hasKey(cfg, p)) {
+            // Toggle on/off WITHOUT discarding the key — re-enabling is instant.
+            cfg = setProviderEnabled(cfg, p, !isActive(cfg, p))
             saveConfig(cfg)
           } else {
-            mode = "input" // type the key inline, same panel
+            mode = "input" // no key yet → type it inline, same panel
             inputBuf = ""
+          }
+          i++
+          continue
+        }
+        if (ch === "x") {
+          // Fully remove the saved key for this provider.
+          const p = orderedProviders(cfg)[sel]
+          if (hasKey(cfg, p)) {
+            cfg = setProviderKey(cfg, p, "")
+            saveConfig(cfg)
           }
           i++
           continue
@@ -774,7 +953,7 @@ async function cmdLogin(cfg: Config): Promise<Config> {
         dim(count ? `   · synced ${count} model${count === 1 ? "" : "s"}` : "   · no models on your account yet")
     )
     const n = activeProviders(next).length
-    console.log("  " + dim(n >= 2 ? `fusion · ${n} models` : n === 1 ? "single model" : "connect a model with /connect"))
+    console.log("  " + dim(n >= 2 ? `fusion · ${n} models` : n === 1 ? "single model" : "add a model with /providers"))
     return next
   } catch (err) {
     stop()
@@ -796,38 +975,6 @@ function cmdLogout(cfg: Config): Config {
   return next
 }
 
-async function cmdConnect(cfg: Config, rest: string[]): Promise<Config> {
-  let provider = rest[0]
-  let key = rest.slice(1).join(" ").trim()
-  if (!provider || !isProvider(provider)) {
-    const order = orderedProviders(cfg)
-    const items = order.map((p) => ({
-      label: (isFavorite(cfg, p) ? white("★") + " " : "") + PROVIDER_NAMES[p],
-      hint: getProviderConfig(cfg, p).apiKey.trim() ? "connected" : isFree(p) ? "free" : "",
-    }))
-    const idx = await selectMenu("Connect a model", items)
-    if (idx === null) return cfg
-    provider = order[idx]
-  }
-  if (!isProvider(provider)) return cfg
-  if (!key) {
-    const url = FREE_KEY_URL[provider]
-    key = await promptText(`paste your ${PROVIDER_NAMES[provider]} API key${url ? `   (free: ${url})` : ""}:`)
-  }
-  if (!key) {
-    console.log("  " + dim("no key entered"))
-    return cfg
-  }
-  cfg = setProviderKey(cfg, provider, key)
-  saveConfig(cfg)
-  const n = activeProviders(cfg).length
-  console.log(
-    "  " + white("✓") + " " + bold(white(PROVIDER_NAMES[provider])) + " connected" +
-      dim(n >= 2 ? `   · fusion (${n} models)` : "   · single-model")
-  )
-  return cfg
-}
-
 async function cmdDisconnect(cfg: Config, rest: string[]): Promise<Config> {
   let provider = rest[0]
   if (!provider || !isProvider(provider)) {
@@ -847,27 +994,64 @@ async function cmdDisconnect(cfg: Config, rest: string[]): Promise<Config> {
   return cfg
 }
 
+// /model — switch a CONNECTED provider's model. Unlike /providers (which manages
+// keys), this only offers providers you've actually connected, then lists THAT
+// provider's own models (latest versions) to pick from — e.g. Claude → Opus 4.8
+// / Sonnet 4.6 / Haiku 4.5. A "Custom…" entry still allows any model id.
 async function cmdModel(cfg: Config, rest: string[]): Promise<Config> {
   let provider = rest[0]
   let model = rest.slice(1).join(" ").trim()
+
+  // Only providers with a key — there's no point setting a model on one you
+  // can't call.
+  const connected = orderedProviders(cfg).filter((p) => getProviderConfig(cfg, p).apiKey.trim())
+  if (!connected.length) {
+    console.log("  " + dim("no models connected — use ") + white("/login") + dim(" or ") + white("/providers") + dim(" first"))
+    return cfg
+  }
+
   if (!provider || !isProvider(provider)) {
-    const order = orderedProviders(cfg)
-    const items = order.map((p) => ({
+    const items = connected.map((p) => ({
       label: (isFavorite(cfg, p) ? white("★") + " " : "") + PROVIDER_NAMES[p],
-      hint: getProviderConfig(cfg, p).model,
+      hint: modelLabel(p, getProviderConfig(cfg, p).model),
     }))
     const idx = await selectMenu("Set model for…", items)
     if (idx === null) return cfg
-    provider = order[idx]
+    provider = connected[idx]
   }
   if (!isProvider(provider)) return cfg
-  if (!model) {
-    model = await promptText(`model for ${PROVIDER_NAMES[provider]}  (current: ${getProviderConfig(cfg, provider).model}):`)
+  if (!getProviderConfig(cfg, provider).apiKey.trim()) {
+    console.log("  " + dim(`${PROVIDER_NAMES[provider]} isn't connected — add it with /providers`))
+    return cfg
   }
+
+  // No explicit model arg → show this provider's own model menu.
+  if (!model) {
+    const current = getProviderConfig(cfg, provider).model
+    const choices = modelsFor(provider)
+    const items = [
+      ...choices.map((m) => ({
+        label: m.label,
+        hint: m.id === current ? "current" : m.id,
+      })),
+      { label: dim("Custom…"), hint: "type any model id" },
+    ]
+    const idx = await selectMenu(`${PROVIDER_NAMES[provider]} models`, items)
+    if (idx === null) return cfg
+    if (idx < choices.length) {
+      model = choices[idx].id
+    } else {
+      model = await promptText(`model id for ${PROVIDER_NAMES[provider]}  (current: ${current}):`)
+    }
+  }
+
   if (!model) return cfg
   cfg = setProviderModel(cfg, provider, model)
   saveConfig(cfg)
-  console.log("  " + white("✓") + " " + bold(white(PROVIDER_NAMES[provider])) + dim("  model = ") + white(model))
+  console.log(
+    "  " + white("✓") + " " + bold(white(PROVIDER_NAMES[provider])) +
+      dim("  model = ") + white(modelLabel(provider, model))
+  )
   return cfg
 }
 
@@ -910,19 +1094,23 @@ function banner(cfg: Config, opts: ReplOptions) {
   } else if (active.length === 1) {
     const { model } = getProviderConfig(cfg, active[0])
     console.log(kv("mode", bold(white("single")) + dim(`  ${PROVIDER_NAMES[active[0]]} · ${model}`)))
-    console.log(kv("tip", dim("connect another model → ") + white("/connect <provider>") + dim(" → fusion")))
+    console.log(kv("tip", dim("add another model → ") + white("/providers") + dim(" → fusion")))
   } else {
     console.log(kv("mode", dim("no models connected")))
-    console.log(kv("start", white("/connect groq") + dim("   free key: " + (FREE_KEY_URL.groq ?? ""))))
+    console.log(kv("start", white("/providers") + dim("   free key: " + (FREE_KEY_URL.groq ?? ""))))
   }
   console.log(kv("memory", memory ? bold(white("on")) : dim("empty")))
   console.log(kv("tools", bold(white("on")) + dim(`   ${WORKSPACE}`)))
+  // Account line: show the signed-in email (and how to sign out) when linked.
+  if (cfg.web) {
+    console.log(kv("account", bold(white(cfg.web.email ?? "signed in")) + dim("   /logout")))
+  }
 
   console.log(divider())
   console.log(
     "  " +
       dim("/help") + muted("  commands   ") +
-      dim("/connect") + muted("  add model   ") +
+      dim("/providers") + muted("  add model   ") +
       dim("/clear") + muted("  reset   ") +
       dim("/exit") + muted("  quit")
   )
@@ -934,13 +1122,14 @@ function printProviders(cfg: Config) {
   console.log("  " + bold("Providers"))
   for (const p of orderedProviders(cfg)) {
     const c = getProviderConfig(cfg, p)
-    const on = !!c.apiKey.trim()
+    const keyed = hasKey(cfg, p)
+    const on = isActive(cfg, p)
     const star = isFavorite(cfg, p) ? white("★") : " "
-    const dot = on ? white("●") : dim("○")
+    const dot = on ? white("●") : keyed ? dim("◯") : dim("○")
     const name = on ? bold(white(PROVIDER_NAMES[p].padEnd(11))) : muted(PROVIDER_NAMES[p].padEnd(11))
-    const free = isFree(p) ? dim(" free") : "     "
+    const note = keyed && !on ? dim(" off ") : isFree(p) ? dim(" free") : "     "
     const synth = on && p === active[0] ? "  " + dim("synth") : ""
-    console.log(`  ${star} ${dot} ${name}${free}  ${dim(c.model)}${synth}`)
+    console.log(`  ${star} ${dot} ${name}${note}  ${dim(c.model)}${synth}`)
   }
   console.log("")
   const mode = active.length >= 2 ? `fusion · ${active.length} models` : active.length === 1 ? "single" : "none"
@@ -948,7 +1137,7 @@ function printProviders(cfg: Config) {
   console.log("")
 }
 
-function printHelp() {
+function printHelp(cfg: Config) {
   const row = (cmd: string, args: string, desc: string) =>
     "  " + white(cmd.padEnd(13)) + muted(args.padEnd(18)) + dim(desc)
   console.log("")
@@ -956,15 +1145,16 @@ function printHelp() {
   console.log("  " + dim("just type — connect 2+ models and they fuse into one answer"))
   console.log("")
   console.log("  " + bold("Commands") + dim("   (interactive — pick with ↑↓ and enter)"))
-  console.log(row("/login", "", "link your onechater.app account (syncs keys)"))
-  console.log(row("/logout", "", "unlink your onechater.app account"))
-  console.log(row("/providers", "", "connect/disconnect + favorite (★ with f)"))
-  console.log(row("/connect", "", "connect a model (enables fusion)"))
+  // Auth row: when signed in show /logout with the account email; else /login.
+  if (cfg.web) console.log(row("/logout", "", `sign out  (${cfg.web.email ?? "signed in"})`))
+  else console.log(row("/login", "", "link your onechater.app account (syncs keys)"))
+  console.log(row("/providers", "", "add/remove key, on/off + favorite (★ with f)"))
   console.log(row("/disconnect", "", "remove a model"))
   console.log(row("/model", "", "set a provider's model"))
   console.log(row("/default", "", "pick the synthesizer model"))
   console.log(row("/tools", "", "list the workspace tools"))
   console.log(row("/workspace", "", "show the workspace directory"))
+  console.log(row("/audit", "", "recent tool actions log"))
   console.log(row("/memory", "", "show the persistent memory"))
   console.log(row("/clear", "", "reset the conversation"))
   console.log(row("/help", "", "this list"))
@@ -1042,6 +1232,7 @@ function readBoxedInput(): Promise<string | null> {
     let sel = 0 // highlighted row in the command palette
     let dismissed = false // palette closed with Esc until the next edit
     let lastExtra = 1 // rows drawn below the input line last time (bottom + palette)
+    let lastCols = Math.max(8, stdout.columns || 80) // terminal width at the last draw
     let sawEsc = false // previous key was a standalone Esc (for double-Esc recall)
 
     stdout.write("\n") // spacing above the box
@@ -1056,11 +1247,11 @@ function readBoxedInput(): Promise<string | null> {
     function matches() {
       const cur = buf.join("")
       if (dismissed || !cur.startsWith("/") || cur.includes(" ")) return []
-      return COMMANDS.filter((c) => c.name.startsWith(cur))
+      return commandList().filter((c) => c.name.startsWith(cur))
     }
 
     // One rendered line per command, the selected one marked with ›.
-    function paletteLines(ms: typeof COMMANDS): string[] {
+    function paletteLines(ms: Command[]): string[] {
       return ms.map((c, i) => {
         const on = i === sel
         const marker = on ? white("›") : " "
@@ -1075,6 +1266,7 @@ function readBoxedInput(): Promise<string | null> {
     // clear+redraw of the box plus the dropdown. `force` always does the full one.
     function draw(force = false) {
       const cols = Math.max(8, stdout.columns || 80)
+      lastCols = cols // remember the width these rules were sized for
       const avail = Math.max(1, cols - promptW - 1)
       if (pos < off) off = pos
       if (pos > off + avail) off = pos - avail
@@ -1092,7 +1284,7 @@ function readBoxedInput(): Promise<string | null> {
       } else {
         if (!first) out += "\x1b[1A\r\x1b[J" // up to top rule, clear box + old palette
         first = false
-        out += boxTop() + "\n" + promptStr + visible + "\n" + boxBottom()
+        out += boxTop() + "\n" + promptStr + visible + "\n" + inputFooter()
         const pal = paletteLines(ms)
         for (const l of pal) out += "\n" + l
         lastExtra = 1 + pal.length
@@ -1115,7 +1307,22 @@ function readBoxedInput(): Promise<string | null> {
     }
 
     const onResize = () => {
-      if (!done && !first) draw(true)
+      if (done || first) return
+      // The box on screen was drawn at `lastCols`; its full-width rules are
+      // (lastCols-1) chars. Narrowing the window reflows each rule onto several
+      // physical rows, so a plain relative redraw leaves stale rule fragments
+      // that pile up. Climb over every physical row the old box occupies ABOVE
+      // the cursor (reflowed at the NEW width), wipe everything, then redraw
+      // clean. `\r\x1b[J` first clears the input line + footer + palette (below
+      // the cursor); the second clears the top rule (above it).
+      const newCols = Math.max(8, stdout.columns || 80)
+      const topRows = Math.max(1, Math.ceil((lastCols - 1) / newCols)) // old top rule, reflowed
+      const cursorCol = promptW + Math.max(0, pos - off)
+      const inputRowsAbove = Math.floor(cursorCol / newCols) // input rows above the cursor
+      const up = topRows + inputRowsAbove
+      stdout.write("\x1b[?25l\r\x1b[J" + `\x1b[${up}A` + "\r\x1b[J")
+      first = true // make the next draw rebuild the box from this clean top
+      draw()
     }
     stdout.on("resize", onResize)
 

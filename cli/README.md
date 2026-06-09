@@ -31,7 +31,7 @@ onechater
 ```
 
 ```
-› /connect          ← pick a provider, paste its key
+› /providers        ← pick a provider, paste its key, toggle on/off
 ```
 
 Free keys (no credit card) are available for **Groq**, **Google** and
@@ -60,8 +60,12 @@ OneChater wants to:
 ```
 
 - File access can't escape the workspace; dangerous commands are blocked outright.
-- Tools: `create_folder`, `create_file`, `read_file`, `write_file`,
-  `delete_file`, `list_directory`, `run_command`.
+- Edits: `create_file`, `write_file` (full rewrite), `edit_file` (precise snippet
+  swap), `delete_file`, `create_folder`.
+- Read & search: `read_file`, `list_directory`, `find_files` (glob), `grep` (regex).
+- Git: `git_status`, `git_diff`, `git_commit`, `git_checkout`.
+- Other: `run_command`, `load_memory`, `remember`.
+- Every action is logged to `~/.onechater/audit.log` (view recent ones with `/audit`).
 
 ## Memory
 
@@ -75,13 +79,13 @@ Type `/` for a navigable command palette (↑↓ to move, enter to pick):
 
 | Command | What it does |
 |---|---|
-| `/connect` | Connect a model (enables fusion) |
+| `/providers` | Add a key, toggle models on/off, favorite, see the current mode |
 | `/disconnect` | Remove a model |
-| `/providers` | Toggle models on/off, see the current mode |
 | `/model` | Set a provider's model |
 | `/default` | Pick the synthesizer (and default model) |
 | `/tools` | List the workspace tools |
 | `/workspace` | Show the workspace directory |
+| `/audit` | Recent tool actions log |
 | `/memory` | Show the persistent memory |
 | `/clear` | Reset the conversation |
 | `/help` | Command list |
