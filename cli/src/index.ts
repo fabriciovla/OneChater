@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander"
 import readline from "node:readline"
+import { readFileSync } from "node:fs"
 import { stdin, stdout, env } from "node:process"
 import { spawnSync } from "node:child_process"
 import {
@@ -41,10 +42,15 @@ import {
 const ok = (s: string) => "  " + green("✓") + " " + s
 const program = new Command()
 
+let VERSION = "0.0.0"
+try {
+  VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version ?? VERSION
+} catch {}
+
 program
   .name("onechater")
   .description("Multi-model terminal with fusion mode and persistent memory (BYOK)")
-  .version("0.1.0")
+  .version(VERSION)
 
 // ─── chat (default) ────────────────────────────────────────────────────────
 program

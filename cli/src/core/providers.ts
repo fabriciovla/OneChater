@@ -88,6 +88,26 @@ async function* streamAnthropic(
   )
 }
 
+// Cohere's Chat v2 API. OpenAI-ish message shape but its own SSE event format:
+// each `data:` is an event object; text lives in delta.message.content.text.
+async function* streamCohere(
+  apiKey: string,
+  model: string,
+  messages: ChatMessage[]
+): AsyncGenerator<string> {
+  const res = await fetch("https://api.cohere.com/v2/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model, messages, stream: true }),
+  })
+  yield* sseText(res, (j) =>
+    j.type === "content-delta" ? j.delta?.message?.content?.text : undefined
+  )
+}
+
 async function* streamGoogle(
   apiKey: string,
   model: string,
@@ -150,6 +170,20 @@ export function streamChat(
       return streamOpenAICompat("https://api.mistral.ai/v1/chat/completions", apiKey, model, messages)
     case "deepseek":
       return streamOpenAICompat("https://api.deepseek.com/v1/chat/completions", apiKey, model, messages)
+    case "perplexity":
+      return streamOpenAICompat("https://api.perplexity.ai/chat/completions", apiKey, model, messages)
+    case "together":
+      return streamOpenAICompat("https://api.together.xyz/v1/chat/completions", apiKey, model, messages)
+    case "fireworks":
+      return streamOpenAICompat("https://api.fireworks.ai/inference/v1/chat/completions", apiKey, model, messages)
+    case "cerebras":
+      return streamOpenAICompat("https://api.cerebras.ai/v1/chat/completions", apiKey, model, messages)
+    case "moonshot":
+      return streamOpenAICompat("https://api.moonshot.ai/v1/chat/completions", apiKey, model, messages)
+    case "qwen":
+      return streamOpenAICompat("https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions", apiKey, model, messages)
+    case "cohere":
+      return streamCohere(apiKey, model, messages)
   }
 }
 

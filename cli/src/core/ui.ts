@@ -20,6 +20,10 @@ export const C = {
   text: hex("#f2f3f5"),
   muted: hex("#9aa0ab"),
   faint: hex("#5b5f72"),
+  // Diff accents — the ONE place we break the monochrome rule, because a code
+  // diff is unreadable without red (removed) / green (added).
+  del: hex("#e5534b"),
+  add: hex("#3fb950"),
 }
 
 const fg = ([r, g, b]: RGB) => `${ESC}38;2;${r};${g};${b}m`
@@ -321,6 +325,116 @@ export function createWrapper(indent = "  ", width = (stdout.columns || 80)) {
   }
 
   return { write, flush }
+}
+
+// ─── Code diff ─────────────────────────────────────────────────────────────────
+// When a model edits a file we show a line diff: removed lines in RED with their
+// old line number, added lines in GREEN with their new line number, plus a few
+// dim context lines so the change has a place. Built on a Myers-ish LCS.
+
+type DiffOp = { type: "same" | "del" | "add"; text: string; oldNo?: number; newNo?: number }
+
+// Longest-common-subsequence line diff. Capped: for very large files the O(n·m)
+// table is skipped and we fall back to "delete all / add all".
+function diffLines(a: string[], b: string[]): DiffOp[] {
+  const n = a.length
+  const m = b.length
+  if (n * m > 4_000_000) {
+    const ops: DiffOp[] = []
+    a.forEach((t, i) => ops.push({ type: "del", text: t, oldNo: i + 1 }))
+    b.forEach((t, j) => ops.push({ type: "add", text: t, newNo: j + 1 }))
+    return ops
+  }
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0))
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
+    }
+  }
+  const ops: DiffOp[] = []
+  let i = 0
+  let j = 0
+  while (i < n && j < m) {
+    if (a[i] === b[j]) {
+      ops.push({ type: "same", text: a[i], oldNo: i + 1, newNo: j + 1 })
+      i++
+      j++
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      ops.push({ type: "del", text: a[i], oldNo: i + 1 })
+      i++
+    } else {
+      ops.push({ type: "add", text: b[j], newNo: j + 1 })
+      j++
+    }
+  }
+  while (i < n) ops.push({ type: "del", text: a[i], oldNo: i++ + 1 })
+  while (j < m) ops.push({ type: "add", text: b[j], newNo: j++ + 1 })
+  return ops
+}
+
+// Render a diff between old and new file content as colored terminal lines.
+// `title` is shown as a header (e.g. the file path). Unchanged runs longer than
+// 2·CONTEXT collapse to a `⋮` marker so big files stay scannable. Returns the
+// lines to print (already indented + colored), or [] when nothing changed.
+export function renderDiff(title: string, oldText: string, newText: string): string[] {
+  const CONTEXT = 2
+  const a = oldText === "" ? [] : oldText.replace(/\n$/, "").split("\n")
+  const b = newText === "" ? [] : newText.replace(/\n$/, "").split("\n")
+  const ops = diffLines(a, b)
+
+  const added = ops.filter((o) => o.type === "add").length
+  const removed = ops.filter((o) => o.type === "del").length
+  if (!added && !removed) {
+    return ["  " + dim("▸ " + title + "  (no changes)")]
+  }
+
+  // Mark which context lines to keep: any "same" within CONTEXT of a change.
+  const keep = new Array(ops.length).fill(false)
+  ops.forEach((o, idx) => {
+    if (o.type !== "same") {
+      for (let k = Math.max(0, idx - CONTEXT); k <= Math.min(ops.length - 1, idx + CONTEXT); k++) {
+        keep[k] = true
+      }
+    }
+  })
+
+  // Width of the line-number gutter, from the largest number we'll print.
+  const maxNo = ops.reduce((mx, o) => Math.max(mx, o.oldNo ?? 0, o.newNo ?? 0), 0)
+  const noW = String(maxNo).length
+  const cols = Math.max(40, stdout.columns || 80)
+  const codeMax = cols - (3 + noW + 2) // sign + space + number + gap
+
+  const clip = (s: string) => {
+    const t = s.replace(/\t/g, "  ")
+    return t.length > codeMax ? t.slice(0, codeMax - 1) + "…" : t
+  }
+  const num = (n?: number) => (n == null ? " ".repeat(noW) : String(n).padStart(noW))
+
+  const header =
+    "  " + bold(white("▸ " + title)) + "  " +
+    paint(C.add, `+${added}`) + " " + paint(C.del, `-${removed}`)
+  const out: string[] = [header]
+
+  let collapsed = false
+  for (let idx = 0; idx < ops.length; idx++) {
+    const o = ops[idx]
+    if (!keep[idx]) {
+      if (!collapsed) {
+        out.push("  " + dim(" ".repeat(noW) + "  ⋮"))
+        collapsed = true
+      }
+      continue
+    }
+    collapsed = false
+    if (o.type === "del") {
+      out.push("  " + paint(C.del, "- " + num(o.oldNo) + "  " + clip(o.text)))
+    } else if (o.type === "add") {
+      out.push("  " + paint(C.add, "+ " + num(o.newNo) + "  " + clip(o.text)))
+    } else {
+      out.push("  " + dim("  " + num(o.oldNo) + "  " + clip(o.text)))
+    }
+  }
+  return out
 }
 
 export { RESET }

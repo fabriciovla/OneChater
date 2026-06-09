@@ -1,4 +1,5 @@
 import readline from "node:readline"
+import { readFileSync, existsSync } from "node:fs"
 import { stdin, stdout } from "node:process"
 import {
   type Config,
@@ -13,7 +14,12 @@ import {
   saveConfig,
   isFree,
   FREE_KEY_URL,
+  isFavorite,
+  toggleFavorite,
+  orderedProviders,
+  setWebSession,
 } from "./config.js"
+import { CLI_PAGE, WEB_BASE, loginUrl, openBrowser, createLoopback, syncFromWeb } from "./auth.js"
 import { type ChatMessage, streamChat, collectChat } from "./providers.js"
 import { type Turn, buildHistory, gatherFusion, buildSynthesisMessages } from "./fusion.js"
 import { loadMemory, MEMORY_PATH } from "./memory.js"
@@ -26,6 +32,7 @@ import {
   stripToolBlocks,
   toolsSystemPrompt,
   createToolBlockHider,
+  resolveInWorkspace,
 } from "./tools.js"
 import {
   C,
@@ -43,6 +50,7 @@ import {
   boxPrompt,
   createMarkdownStream,
   createWrapper,
+  renderDiff,
 } from "./ui.js"
 
 type ReplOptions = {
@@ -52,6 +60,7 @@ type ReplOptions = {
 
 // Slash commands, shown in the command palette when the input starts with "/".
 const COMMANDS: { name: string; args: string; desc: string }[] = [
+  { name: "/login", args: "", desc: "link your onechater.app account" },
   { name: "/connect", args: "<provider> [key]", desc: "connect a model" },
   { name: "/disconnect", args: "<provider>", desc: "remove a model" },
   { name: "/providers", args: "", desc: "connected models & mode" },
@@ -64,6 +73,13 @@ const COMMANDS: { name: string; args: string; desc: string }[] = [
   { name: "/help", args: "", desc: "command list" },
   { name: "/exit", args: "", desc: "quit" },
 ]
+
+// The running version, read from package.json so the banner always matches the
+// installed build (dist/core/repl.js → ../../package.json).
+let VERSION = ""
+try {
+  VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version ?? ""
+} catch {}
 
 // The last message the user submitted — recalled into the input with double-Esc
 // so an accidental send can be edited and resent.
@@ -144,11 +160,19 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
         console.log("")
         continue
       }
-      if (cmd === "/connect" || cmd === "/login") {
+      if (cmd === "/login") {
+        cfg = await cmdLogin(cfg)
+        continue
+      }
+      if (cmd === "/connect") {
         cfg = await cmdConnect(cfg, rest)
         continue
       }
-      if (cmd === "/disconnect" || cmd === "/logout") {
+      if (cmd === "/logout") {
+        cfg = cmdLogout(cfg)
+        continue
+      }
+      if (cmd === "/disconnect") {
         cfg = await cmdDisconnect(cfg, rest)
         continue
       }
@@ -305,8 +329,28 @@ async function runToolCalls(calls: ToolCall[]): Promise<string> {
       continue
     }
     try {
+      // For file edits, snapshot the old content BEFORE running so we can show a
+      // red/green line diff (removed vs added) after the write lands.
+      const isEdit = c.name === "write_file" || c.name === "create_file"
+      let before: string | null = null
+      if (isEdit) {
+        try {
+          const p = resolveInWorkspace(String(c.args.path ?? ""))
+          before = existsSync(p) ? readFileSync(p, "utf8") : null
+        } catch {
+          before = null
+        }
+      }
+
       console.log("  " + white("▸") + " " + dim(tool.describe(c.args)))
       const out = await tool.run(c.args)
+
+      if (isEdit) {
+        const after = String(c.args.content ?? "")
+        for (const line of renderDiff(String(c.args.path ?? ""), before ?? "", after)) {
+          console.log(line)
+        }
+      }
       results.push(`${c.name} → ${out}`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : "error"
@@ -353,6 +397,11 @@ function readChoice(promptText: string): Promise<string> {
   })
 }
 
+// What a menu interaction resolved to: the highlighted row plus which key the
+// user pressed — `null` action means a plain Enter (select), otherwise it's one
+// of the caller-supplied `actionKeys` (e.g. "f" to favorite without leaving).
+type MenuResult = { index: number; action: string | null }
+
 // Interactive list picker: arrow keys (or j/k) move, Enter selects, Esc/Ctrl-C
 // cancels. Returns the chosen index, or null if cancelled. Redraws in place.
 // Falls back to a numbered prompt when stdin isn't a TTY.
@@ -361,6 +410,18 @@ function selectMenu(
   items: { label: string; hint?: string }[],
   footer = "↑↓ move · enter select · esc cancel"
 ): Promise<number | null> {
+  return selectMenuEx(title, items, footer).then((r) => (r ? r.index : null))
+}
+
+// Like selectMenu but also accepts extra single-char `actionKeys`. Pressing one
+// resolves with that key as `action` (and the highlighted index) so the caller
+// can act in place and reopen the menu. Powers in-menu favoriting.
+function selectMenuEx(
+  title: string,
+  items: { label: string; hint?: string }[],
+  footer = "↑↓ move · enter select · esc cancel",
+  actionKeys: string[] = []
+): Promise<MenuResult | null> {
   return new Promise((resolve) => {
     if (!items.length) return resolve(null)
     if (!stdin.isTTY || typeof stdin.setRawMode !== "function") {
@@ -368,7 +429,7 @@ function selectMenu(
       items.forEach((it, i) => console.log(`  ${i + 1}. ${it.label}${it.hint ? "  " + it.hint : ""}`))
       pipeReadLine().then((l) => {
         const n = parseInt((l ?? "").trim(), 10) - 1
-        resolve(Number.isInteger(n) && n >= 0 && n < items.length ? n : null)
+        resolve(Number.isInteger(n) && n >= 0 && n < items.length ? { index: n, action: null } : null)
       })
       return
     }
@@ -401,7 +462,7 @@ function selectMenu(
       stdout.write(out)
     }
 
-    function finish(result: number | null) {
+    function finish(result: MenuResult | null) {
       stdin.setRawMode(false)
       stdin.pause()
       stdin.removeListener("data", onData)
@@ -414,7 +475,8 @@ function selectMenu(
       while (i < data.length) {
         const ch = data[i]
         if (ch === "\x03") return finish(null)
-        if (ch === "\r" || ch === "\n") return finish(sel)
+        if (ch === "\r" || ch === "\n") return finish({ index: sel, action: null })
+        if (actionKeys.includes(ch)) return finish({ index: sel, action: ch })
         if (ch === "k") {
           sel = (sel - 1 + items.length) % items.length
           i++
@@ -489,56 +551,263 @@ async function promptText(label: string): Promise<string> {
   return (v ?? "").trim()
 }
 
-// /providers — a live toggle menu: Enter connects (asks for a key) or
-// disconnects the highlighted provider; Esc closes. No typing of names needed.
-async function cmdProviders(cfg: Config): Promise<Config> {
-  if (!stdin.isTTY) {
+// /providers — one self-contained panel that redraws IN PLACE. Navigate with
+// arrows, `f` favorites, Enter connects (key typed inline, no new prompt) or
+// disconnects, Esc closes. Every change repaints the same block — it never
+// reprints itself as a fresh message.
+function cmdProviders(cfg: Config): Promise<Config> {
+  if (!stdin.isTTY || typeof stdin.setRawMode !== "function") {
     printProviders(cfg)
+    return Promise.resolve(cfg)
+  }
+
+  return new Promise<Config>((resolve) => {
+    let sel = 0
+    let drawn = 0
+    let firstTime = true
+    let mode: "list" | "input" = "list"
+    let inputBuf = ""
+
+    stdout.write("\n\x1b[?25l") // spacing + hide cursor
+    stdin.setRawMode(true)
+    stdin.resume()
+    stdin.setEncoding("utf8")
+    render()
+
+    function render() {
+      const ord = orderedProviders(cfg)
+      const active = activeProviders(cfg)
+      const lines: string[] = ["  " + bold(white("Providers"))]
+      ord.forEach((p, i) => {
+        const on = !!getProviderConfig(cfg, p).apiKey.trim()
+        const onSel = i === sel
+        const star = isFavorite(cfg, p) ? white("★") : " "
+        const dot = on ? "●" : "○"
+        const tags = [on ? "connected" : isFree(p) ? "free" : "", on && p === active[0] ? "synth" : ""]
+          .filter(Boolean)
+          .join(" · ")
+        const label = `${star} ${dot} ${PROVIDER_NAMES[p]}`
+        lines.push(
+          "  " + (onSel ? white("›") : " ") + " " +
+            (onSel ? bold(white(label)) : white(label)) +
+            (tags ? "  " + dim(tags) : "")
+        )
+      })
+      lines.push("")
+      if (mode === "input") {
+        const p = ord[sel]
+        const url = FREE_KEY_URL[p]
+        lines.push("  " + dim(`paste ${PROVIDER_NAMES[p]} API key${url ? `   (free: ${url})` : ""}:`))
+        const shown = inputBuf ? white("•".repeat(Math.min(inputBuf.length, 32))) : dim("…")
+        lines.push("  " + white("› ") + shown)
+        lines.push("  " + dim("enter save · esc cancel"))
+      } else {
+        const n = active.length
+        lines.push("  " + dim(n >= 2 ? `fusion · ${n} models` : n === 1 ? "single model" : "no models connected"))
+        lines.push("  " + dim("↑↓ move · enter connect/disconnect · f favorite · esc done"))
+      }
+      let out = ""
+      if (!firstTime) out += `\x1b[${drawn}A`
+      out += "\r\x1b[J" + lines.join("\n")
+      drawn = lines.length - 1
+      stdout.write(out)
+      firstTime = false
+    }
+
+    function finish() {
+      stdin.setRawMode(false)
+      stdin.pause()
+      stdin.removeListener("data", onData)
+      stdout.write("\x1b[?25h\n") // show cursor, drop below the panel
+      resolve(cfg)
+    }
+
+    const move = (d: number) => {
+      const len = orderedProviders(cfg).length
+      sel = (sel + d + len) % len
+    }
+
+    function onData(data: string) {
+      let i = 0
+      while (i < data.length) {
+        const ch = data[i]
+
+        if (mode === "input") {
+          if (ch === "\x03") return finish()
+          if (ch === "\r" || ch === "\n") {
+            const p = orderedProviders(cfg)[sel]
+            if (inputBuf.trim()) {
+              cfg = setProviderKey(cfg, p, inputBuf.trim())
+              saveConfig(cfg)
+            }
+            inputBuf = ""
+            mode = "list"
+            i++
+            continue
+          }
+          if (ch === "\x1b") {
+            const seq = data.slice(i)
+            if (seq.startsWith("\x1b[")) {
+              let j = i + 2
+              while (j < data.length && !/[a-zA-Z~]/.test(data[j])) j++
+              i = j + 1
+            } else {
+              inputBuf = ""
+              mode = "list"
+              i++
+            }
+            continue
+          }
+          if (ch === "\x7f" || ch === "\b") {
+            inputBuf = inputBuf.slice(0, -1)
+            i++
+            continue
+          }
+          if (ch >= " ") inputBuf += ch
+          i++
+          continue
+        }
+
+        // list mode
+        if (ch === "\x03") return finish()
+        if (ch === "\r" || ch === "\n") {
+          const p = orderedProviders(cfg)[sel]
+          if (getProviderConfig(cfg, p).apiKey.trim()) {
+            cfg = setProviderKey(cfg, p, "") // disconnect in place
+            saveConfig(cfg)
+          } else {
+            mode = "input" // type the key inline, same panel
+            inputBuf = ""
+          }
+          i++
+          continue
+        }
+        if (ch === "f") {
+          const p = orderedProviders(cfg)[sel]
+          cfg = toggleFavorite(cfg, p)
+          saveConfig(cfg)
+          sel = Math.max(0, orderedProviders(cfg).indexOf(p)) // keep highlight on it
+          i++
+          continue
+        }
+        if (ch === "k") {
+          move(-1)
+          i++
+          continue
+        }
+        if (ch === "j") {
+          move(1)
+          i++
+          continue
+        }
+        if (ch === "\x1b") {
+          const seq = data.slice(i)
+          if (seq.startsWith("\x1b[A")) {
+            move(-1)
+            i += 3
+          } else if (seq.startsWith("\x1b[B")) {
+            move(1)
+            i += 3
+          } else if (seq === "\x1b") {
+            return finish()
+          } else {
+            let j = i + 1
+            while (j < data.length && !/[a-zA-Z~]/.test(data[j])) j++
+            i = j + 1
+          }
+          continue
+        }
+        i++
+      }
+      render()
+    }
+
+    stdin.on("data", onData)
+  })
+}
+
+// /login — link the CLI to the user's onechater.app account. Opens the browser
+// to the web /cli page; once signed in it redirects back to our loopback with a
+// token (no copy-paste). Falls back to pasting a code from /cli if the loopback
+// can't be reached. Either way we then pull down the account's providers/keys.
+async function cmdLogin(cfg: Config): Promise<Config> {
+  console.log("")
+  console.log("  " + bold(white("Sign in to OneChater")))
+
+  let token = ""
+  let lb: Awaited<ReturnType<typeof createLoopback>> | null = null
+  try {
+    lb = await createLoopback()
+  } catch {
+    lb = null
+  }
+
+  const url = lb ? loginUrl(lb.port) : CLI_PAGE
+  console.log("  " + dim("opening ") + white(url))
+  openBrowser(url)
+  console.log("  " + dim("sign in on the page — this terminal continues automatically."))
+
+  if (lb) {
+    const stopWait = startSpinner("waiting for the browser…")
+    token = (await lb.waitForToken(180_000)) ?? ""
+    stopWait()
+    lb.close()
+  }
+
+  if (!token) {
+    console.log("  " + dim(`didn't come back? open ${CLI_PAGE} and paste the code below.`))
+    token = await promptText("paste your login code:")
+  }
+  if (!token) {
+    console.log("  " + dim("login cancelled"))
     return cfg
   }
-  while (true) {
-    const active = activeProviders(cfg)
-    const items = PROVIDERS.map((p) => {
-      const on = !!getProviderConfig(cfg, p).apiKey.trim()
-      const tags = [on ? "connected" : isFree(p) ? "free" : "", on && p === active[0] ? "synth" : ""]
-        .filter(Boolean)
-        .join(" · ")
-      return { label: (on ? "● " : "○ ") + PROVIDER_NAMES[p], hint: tags }
-    })
-    const idx = await selectMenu("Providers", items, "↑↓ move · enter connect/disconnect · esc done")
-    if (idx === null) break
-    const p = PROVIDERS[idx]
-    const on = !!getProviderConfig(cfg, p).apiKey.trim()
-    if (on) {
-      cfg = setProviderKey(cfg, p, "")
-      saveConfig(cfg)
-      console.log("  " + dim("disconnected ") + bold(white(PROVIDER_NAMES[p])))
-    } else {
-      const url = FREE_KEY_URL[p]
-      const key = await promptText(`paste your ${PROVIDER_NAMES[p]} API key${url ? `   (free: ${url})` : ""}:`)
-      if (key) {
-        cfg = setProviderKey(cfg, p, key)
-        saveConfig(cfg)
-        console.log("  " + white("✓") + " " + bold(white(PROVIDER_NAMES[p])) + dim(" connected"))
-      }
-    }
+
+  const stop = startSpinner("linking your account…")
+  try {
+    const { cfg: next, email, count } = await syncFromWeb(cfg, token)
+    saveConfig(next)
+    stop()
+    console.log(
+      "  " + white("✓") + " " + bold(white("logged in")) +
+        (email ? dim("  " + email) : "") +
+        dim(count ? `   · synced ${count} model${count === 1 ? "" : "s"}` : "   · no models on your account yet")
+    )
+    const n = activeProviders(next).length
+    console.log("  " + dim(n >= 2 ? `fusion · ${n} models` : n === 1 ? "single model" : "connect a model with /connect"))
+    return next
+  } catch (err) {
+    stop()
+    const msg = err instanceof Error ? err.message : "unknown error"
+    console.log("  " + bold(white("login failed")) + "  " + dim(msg))
+    return cfg
   }
-  const n = activeProviders(cfg).length
-  console.log("  " + dim(n >= 2 ? `fusion · ${n} models` : n === 1 ? "single model" : "no models connected"))
-  return cfg
+}
+
+// /logout — unlink the web account (local provider keys are kept).
+function cmdLogout(cfg: Config): Config {
+  if (!cfg.web) {
+    console.log("  " + dim("not logged in"))
+    return cfg
+  }
+  const next = setWebSession(cfg, null)
+  saveConfig(next)
+  console.log("  " + white("✓") + " " + dim("logged out of ") + white(WEB_BASE))
+  return next
 }
 
 async function cmdConnect(cfg: Config, rest: string[]): Promise<Config> {
   let provider = rest[0]
   let key = rest.slice(1).join(" ").trim()
   if (!provider || !isProvider(provider)) {
-    const items = PROVIDERS.map((p) => ({
-      label: PROVIDER_NAMES[p],
+    const order = orderedProviders(cfg)
+    const items = order.map((p) => ({
+      label: (isFavorite(cfg, p) ? white("★") + " " : "") + PROVIDER_NAMES[p],
       hint: getProviderConfig(cfg, p).apiKey.trim() ? "connected" : isFree(p) ? "free" : "",
     }))
     const idx = await selectMenu("Connect a model", items)
     if (idx === null) return cfg
-    provider = PROVIDERS[idx]
+    provider = order[idx]
   }
   if (!isProvider(provider)) return cfg
   if (!key) {
@@ -582,10 +851,14 @@ async function cmdModel(cfg: Config, rest: string[]): Promise<Config> {
   let provider = rest[0]
   let model = rest.slice(1).join(" ").trim()
   if (!provider || !isProvider(provider)) {
-    const items = PROVIDERS.map((p) => ({ label: PROVIDER_NAMES[p], hint: getProviderConfig(cfg, p).model }))
+    const order = orderedProviders(cfg)
+    const items = order.map((p) => ({
+      label: (isFavorite(cfg, p) ? white("★") + " " : "") + PROVIDER_NAMES[p],
+      hint: getProviderConfig(cfg, p).model,
+    }))
     const idx = await selectMenu("Set model for…", items)
     if (idx === null) return cfg
-    provider = PROVIDERS[idx]
+    provider = order[idx]
   }
   if (!isProvider(provider)) return cfg
   if (!model) {
@@ -620,7 +893,9 @@ function banner(cfg: Config, opts: ReplOptions) {
   const active = activeProviders(cfg)
   const memory = loadMemory().trim()
   console.log("")
-  for (const row of wordmark("  ", "OneChater")) console.log(row)
+  const rows = wordmark("  ", "OneChater")
+  if (VERSION) rows[rows.length - 1] += "  " + dim("v" + VERSION)
+  for (const row of rows) console.log(row)
   console.log("  " + muted("multi-model terminal"))
   console.log("")
 
@@ -657,14 +932,15 @@ function printProviders(cfg: Config) {
   const active = activeProviders(cfg)
   console.log("")
   console.log("  " + bold("Providers"))
-  for (const p of PROVIDERS) {
+  for (const p of orderedProviders(cfg)) {
     const c = getProviderConfig(cfg, p)
     const on = !!c.apiKey.trim()
+    const star = isFavorite(cfg, p) ? white("★") : " "
     const dot = on ? white("●") : dim("○")
     const name = on ? bold(white(PROVIDER_NAMES[p].padEnd(11))) : muted(PROVIDER_NAMES[p].padEnd(11))
     const free = isFree(p) ? dim(" free") : "     "
     const synth = on && p === active[0] ? "  " + dim("synth") : ""
-    console.log(`  ${dot} ${name}${free}  ${dim(c.model)}${synth}`)
+    console.log(`  ${star} ${dot} ${name}${free}  ${dim(c.model)}${synth}`)
   }
   console.log("")
   const mode = active.length >= 2 ? `fusion · ${active.length} models` : active.length === 1 ? "single" : "none"
@@ -680,7 +956,9 @@ function printHelp() {
   console.log("  " + dim("just type — connect 2+ models and they fuse into one answer"))
   console.log("")
   console.log("  " + bold("Commands") + dim("   (interactive — pick with ↑↓ and enter)"))
-  console.log(row("/providers", "", "connect/disconnect models (toggle menu)"))
+  console.log(row("/login", "", "link your onechater.app account (syncs keys)"))
+  console.log(row("/logout", "", "unlink your onechater.app account"))
+  console.log(row("/providers", "", "connect/disconnect + favorite (★ with f)"))
   console.log(row("/connect", "", "connect a model (enables fusion)"))
   console.log(row("/disconnect", "", "remove a model"))
   console.log(row("/model", "", "set a provider's model"))
