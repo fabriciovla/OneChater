@@ -1199,15 +1199,17 @@ function pipeReadLine(): Promise<string | null> {
   return new Promise((res) => pipeWaiters.push(res))
 }
 
-// Read one line: the prompt sits on top with a labelled "OneChater" rule BELOW
-// it. The input is the top line of the block, so every redraw only clears
-// downward — which is reliable even after a terminal resize reflows the wrapped
-// rule (clearing upward would need the reflowed row count, which terminals don't
-// report, and that's what made resize pile up ghost rules). Node's readline
-// clears the screen below on every refresh, so we drive raw mode ourselves. The
-// input is kept to a single visual row (horizontal scroll, never wrapping).
-// Redraws are coalesced and written atomically with the cursor hidden, removing
-// key-repeat flicker. Returns null on Ctrl-C / EOF.
+// Read one line framed by a horizontal rule above AND below. The TOP rule is
+// printed once as a static line (it scrolls/reflows with the rest of the
+// scrollback); only the input line + the labelled "OneChater" rule below it are
+// redrawn. That redraw clears strictly DOWNWARD, which is reliable even after a
+// terminal resize reflows the wrapped rule — clearing UPWARD would need the
+// reflowed row count, which terminals don't report, and that's what made resize
+// pile up ghost rules. Node's readline clears the screen below on every refresh,
+// so we drive raw mode ourselves. The input is kept to a single visual row
+// (horizontal scroll, never wrapping). Redraws are coalesced and written
+// atomically with the cursor hidden, removing key-repeat flicker. Returns null
+// on Ctrl-C / EOF.
 function readBoxedInput(): Promise<string | null> {
   const promptStr = boxPrompt()
   const promptW = [...stripAnsi(promptStr)].length
@@ -1237,7 +1239,13 @@ function readBoxedInput(): Promise<string | null> {
     let lastExtra = 1 // rows drawn below the input line last time (bottom + palette)
     let sawEsc = false // previous key was a standalone Esc (for double-Esc recall)
 
-    stdout.write("\n") // spacing above the box
+    // Top rule printed ONCE here (static), not in the redraw loop. Redrawing a
+    // full-width rule ABOVE the input would need to clear upward across the
+    // terminal's resize reflow — whose row count isn't reliably reported — which
+    // is what made rules pile up on resize. As a static line it just reflows like
+    // any other scrollback text and never accumulates. The redrawn region below
+    // (input + footer) only ever clears downward, which is reflow-proof.
+    stdout.write("\n" + boxTop() + "\n")
     stdin.setRawMode(true)
     stdin.resume()
     stdin.setEncoding("utf8")
