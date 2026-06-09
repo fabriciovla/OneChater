@@ -1199,12 +1199,15 @@ function pipeReadLine(): Promise<string | null> {
   return new Promise((res) => pipeWaiters.push(res))
 }
 
-// Read one line framed by a horizontal rule above AND below, both visible while
-// typing. Node's readline clears the screen below the cursor on every refresh,
-// so we drive raw mode ourselves and redraw the frame. The input is kept to a
-// single visual row (horizontal scroll, never wrapping) so the block is always
-// three lines. Redraws are coalesced and written atomically with the cursor
-// hidden, which removes the key-repeat flicker. Returns null on Ctrl-C / EOF.
+// Read one line: the prompt sits on top with a labelled "OneChater" rule BELOW
+// it. The input is the top line of the block, so every redraw only clears
+// downward — which is reliable even after a terminal resize reflows the wrapped
+// rule (clearing upward would need the reflowed row count, which terminals don't
+// report, and that's what made resize pile up ghost rules). Node's readline
+// clears the screen below on every refresh, so we drive raw mode ourselves. The
+// input is kept to a single visual row (horizontal scroll, never wrapping).
+// Redraws are coalesced and written atomically with the cursor hidden, removing
+// key-repeat flicker. Returns null on Ctrl-C / EOF.
 function readBoxedInput(): Promise<string | null> {
   const promptStr = boxPrompt()
   const promptW = [...stripAnsi(promptStr)].length
@@ -1232,7 +1235,6 @@ function readBoxedInput(): Promise<string | null> {
     let sel = 0 // highlighted row in the command palette
     let dismissed = false // palette closed with Esc until the next edit
     let lastExtra = 1 // rows drawn below the input line last time (bottom + palette)
-    let lastCols = Math.max(8, stdout.columns || 80) // terminal width at the last draw
     let sawEsc = false // previous key was a standalone Esc (for double-Esc recall)
 
     stdout.write("\n") // spacing above the box
@@ -1266,7 +1268,6 @@ function readBoxedInput(): Promise<string | null> {
     // clear+redraw of the box plus the dropdown. `force` always does the full one.
     function draw(force = false) {
       const cols = Math.max(8, stdout.columns || 80)
-      lastCols = cols // remember the width these rules were sized for
       const avail = Math.max(1, cols - promptW - 1)
       if (pos < off) off = pos
       if (pos > off + avail) off = pos - avail
@@ -1282,9 +1283,16 @@ function readBoxedInput(): Promise<string | null> {
         out += "\r\x1b[K" + promptStr + visible + "\r"
         lastExtra = 1
       } else {
-        if (!first) out += "\x1b[1A\r\x1b[J" // up to top rule, clear box + old palette
+        // The input line is the TOP of the box; the rule + palette sit BELOW it.
+        // So a full redraw only ever clears DOWNWARD from the cursor (\x1b[J),
+        // which is reliable no matter how the terminal reflowed wrapped lines on
+        // a resize. Nothing wraps above the cursor, so no stale fragments can
+        // pile up. (A full-width rule ABOVE the input can't be cleared this way —
+        // clearing upward needs the reflowed row count, which terminals don't
+        // report reliably — so there is intentionally no top rule.)
+        if (!first) out += "\r\x1b[J"
         first = false
-        out += boxTop() + "\n" + promptStr + visible + "\n" + inputFooter()
+        out += promptStr + visible + "\n" + inputFooter()
         const pal = paletteLines(ms)
         for (const l of pal) out += "\n" + l
         lastExtra = 1 + pal.length
@@ -1307,22 +1315,10 @@ function readBoxedInput(): Promise<string | null> {
     }
 
     const onResize = () => {
-      if (done || first) return
-      // The box on screen was drawn at `lastCols`; its full-width rules are
-      // (lastCols-1) chars. Narrowing the window reflows each rule onto several
-      // physical rows, so a plain relative redraw leaves stale rule fragments
-      // that pile up. Climb over every physical row the old box occupies ABOVE
-      // the cursor (reflowed at the NEW width), wipe everything, then redraw
-      // clean. `\r\x1b[J` first clears the input line + footer + palette (below
-      // the cursor); the second clears the top rule (above it).
-      const newCols = Math.max(8, stdout.columns || 80)
-      const topRows = Math.max(1, Math.ceil((lastCols - 1) / newCols)) // old top rule, reflowed
-      const cursorCol = promptW + Math.max(0, pos - off)
-      const inputRowsAbove = Math.floor(cursorCol / newCols) // input rows above the cursor
-      const up = topRows + inputRowsAbove
-      stdout.write("\x1b[?25l\r\x1b[J" + `\x1b[${up}A` + "\r\x1b[J")
-      first = true // make the next draw rebuild the box from this clean top
-      draw()
+      // The input line is the top of the box, so a full redraw clears only
+      // downward — reliable regardless of how the terminal reflowed the wrapped
+      // rule/palette below. No reflow-row guessing, no stale fragments.
+      if (!done && !first) draw(true)
     }
     stdout.on("resize", onResize)
 
