@@ -55,7 +55,6 @@ import {
   kv,
   boxTop,
   boxBottom,
-  inputFooter,
   boxPrompt,
   createMarkdownStream,
   createWrapper,
@@ -1199,14 +1198,17 @@ function pipeReadLine(): Promise<string | null> {
   return new Promise((res) => pipeWaiters.push(res))
 }
 
-// Read one line framed by a horizontal rule above AND below. The TOP rule is
-// printed once as a static line (it scrolls/reflows with the rest of the
-// scrollback); only the input line + the labelled "OneChater" rule below it are
-// redrawn. That redraw clears strictly DOWNWARD, which is reliable even after a
-// terminal resize reflows the wrapped rule — clearing UPWARD would need the
-// reflowed row count, which terminals don't report, and that's what made resize
-// pile up ghost rules. Node's readline clears the screen below on every refresh,
-// so we drive raw mode ourselves. The input is kept to a single visual row
+// Read one line. A labelled "OneChater" rule is printed ABOVE the input as a
+// static line (the bar above the prompt); the input itself is the LAST line on
+// screen, with nothing below it. While editing we rewrite ONLY that one line
+// (\r\x1b[K) and never emit a newline, so a terminal resize cannot stack a
+// second `›` underneath — the previous design redrew a rule BELOW the input, and
+// on a resize Windows Terminal drifts the cursor down onto that rule, so the
+// downward clear missed the old input and every resize event appended another
+// prompt. Keeping the input last makes the redraw a no-op-safe single line. The
+// command palette is the only thing drawn below the input, and only while a
+// "/cmd" is being typed. Node's readline clears the screen below on every
+// refresh, so we drive raw mode ourselves. The input is one visual row
 // (horizontal scroll, never wrapping). Redraws are coalesced and written
 // atomically with the cursor hidden, removing key-repeat flicker. Returns null
 // on Ctrl-C / EOF.
@@ -1236,16 +1238,17 @@ function readBoxedInput(): Promise<string | null> {
     let pasteBuf: string | null = null // accumulates a bracketed paste
     let sel = 0 // highlighted row in the command palette
     let dismissed = false // palette closed with Esc until the next edit
-    let lastExtra = 1 // rows drawn below the input line last time (bottom + palette)
     let sawEsc = false // previous key was a standalone Esc (for double-Esc recall)
 
-    // Top rule printed ONCE here (static), not in the redraw loop. Redrawing a
-    // full-width rule ABOVE the input would need to clear upward across the
-    // terminal's resize reflow — whose row count isn't reliably reported — which
-    // is what made rules pile up on resize. As a static line it just reflows like
-    // any other scrollback text and never accumulates. The redrawn region below
-    // (input + footer) only ever clears downward, which is reflow-proof.
-    stdout.write("\n" + boxTop() + "\n")
+    // The rule ABOVE the input is printed ONCE here, static — never redrawn, so
+    // on resize it just reflows in scrollback. It uses the SAME short labelled
+    // bar as the one below the input (railBar) so the two frames are identical.
+    // Why short and not full-width: a full-width rule BELOW the input reflows to
+    // two rows when the window shrinks, which moves the cursor off the input row
+    // and makes the redraw stack a second prompt. A short bar never wraps, so the
+    // input stays exactly one physical row and the clear-and-reprint in draw()
+    // can never duplicate the prompt.
+    stdout.write("\n" + railBar() + "\n")
     stdin.setRawMode(true)
     stdin.resume()
     stdin.setEncoding("utf8")
@@ -1271,10 +1274,26 @@ function readBoxedInput(): Promise<string | null> {
       })
     }
 
-    // Redraw the frame (and palette). Incremental — rewrite only the input line —
-    // when no palette is/was shown (kills key-repeat flicker); otherwise a full
-    // clear+redraw of the box plus the dropdown. `force` always does the full one.
-    function draw(force = false) {
+    // The short labelled "OneChater" bar — used BOTH for the static rule above
+    // the input and the one redrawn below it, so the two frames are identical.
+    // Deliberately short (a fixed handful of dashes, not the full width) so it
+    // can never wrap onto a second physical row when the window shrinks — that's
+    // what keeps the input exactly one physical row and the redraw from ever
+    // stacking a second prompt. Hoisted (not a const arrow) so it's callable at
+    // the static top-rule print above and inside draw().
+    function railBar() {
+      return "  " + muted("─────") + dim(" OneChater ") + muted("─────")
+    }
+
+    // Redraw the input line, the "OneChater" bar beneath it, and the command
+    // palette (when open). One strategy covers first paint, edits, key-repeat AND
+    // resizes: anchor at column 0 of the input row (the cursor never leaves it —
+    // the input is one physical row, held ≤ terminal width by horizontal scroll),
+    // clear that row and everything below it (\x1b[J wipes the old bar + palette),
+    // reprint input + bar + palette, then climb back to the input row. Because we
+    // always clear downward before writing and never leave a newline that
+    // outlives the next draw, nothing can accumulate — a resize repaints in place.
+    function draw() {
       const cols = Math.max(8, stdout.columns || 80)
       const avail = Math.max(1, cols - promptW - 1)
       if (pos < off) off = pos
@@ -1284,32 +1303,19 @@ function readBoxedInput(): Promise<string | null> {
 
       const ms = matches()
       if (sel >= ms.length) sel = Math.max(0, ms.length - 1)
-      const full = first || force || ms.length > 0 || lastExtra > 1
+      const pal = ms.length ? paletteLines(ms) : []
+      const below = [railBar(), ...pal] // always ≥1 row under the input
 
-      let out = "\x1b[?25l" // hide cursor
-      if (!full) {
-        out += "\r\x1b[K" + promptStr + visible + "\r"
-        lastExtra = 1
-      } else {
-        // The input line is the TOP of the box; the rule + palette sit BELOW it.
-        // So a full redraw only ever clears DOWNWARD from the cursor (\x1b[J),
-        // which is reliable no matter how the terminal reflowed wrapped lines on
-        // a resize. Nothing wraps above the cursor, so no stale fragments can
-        // pile up. (A full-width rule ABOVE the input can't be cleared this way —
-        // clearing upward needs the reflowed row count, which terminals don't
-        // report reliably — so there is intentionally no top rule.)
-        if (!first) out += "\r\x1b[J"
-        first = false
-        out += promptStr + visible + "\n" + inputFooter()
-        const pal = paletteLines(ms)
-        for (const l of pal) out += "\n" + l
-        lastExtra = 1 + pal.length
-        out += `\x1b[${lastExtra}A\r` // back up to the input line
-      }
+      let out = "\x1b[?25l\r\x1b[J" // hide cursor, col 0, clear to end of screen
+      out += promptStr + visible
+      for (const l of below) out += "\n" + l
+      out += `\x1b[${below.length}A` // climb back to the input row
+      out += "\r"
       const col = promptW + (pos - off)
       if (col > 0) out += `\x1b[${col}C`
       out += "\x1b[?25h" // show cursor
       stdout.write(out)
+      first = false
     }
 
     // Coalesce bursts (key-repeat delivers many data events) into one redraw.
@@ -1323,10 +1329,10 @@ function readBoxedInput(): Promise<string | null> {
     }
 
     const onResize = () => {
-      // The input line is the top of the box, so a full redraw clears only
-      // downward — reliable regardless of how the terminal reflowed the wrapped
-      // rule/palette below. No reflow-row guessing, no stale fragments.
-      if (!done && !first) draw(true)
+      // The input is the last row and the cursor sits on it, so a plain redraw
+      // (clear the row + everything below, reprint) handles a resize with no
+      // special casing — the static rule above just reflows in scrollback.
+      if (!done && !first) draw()
     }
     stdout.on("resize", onResize)
 
@@ -1350,13 +1356,18 @@ function readBoxedInput(): Promise<string | null> {
       }
     }
 
+    // Leave the input block cleanly: the cursor is on the input row, so repaint
+    // it fully (nothing half-erased), clear any palette below, then drop to a
+    // fresh line so the following output starts clean.
     function exitBelow() {
-      stdout.write(`\x1b[${lastExtra}B\r\n`) // drop below the box (and palette)
+      const cols = Math.max(8, stdout.columns || 80)
+      const avail = Math.max(1, cols - promptW - 1)
+      const visible = buf.slice(off, off + avail).join("")
+      stdout.write("\r\x1b[J" + promptStr + visible + "\r\n")
     }
 
     function leaveBox() {
       dismissed = true
-      draw() // flush final state (palette closed)
       exitBelow()
     }
 

@@ -56,15 +56,23 @@ export function resolveInWorkspace(p: string): string {
 const DANGEROUS: RegExp[] = [
   /\brm\s+(-[a-z]*\s+)*-?[rf]+[a-z]*\s+([\/~]|\*)/i, // rm -rf / , rm -rf ~ , rm -rf *
   /\brmdir\s+\/s/i,
-  /\bdel\s+\/[sfq]/i,
+  /\b(del|erase)\s+\/[sfq]/i,
+  /\brd\s+\/s/i, // rd /s  (cmd recursive dir delete)
   /\bformat\b\s+[a-z]:/i,
   /\bmkfs\b/i,
   /\bdd\b[^|]*\bof=\/dev\//i,
   /\b(shutdown|reboot|halt|poweroff)\b/i,
+  /\bstop-computer\b/i, // PowerShell shutdown
   /:\s*\(\s*\)\s*\{.*\}\s*;/, // fork bomb :(){ :|:& };:
   />\s*\/dev\/(sd|nvme|disk)/i,
   /\bchmod\s+-R\s+0?777\s+\//i,
   /\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b/i, // curl … | sh
+  // ── Windows / PowerShell destructive equivalents (this CLI runs on Windows) ──
+  /\bremove-item\b[^|]*\s-(re?c?u?r?s?e?|force|r|f)\b/i, // Remove-Item -Recurse / -Force
+  /\bremove-item\b[^|]*\b(env:|[a-z]:\\?|\\\\)/i, // Remove-Item against a drive root / UNC
+  /\b(clear-disk|format-volume|clear-content|initialize-disk|reset-computer)\b/i,
+  /\b(irm|iwr|invoke-webrequest|invoke-restmethod)\b[^|]*\|\s*(iex|invoke-expression)\b/i, // irm … | iex
+  /\biex\b\s*\(/i, // iex( … )  — arbitrary remote code exec
 ]
 
 export function isDangerousCommand(cmd: string): boolean {

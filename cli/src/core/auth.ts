@@ -63,7 +63,10 @@ export function createLoopback(): Promise<Loopback> {
     const server = createServer((req, res) => {
       let token: string | null = null
       try {
-        token = new URL(req.url ?? "/", "http://127.0.0.1").searchParams.get("token")
+        const u = new URL(req.url ?? "/", "http://127.0.0.1")
+        // Only the callback path carries the token — ignore favicon/other probes
+        // so a stray request can't be mistaken for the auth redirect.
+        if (u.pathname === "/cb") token = u.searchParams.get("token")
       } catch {}
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" })
       res.end(DONE_HTML)

@@ -252,7 +252,7 @@ program
     console.log(dim("  tip: ") + white("onechater login groq --open") + dim("  opens the page + prompts.\n"))
   })
 
-program.parseAsync()
+program.parseAsync().catch((err) => die(err instanceof Error ? err.message : String(err)))
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 // Open a URL in the OS default browser.

@@ -19,33 +19,43 @@ async function* sseText(
   const reader = res.body!.getReader()
   const dec = new TextDecoder()
   let buf = ""
+
+  // Process one already-split SSE line; yields the picked text (or throws on an
+  // in-stream error event). Returns nothing — a partial/non-data line is skipped.
+  function* handleLine(line: string): Generator<string> {
+    if (!line.startsWith("data:")) return // tolerate "data:" with or without a space
+    const data = line.slice(5).trim()
+    if (!data || data === "[DONE]") return
+    let json: any
+    try {
+      json = JSON.parse(data)
+    } catch {
+      return // a partial chunk — wait for the rest
+    }
+    // Some providers (OpenRouter, Groq free tier…) return HTTP 200 and report
+    // the failure as an `error` event inside the stream. Surface it instead of
+    // silently producing an empty answer.
+    if (json && json.error) {
+      const e = json.error
+      throw new Error(typeof e === "string" ? e : e?.message ?? JSON.stringify(e))
+    }
+    const text = pick(json)
+    if (text) yield text
+  }
+
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
     buf += dec.decode(value, { stream: true })
     const lines = buf.split("\n")
-    buf = lines.pop() ?? ""
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue
-      const data = line.slice(6).trim()
-      if (data === "[DONE]") continue
-      let json: any
-      try {
-        json = JSON.parse(data)
-      } catch {
-        continue // a partial chunk — wait for the rest
-      }
-      // Some providers (OpenRouter, Groq free tier…) return HTTP 200 and report
-      // the failure as an `error` event inside the stream. Surface it instead of
-      // silently producing an empty answer.
-      if (json && json.error) {
-        const e = json.error
-        throw new Error(typeof e === "string" ? e : e?.message ?? JSON.stringify(e))
-      }
-      const text = pick(json)
-      if (text) yield text
-    }
+    buf = lines.pop() ?? "" // keep the trailing partial line for the next read
+    for (const line of lines) yield* handleLine(line)
   }
+  // Flush any bytes the decoder was still holding, then the final unterminated
+  // line — providers that close the stream without a trailing newline (some Groq
+  // / OpenRouter free tiers) would otherwise drop their last token.
+  buf += dec.decode()
+  if (buf.trim()) yield* handleLine(buf.replace(/\r$/, ""))
 }
 
 const openAICompatChunk = (j: any): string | undefined => j.choices?.[0]?.delta?.content
