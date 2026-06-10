@@ -289,13 +289,35 @@ export type Config = {
   // away even as the provider list grows.
   favorites: Provider[]
   // OneChater web session (set by `/login`). When present, the CLI is linked to
-  // the user's onechater.app account and can sync their connected providers.
+  // the user's onechater.com account and can sync their connected providers.
   web?: WebSession
 }
 
 export type WebSession = {
   token: string
   email?: string
+  // Billing plan of the linked account ("free" | "pro" | "team"). Synced on
+  // every login/startup; decides which providers the terminal may use.
+  plan?: string
+  // Authoritative allow-list sent by the server for the current plan. Missing
+  // or empty = no restriction (paid plans).
+  allowedProviders?: Provider[]
+}
+
+// Providers a Free-plan account may use — mirror of the web's BYOK gating
+// (FREE_PROVIDERS in app/chat/page.tsx). Fallback only: the server's
+// allowedProviders list wins when present.
+export const FREE_PLAN_PROVIDERS: Provider[] = ["groq", "openrouter", "mistral", "google"]
+
+// Whether the signed-in account's plan allows using this provider. Without a
+// linked session there's nothing to gate here — the REPL itself requires login
+// before any chat, so this only answers the per-provider question.
+export function planAllows(cfg: Config, p: Provider): boolean {
+  const web = cfg.web
+  if (!web) return true
+  if ((web.plan ?? "free") !== "free") return true
+  const allowed = (web.allowedProviders ?? []).filter(isProvider)
+  return (allowed.length ? allowed : FREE_PLAN_PROVIDERS).includes(p)
 }
 
 const DIR = join(homedir(), ".onechater")
@@ -348,12 +370,12 @@ export const isActive = (cfg: Config, p: Provider) => {
   return c.apiKey.trim().length > 0 && c.enabled !== false
 }
 
-// Every provider that's on (key present + enabled). This is the set that "thinks
-// together": with 2+ the CLI runs fusion automatically, exactly like the web app
-// combining every active model. Ordered with the default provider first so it
-// acts as the synthesizer.
+// Every provider that's on (key present + enabled + allowed by the account's
+// plan). This is the set that "thinks together": with 2+ the CLI runs fusion
+// automatically, exactly like the web app combining every active model. Ordered
+// with the default provider first so it acts as the synthesizer.
 export function activeProviders(cfg: Config): Provider[] {
-  const connected = PROVIDERS.filter((p) => isActive(cfg, p))
+  const connected = PROVIDERS.filter((p) => isActive(cfg, p) && planAllows(cfg, p))
   const def = cfg.defaultProvider
   return connected.includes(def)
     ? [def, ...connected.filter((p) => p !== def)]

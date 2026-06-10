@@ -195,7 +195,7 @@ export function streamChat(
       return streamOpenAICompat("https://api.groq.com/openai/v1/chat/completions", apiKey, model, messages)
     case "openrouter":
       return streamOpenAICompat("https://openrouter.ai/api/v1/chat/completions", apiKey, model, messages, {
-        "HTTP-Referer": "https://onechater.app",
+        "HTTP-Referer": "https://www.onechater.com",
         "X-Title": "OneChater CLI",
       })
     case "xai":

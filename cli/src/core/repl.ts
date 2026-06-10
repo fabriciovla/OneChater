@@ -23,8 +23,17 @@ import {
   setWebSession,
   modelsFor,
   modelLabel,
+  planAllows,
 } from "./config.js"
-import { CLI_PAGE, WEB_BASE, loginUrl, openBrowser, createLoopback, syncFromWeb } from "./auth.js"
+import {
+  CLI_PAGE,
+  WEB_BASE,
+  loginUrl,
+  openBrowser,
+  createLoopback,
+  syncFromWeb,
+  TokenRejectedError,
+} from "./auth.js"
 import { type ChatMessage, streamChat, humanizeProviderError } from "./providers.js"
 import { type Turn, buildHistory, gatherFusion, buildSynthesisMessages } from "./fusion.js"
 import { loadMemory, MEMORY_PATH } from "./memory.js"
@@ -89,7 +98,7 @@ const COMMANDS: Command[] = [
 function authCommand(web: Config["web"]): Command {
   return web
     ? { name: "/logout", args: "", desc: `sign out  (${web.email ?? "signed in"})` }
-    : { name: "/login", args: "", desc: "link your onechater.app account" }
+    : { name: "/login", args: "", desc: "link your onechater.com account" }
 }
 
 // Mirror of the current web session, so the command palette (which has no access
@@ -138,6 +147,24 @@ function startSpinner(label: string): () => void {
 //     prompt. Slash commands manage providers live.
 export async function runRepl(cfg: Config, opts: ReplOptions) {
   const turns: Turn[] = []
+
+  // Sign-in is required before chatting: the account's plan (Free vs Pro)
+  // decides which models the terminal may use, so an anonymous session has
+  // nothing to offer. Refreshes the plan on every start when already linked.
+  cfg = await ensureSignedIn(cfg)
+  if (!cfg.web) {
+    console.log("  " + dim("sign-in is required to use the OneChater terminal — run it again to retry.\n"))
+    return
+  }
+
+  // A `chat -p` provider the plan doesn't include falls back to the normal mode
+  // instead of silently calling a locked model.
+  if (opts.provider && !planAllows(cfg, opts.provider)) {
+    console.log(
+      "  " + dim(`${PROVIDER_NAMES[opts.provider]} isn't included in your ${cfg.web.plan ?? "free"} plan — upgrade at ${WEB_BASE}/#pricing`)
+    )
+    opts = { ...opts, provider: undefined }
+  }
 
   banner(cfg, opts)
 
@@ -239,13 +266,25 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
     }
 
     // ── Chat turn ───────────────────────────────────────────────────────────
+    // Signed out mid-session (/logout)? Chatting stays behind the login gate.
+    if (!cfg.web) {
+      console.log(
+        "\n  " + bar(C.text) + " " + bold(white("sign-in required")) + "\n  " +
+          dim("link your onechater.com account with ") + white("/login") + dim(" to keep chatting")
+      )
+      continue
+    }
+
     const active = activeProviders(cfg)
     const memory = loadMemory().trim()
 
     // Forced single model via `chat -p`, otherwise auto: 2+ connected = fusion.
-    const forced = opts.provider && getProviderConfig(cfg, opts.provider).apiKey.trim()
-      ? opts.provider
-      : undefined
+    const forced =
+      opts.provider &&
+      getProviderConfig(cfg, opts.provider).apiKey.trim() &&
+      planAllows(cfg, opts.provider)
+        ? opts.provider
+        : undefined
 
     if (!forced && active.length === 0) {
       console.log(
@@ -746,12 +785,21 @@ function cmdProviders(cfg: Config): Promise<Config> {
       const lines: string[] = ["  " + bold(white("Providers"))]
       ord.forEach((p, i) => {
         const keyed = hasKey(cfg, p)
-        const on = isActive(cfg, p)
+        const allowed = planAllows(cfg, p)
+        const on = isActive(cfg, p) && allowed
         const onSel = i === sel
         const star = isFavorite(cfg, p) ? white("★") : " "
         // ● on · ◯ off-but-key-saved · ○ no key
         const dot = on ? "●" : keyed ? "◯" : "○"
-        const state = on ? "connected" : keyed ? "off · key saved" : isFree(p) ? "free" : ""
+        const state = !allowed
+          ? "pro plan required"
+          : on
+            ? "connected"
+            : keyed
+              ? "off · key saved"
+              : isFree(p)
+                ? "free"
+                : ""
         const tags = [state, on && p === active[0] ? "synth" : ""].filter(Boolean).join(" · ")
         const label = `${star} ${dot} ${PROVIDER_NAMES[p]}`
         lines.push(
@@ -839,6 +887,12 @@ function cmdProviders(cfg: Config): Promise<Config> {
         if (ch === "\x03") return finish()
         if (ch === "\r" || ch === "\n") {
           const p = orderedProviders(cfg)[sel]
+          if (!planAllows(cfg, p)) {
+            // Plan-locked: the row's "pro plan required" tag says why — Enter
+            // neither toggles nor opens the key input.
+            i++
+            continue
+          }
           if (hasKey(cfg, p)) {
             // Toggle on/off WITHOUT discarding the key — re-enabling is instant.
             cfg = setProviderEnabled(cfg, p, !isActive(cfg, p))
@@ -904,7 +958,38 @@ function cmdProviders(cfg: Config): Promise<Config> {
   })
 }
 
-// /login — link the CLI to the user's onechater.app account. Opens the browser
+// Startup gate: make sure the terminal is linked to an onechater.com account.
+// Already linked → silently re-sync plan + keys with the stored session token
+// (so a plan upgrade/downgrade on the web is picked up immediately). Token
+// rejected → clear the stale session and run the browser login. Offline → keep
+// the cached session/plan rather than locking the user out of their own keys.
+async function ensureSignedIn(cfg: Config): Promise<Config> {
+  if (cfg.web) {
+    const stop = startSpinner("checking your account…")
+    try {
+      const { cfg: next } = await syncFromWeb(cfg, cfg.web.token)
+      saveConfig(next)
+      stop()
+      return next
+    } catch (err) {
+      stop()
+      if (!(err instanceof TokenRejectedError)) {
+        console.log("  " + dim("couldn't reach " + WEB_BASE + " — using your cached account/plan"))
+        return cfg
+      }
+      console.log("  " + dim("your session expired — sign in again"))
+      cfg = setWebSession(cfg, null)
+      saveConfig(cfg)
+    }
+  } else {
+    console.log("")
+    console.log("  " + bold(white("Welcome to OneChater")))
+    console.log("  " + dim("sign in with your onechater.com account — your plan decides which models you get."))
+  }
+  return cmdLogin(cfg)
+}
+
+// /login — link the CLI to the user's onechater.com account. Opens the browser
 // to the web /cli page; once signed in it redirects back to our loopback with a
 // token (no copy-paste). Falls back to pasting a code from /cli if the loopback
 // can't be reached. Either way we then pull down the account's providers/keys.
@@ -943,14 +1028,18 @@ async function cmdLogin(cfg: Config): Promise<Config> {
 
   const stop = startSpinner("linking your account…")
   try {
-    const { cfg: next, email, count } = await syncFromWeb(cfg, token)
+    const { cfg: next, email, plan, count } = await syncFromWeb(cfg, token)
     saveConfig(next)
     stop()
     console.log(
       "  " + white("✓") + " " + bold(white("logged in")) +
         (email ? dim("  " + email) : "") +
+        (plan ? dim("  ·  ") + bold(white(`${plan} plan`)) : "") +
         dim(count ? `   · synced ${count} model${count === 1 ? "" : "s"}` : "   · no models on your account yet")
     )
+    if ((plan ?? "free") === "free") {
+      console.log("  " + dim("free plan — free-tier models only (Llama/Groq, Gemini, OpenRouter, Mistral). Upgrade for all models."))
+    }
     const n = activeProviders(next).length
     console.log("  " + dim(n >= 2 ? `fusion · ${n} models` : n === 1 ? "single model" : "add a model with /providers"))
     return next
@@ -1001,9 +1090,11 @@ async function cmdModel(cfg: Config, rest: string[]): Promise<Config> {
   let provider = rest[0]
   let model = rest.slice(1).join(" ").trim()
 
-  // Only providers with a key — there's no point setting a model on one you
-  // can't call.
-  const connected = orderedProviders(cfg).filter((p) => getProviderConfig(cfg, p).apiKey.trim())
+  // Only providers with a key AND allowed by the plan — there's no point
+  // setting a model on one you can't call.
+  const connected = orderedProviders(cfg).filter(
+    (p) => getProviderConfig(cfg, p).apiKey.trim() && planAllows(cfg, p)
+  )
   if (!connected.length) {
     console.log("  " + dim("no models connected — use ") + white("/login") + dim(" or ") + white("/providers") + dim(" first"))
     return cfg
@@ -1019,6 +1110,10 @@ async function cmdModel(cfg: Config, rest: string[]): Promise<Config> {
     provider = connected[idx]
   }
   if (!isProvider(provider)) return cfg
+  if (!planAllows(cfg, provider)) {
+    console.log("  " + dim(`${PROVIDER_NAMES[provider]} needs a Pro plan — upgrade at ${WEB_BASE}/#pricing`))
+    return cfg
+  }
   if (!getProviderConfig(cfg, provider).apiKey.trim()) {
     console.log("  " + dim(`${PROVIDER_NAMES[provider]} isn't connected — add it with /providers`))
     return cfg
@@ -1057,13 +1152,19 @@ async function cmdModel(cfg: Config, rest: string[]): Promise<Config> {
 async function cmdDefault(cfg: Config, rest: string[]): Promise<Config> {
   let provider = rest[0]
   if (!provider || !isProvider(provider)) {
-    const list = activeProviders(cfg).length ? activeProviders(cfg) : [...PROVIDERS]
+    const list = activeProviders(cfg).length
+      ? activeProviders(cfg)
+      : PROVIDERS.filter((p) => planAllows(cfg, p))
     const items = list.map((p) => ({ label: PROVIDER_NAMES[p], hint: p === cfg.defaultProvider ? "current" : "" }))
     const idx = await selectMenu("Synthesizer (default model)", items)
     if (idx === null) return cfg
     provider = list[idx]
   }
   if (!isProvider(provider)) return cfg
+  if (!planAllows(cfg, provider)) {
+    console.log("  " + dim(`${PROVIDER_NAMES[provider]} needs a Pro plan — upgrade at ${WEB_BASE}/#pricing`))
+    return cfg
+  }
   cfg = { ...cfg, defaultProvider: provider }
   saveConfig(cfg)
   console.log("  " + white("✓") + dim("  default / synthesizer = ") + bold(white(PROVIDER_NAMES[provider])))
@@ -1100,9 +1201,14 @@ function banner(cfg: Config, opts: ReplOptions) {
   }
   console.log(kv("memory", memory ? bold(white("on")) : dim("empty")))
   console.log(kv("tools", bold(white("on")) + dim(`   ${WORKSPACE}`)))
-  // Account line: show the signed-in email (and how to sign out) when linked.
+  // Account line: show the signed-in email (and how to sign out) when linked,
+  // plus the plan that gates which models are available.
   if (cfg.web) {
     console.log(kv("account", bold(white(cfg.web.email ?? "signed in")) + dim("   /logout")))
+    const plan = cfg.web.plan ?? "free"
+    console.log(
+      kv("plan", bold(white(plan)) + (plan === "free" ? dim("   free-tier models · upgrade for all") : ""))
+    )
   }
 
   console.log(divider())
@@ -1122,11 +1228,12 @@ function printProviders(cfg: Config) {
   for (const p of orderedProviders(cfg)) {
     const c = getProviderConfig(cfg, p)
     const keyed = hasKey(cfg, p)
-    const on = isActive(cfg, p)
+    const allowed = planAllows(cfg, p)
+    const on = isActive(cfg, p) && allowed
     const star = isFavorite(cfg, p) ? white("★") : " "
     const dot = on ? white("●") : keyed ? dim("◯") : dim("○")
     const name = on ? bold(white(PROVIDER_NAMES[p].padEnd(11))) : muted(PROVIDER_NAMES[p].padEnd(11))
-    const note = keyed && !on ? dim(" off ") : isFree(p) ? dim(" free") : "     "
+    const note = !allowed ? dim(" pro ") : keyed && !on ? dim(" off ") : isFree(p) ? dim(" free") : "     "
     const synth = on && p === active[0] ? "  " + dim("synth") : ""
     console.log(`  ${star} ${dot} ${name}${note}  ${dim(c.model)}${synth}`)
   }
@@ -1146,7 +1253,7 @@ function printHelp(cfg: Config) {
   console.log("  " + bold("Commands") + dim("   (interactive — pick with ↑↓ and enter)"))
   // Auth row: when signed in show /logout with the account email; else /login.
   if (cfg.web) console.log(row("/logout", "", `sign out  (${cfg.web.email ?? "signed in"})`))
-  else console.log(row("/login", "", "link your onechater.app account (syncs keys)"))
+  else console.log(row("/login", "", "link your onechater.com account (syncs keys)"))
   console.log(row("/providers", "", "add/remove key, on/off + favorite (★ with f)"))
   console.log(row("/disconnect", "", "remove a model"))
   console.log(row("/model", "", "set a provider's model"))

@@ -19,6 +19,7 @@ import {
   FREE_KEY_URL,
   FREE_MODELS,
   detectProviderFromKey,
+  planAllows,
 } from "./core/config.js"
 import { runRepl } from "./core/repl.js"
 import { ensureMemoryFile, loadMemory, MEMORY_PATH } from "./core/memory.js"
@@ -128,7 +129,8 @@ program
     for (const p of PROVIDERS) {
       const c = getProviderConfig(cfg, p)
       const dot = c.apiKey.trim() ? green("●") : dim("○")
-      const free = isFree(p) ? green(" free") : "     "
+      // Plan-locked providers (Free account) read "pro" instead of "free".
+      const free = !planAllows(cfg, p) ? amber(" pro ") : isFree(p) ? green(" free") : "     "
       const def = p === cfg.defaultProvider ? "  " + cyan("default") : ""
       const inFusion = cfg.fusionSet.includes(p) ? "  " + violet("fusion") : ""
       const name = c.apiKey.trim() ? white(p.padEnd(12)) : muted(p.padEnd(12))

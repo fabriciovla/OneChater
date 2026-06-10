@@ -30,7 +30,7 @@
   ],
   "author": "Fabricio Varela",
   "license": "UNLICENSED",
-  "homepage": "https://onechater.app",
+  "homepage": "https://www.onechater.com",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

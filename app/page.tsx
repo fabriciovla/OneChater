@@ -648,7 +648,7 @@ function ChatPreview() {
           </div>
           <div className="flex-1 mx-4">
             <div className="w-40 mx-auto h-6 rounded-lg bg-gray-100 border border-black/8 flex items-center justify-center">
-              <span className="text-xs text-gray-500 font-mono">onechater.app/chat</span>
+              <span className="text-xs text-gray-500 font-mono">onechater.com/chat</span>
             </div>
           </div>
           <div className="flex gap-1.5">

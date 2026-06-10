@@ -10,7 +10,7 @@ import {
 } from "./config.js"
 
 // OneChater web login. The CLI stays BYOK/local-first, but `/login` links it to
-// the user's onechater.app account so the API keys they already saved on the web
+// the user's onechater.com account so the API keys they already saved on the web
 // (stored AES-encrypted server-side) are pulled down and connected here too —
 // no re-pasting keys per machine.
 //
@@ -21,7 +21,7 @@ import {
 // loopback can't be reached, the user pastes a code from /cli instead.
 
 // Override for local dev / self-host: ONECHATER_WEB=http://localhost:3000
-export const WEB_BASE = (process.env.ONECHATER_WEB ?? "https://one-chater.vercel.app").replace(/\/+$/, "")
+export const WEB_BASE = (process.env.ONECHATER_WEB ?? "https://www.onechater.com").replace(/\/+$/, "")
 
 // Page that signs in and hands the token back. With ?port it bounces to the
 // loopback; without it, it shows a paste-able code.
@@ -103,34 +103,58 @@ export function createLoopback(): Promise<Loopback> {
 
 type ProvidersResponse = {
   email?: string
+  plan?: string
+  allowedProviders?: string[] | null
+  sessionToken?: string
   providers?: { provider: string; apiKey?: string; model?: string }[]
 }
 
-// Exchange a CLI token for the account's connected providers and merge them into
-// the local config. Returns the updated config + how many synced, or throws on a
-// bad token / network error.
+// Thrown when the server rejects our token — the caller should send the user
+// back through a fresh browser login instead of retrying.
+export class TokenRejectedError extends Error {
+  constructor() {
+    super("session expired — sign in again")
+    this.name = "TokenRejectedError"
+  }
+}
+
+// Exchange a CLI token for the account's plan + connected providers and merge
+// them into the local config. The server also hands back a fresh 30-day session
+// token (stored in place of the short-lived login one) so the CLI can re-check
+// the plan on every startup. Returns the updated config + how many synced, or
+// throws (TokenRejectedError on a bad token).
 export async function syncFromWeb(
   cfg: Config,
   token: string
-): Promise<{ cfg: Config; email?: string; count: number }> {
+): Promise<{ cfg: Config; email?: string; plan?: string; count: number }> {
   const res = await fetch(`${WEB_BASE}/api/cli/providers`, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
   })
   if (res.status === 401 || res.status === 403) {
-    throw new Error("token rejected — sign in again and retry")
+    throw new TokenRejectedError()
   }
   if (!res.ok) {
     throw new Error(`${WEB_BASE} responded ${res.status}`)
   }
   const data = (await res.json()) as ProvidersResponse
 
-  let next = setWebSession(cfg, { token, email: data.email })
+  const allowed = Array.isArray(data.allowedProviders)
+    ? data.allowedProviders.filter(isProvider)
+    : undefined
+  let next = setWebSession(cfg, {
+    token: data.sessionToken?.trim() || token,
+    email: data.email,
+    plan: data.plan,
+    allowedProviders: allowed,
+  })
   let count = 0
   for (const entry of data.providers ?? []) {
     if (!isProvider(entry.provider) || !entry.apiKey?.trim()) continue
+    // Belt-and-braces: the server already filters plan-locked providers out.
+    if (allowed && !allowed.includes(entry.provider)) continue
     next = setProviderKey(next, entry.provider, entry.apiKey.trim())
     if (entry.model?.trim()) next = setProviderModel(next, entry.provider, entry.model.trim())
     count++
   }
-  return { cfg: next, email: data.email, count }
+  return { cfg: next, email: data.email, plan: data.plan, count }
 }

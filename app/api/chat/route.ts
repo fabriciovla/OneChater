@@ -544,7 +544,7 @@ async function streamOpenRouter(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://onechater.app",
+      "HTTP-Referer": "https://www.onechater.com",
       "X-Title": "OneChater",
     },
     body: JSON.stringify({ model: model || "nvidia/nemotron-3-super-120b-a12b:free", messages, stream: true }),

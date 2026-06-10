@@ -25,7 +25,7 @@ const lora = Lora({
   style: ["normal", "italic"],
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://one-chater.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.onechater.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
