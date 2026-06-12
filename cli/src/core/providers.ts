@@ -4,7 +4,35 @@ import type { Provider } from "./config.js"
 // yield text chunks — the natural shape for a terminal that prints as it reads.
 // BYOK: the caller passes the user's own apiKey; nothing is proxied.
 
-export type ChatMessage = { role: "system" | "user" | "assistant"; content: string }
+// An image the user attached (base64-encoded). Carried on the message and
+// converted to each provider's own multimodal format at request time.
+export type ImageAttachment = { mime: string; data: string }
+
+export type ChatMessage = {
+  role: "system" | "user" | "assistant"
+  content: string
+  images?: ImageAttachment[]
+}
+
+// OpenAI-compatible providers want multimodal content as an array of parts.
+// Messages without images stay plain strings (maximum compatibility); the
+// `images` field itself is never serialized into the request.
+function toOpenAIMessages(messages: ChatMessage[]): unknown[] {
+  return messages.map((m) =>
+    m.images?.length
+      ? {
+          role: m.role,
+          content: [
+            { type: "text", text: m.content },
+            ...m.images.map((im) => ({
+              type: "image_url",
+              image_url: { url: `data:${im.mime};base64,${im.data}` },
+            })),
+          ],
+        }
+      : { role: m.role, content: m.content }
+  )
+}
 
 // Split an SSE stream into `data:` payloads, yielding the extracted text via the
 // provided picker. Shared by every OpenAI-compatible provider.
@@ -74,7 +102,7 @@ async function* streamOpenAICompat(
       Authorization: `Bearer ${apiKey}`,
       ...extraHeaders,
     },
-    body: JSON.stringify({ model, messages, stream: true }),
+    body: JSON.stringify({ model, messages: toOpenAIMessages(messages), stream: true }),
   })
   yield* sseText(res, openAICompatChunk)
 }
@@ -99,7 +127,22 @@ async function* streamAnthropic(
 ): AsyncGenerator<string> {
   // Anthropic takes the system prompt as a top-level field, not a message.
   const system = messages.find((m) => m.role === "system")?.content
-  const convo = messages.filter((m) => m.role !== "system")
+  const convo = messages
+    .filter((m) => m.role !== "system")
+    .map((m) =>
+      m.images?.length
+        ? {
+            role: m.role,
+            content: [
+              ...m.images.map((im) => ({
+                type: "image",
+                source: { type: "base64", media_type: im.mime, data: im.data },
+              })),
+              { type: "text", text: m.content },
+            ],
+          }
+        : { role: m.role, content: m.content }
+    )
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -135,7 +178,12 @@ async function* streamCohere(
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ model, messages, stream: true }),
+    body: JSON.stringify({
+      model,
+      // Cohere is text-only here — drop image attachments, keep the text.
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      stream: true,
+    }),
   })
   yield* sseText(res, (j) =>
     j.type === "content-delta" ? j.delta?.message?.content?.text : undefined
@@ -150,17 +198,23 @@ async function* streamGoogle(
   // Gemini wants alternating user/model turns; fold system into the first user
   // turn and merge consecutive same-role turns.
   const system = messages.find((m) => m.role === "system")?.content
-  type GMsg = { role: "user" | "model"; parts: { text: string }[] }
+  type GPart = { text: string } | { inline_data: { mime_type: string; data: string } }
+  type GMsg = { role: "user" | "model"; parts: GPart[] }
   const contents = messages
     .filter((m) => m.role !== "system")
     .reduce<GMsg[]>((acc, m, idx) => {
       const role: "user" | "model" = m.role === "assistant" ? "model" : "user"
       let text = m.content
       if (idx === 0 && system && role === "user") text = `${system}\n\n${text}`
+      const images: GPart[] = (m.images ?? []).map((im) => ({
+        inline_data: { mime_type: im.mime, data: im.data },
+      }))
       if (acc.length && acc[acc.length - 1].role === role) {
-        acc[acc.length - 1].parts[0].text += "\n" + text
+        // parts[0] is always the text part of a merged turn.
+        ;(acc[acc.length - 1].parts[0] as { text: string }).text += "\n" + text
+        acc[acc.length - 1].parts.push(...images)
       } else {
-        acc.push({ role, parts: [{ text }] })
+        acc.push({ role, parts: [{ text }, ...images] })
       }
       return acc
     }, [])

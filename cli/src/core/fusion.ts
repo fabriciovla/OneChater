@@ -6,6 +6,7 @@ import {
 } from "./config.js"
 import {
   type ChatMessage,
+  type ImageAttachment,
   collectChat,
 } from "./providers.js"
 
@@ -50,7 +51,8 @@ export function buildHistory(
   provider: Provider,
   memory: string,
   newMessage: string,
-  extraSystem = ""
+  extraSystem = "",
+  images?: ImageAttachment[]
 ): ChatMessage[] {
   const base = buildSystemPrompt(provider, active, memory)
   const sys: ChatMessage = extraSystem
@@ -61,7 +63,7 @@ export function buildHistory(
     msgs.push({ role: "user", content: t.user })
     if (t.assistant.trim()) msgs.push({ role: "assistant", content: t.assistant })
   }
-  msgs.push({ role: "user", content: newMessage })
+  msgs.push({ role: "user", content: newMessage, ...(images?.length ? { images } : {}) })
   return msgs
 }
 
@@ -74,16 +76,22 @@ export async function gatherFusion(
   cfg: Config,
   memory: string,
   question: string,
-  extraSystem = ""
+  extraSystem = "",
+  images?: ImageAttachment[],
+  // Live progress: called as each model finishes (or fails), so the terminal
+  // can show who's done instead of a blind spinner.
+  onUpdate?: (provider: Provider, status: "done" | "error") => void
 ): Promise<FusionPart[]> {
   return Promise.all(
     active.map(async (provider): Promise<FusionPart> => {
       const { apiKey, model } = getProviderConfig(cfg, provider)
       try {
-        const messages = buildHistory(turns, active, provider, memory, question, extraSystem)
+        const messages = buildHistory(turns, active, provider, memory, question, extraSystem, images)
         const answer = await collectChat(provider, apiKey, model, messages)
+        onUpdate?.(provider, "done")
         return { provider, model, answer }
       } catch (err) {
+        onUpdate?.(provider, "error")
         return {
           provider,
           model,
@@ -101,7 +109,8 @@ export async function gatherFusion(
 export function buildSynthesisMessages(
   turns: Turn[],
   parts: FusionPart[],
-  question: string
+  question: string,
+  images?: ImageAttachment[]
 ): ChatMessage[] {
   const contributions = parts
     .filter((p) => p.answer.trim())
@@ -118,6 +127,6 @@ export function buildSynthesisMessages(
     messages.push({ role: "user", content: t.user })
     if (t.assistant.trim()) messages.push({ role: "assistant", content: t.assistant })
   }
-  messages.push({ role: "user", content: synthesisMsg })
+  messages.push({ role: "user", content: synthesisMsg, ...(images?.length ? { images } : {}) })
   return messages
 }

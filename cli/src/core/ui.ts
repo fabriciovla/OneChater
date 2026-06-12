@@ -1,9 +1,10 @@
 import { stdout } from "node:process"
 
 // ─── OneChater terminal theme ────────────────────────────────────────────────
-// A clean, professional monochrome look. No brand colors — only white, bold,
-// and two levels of gray. Emphasis comes from weight (bold) and structure
-// (rules, boxes), not hue. Built on 24-bit truecolor where available.
+// A clean, professional look: neutral grays + ONE brand accent (the same indigo
+// as the onechater.com landing). The accent marks identity and structure — the
+// prompt, gutter bars, headings, the wordmark — never body text. Emphasis still
+// comes from weight (bold) and structure. 24-bit truecolor where available.
 
 const ESC = "\x1b["
 const RESET = `${ESC}0m`
@@ -15,13 +16,14 @@ const hex = (h: string): RGB => {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }
 
-// Neutral palette only — bright text, mid gray, faint gray.
+// Neutral palette + the single indigo accent.
 export const C = {
   text: hex("#f2f3f5"),
   muted: hex("#9aa0ab"),
   faint: hex("#5b5f72"),
-  // Diff accents — the ONE place we break the monochrome rule, because a code
-  // diff is unreadable without red (removed) / green (added).
+  // Brand accent — indigo-400, tuned to read well on dark terminals.
+  accent: hex("#818cf8"),
+  // Diff accents — red (removed) / green (added); a diff needs them.
   del: hex("#e5534b"),
   add: hex("#3fb950"),
 }
@@ -36,6 +38,7 @@ export const bold = (s: string) => `${ESC}1m` + s + RESET
 export const dim = (s: string) => paint(C.faint, s)
 export const muted = (s: string) => paint(C.muted, s)
 export const white = (s: string) => paint(C.text, s)
+export const accent = (s: string) => paint(C.accent, s)
 
 // Convenience fns — all neutral now. Kept as named exports so existing call
 // sites keep working; emphasis is expressed with weight, not color.
@@ -90,9 +93,9 @@ export function bigWord(word = "ONECHATER"): string[] {
   return rows
 }
 
-// Wordmark for the banner — plain bold white text, no big ASCII font.
+// Wordmark for the banner — an accent diamond + bold white text.
 export function wordmark(indent = "  ", word = "OneChater"): string[] {
-  return [indent + bold(white(word))]
+  return [indent + accent("◆ ") + bold(white(word))]
 }
 
 // Thin centered divider: ╶────────╴
@@ -124,26 +127,28 @@ export function boxBottom(): string {
 }
 
 // The input's bottom rule, with the OneChater wordmark centered in it:
-//   ─────────────────────── OneChater ───────────────────────
-// Sits on the bottom border line (below the text), kept subtle so it never
-// competes with the user's input. Occupies the same single line as boxBottom()
-// so the input frame's redraw accounting is unchanged.
+//   ──────────────────────| OneChater |───────────────────────
+// Spans the full terminal width (minus the last column, same deferred-wrap
+// guard as fullRule). Recomputed on every call so each redraw picks up the
+// current window width.
 export function inputFooter(): string {
   const cols = Math.max(8, (stdout.columns || 80) - 1)
-  const plain = " OneChater " // padded label, for width math (strip styling)
+  const plain = "| OneChater |" // label, for width math (strip styling)
   const left = Math.max(0, Math.floor((cols - plain.length) / 2))
   const right = Math.max(0, cols - plain.length - left)
-  return muted("─".repeat(left)) + dim(" OneChater ") + muted("─".repeat(right))
+  // Same width as `plain` — only the word carries the brand accent.
+  const label = dim("| ") + accent("OneChater") + dim(" |")
+  return muted("─".repeat(left)) + label + muted("─".repeat(right))
 }
 
-// The prompt printed before the cursor.
+// The prompt printed before the cursor — the brand accent marks "your turn".
 export function boxPrompt(): string {
-  return bold(white("›")) + " "
+  return bold(accent("›")) + " "
 }
 
-// A labelled gutter line: ▎ label   detail
+// A labelled gutter line: ▎ label   detail  (accent bar, label in `rgb`)
 export function gutter(label: string, rgb: RGB = C.text, detail = ""): string {
-  return "  " + bar(rgb) + " " + bold(paint(rgb, label)) + (detail ? "  " + dim(detail) : "")
+  return "  " + bar(C.accent) + " " + bold(paint(rgb, label)) + (detail ? "  " + dim(detail) : "")
 }
 
 // Key/value row with aligned dim key.
@@ -165,6 +170,8 @@ export function createMarkdownStream() {
   let heading = false
   let atLineStart = true
   let pending = ""
+  let fence = false // inside a ``` fenced code block
+  let fenceLine = "" // current (incomplete) line of the fence body
 
   const BOLD_ON = `${ESC}1m`
   const BOLD_OFF = `${ESC}22m`
@@ -172,13 +179,17 @@ export function createMarkdownStream() {
   const ITAL_OFF = `${ESC}23m`
   const CODE_ON = fg(C.muted)
   const CODE_OFF = `${ESC}39m`
+  // Headings get bold + the brand accent; both reset at end of line.
+  const HEAD_ON = BOLD_ON + fg(C.accent)
+  const HEAD_OFF = BOLD_OFF + DEFFG
 
   // ANSI to close every style currently open (used at flush / end of answer).
   function closeAll(): string {
     let s = ""
     if (code) s += CODE_OFF
     if (italic) s += ITAL_OFF
-    if (bold || heading) s += BOLD_OFF
+    if (heading) s += HEAD_OFF
+    else if (bold) s += BOLD_OFF
     bold = italic = code = heading = false
     return s
   }
@@ -191,10 +202,53 @@ export function createMarkdownStream() {
     while (i < s.length) {
       const ch = s[i]
 
+      // Inside a ``` fence: buffer the line, emit it syntax-highlighted on the
+      // newline. The closing ``` line ends the fence.
+      if (fence) {
+        if (ch === "\n") {
+          if (fenceLine.trim() === "```") {
+            fence = false
+            out += fg(C.faint) + "```" + DEFFG + "\n"
+          } else {
+            out += highlightCode(fenceLine) + DEFFG + "\n"
+          }
+          fenceLine = ""
+          atLineStart = true
+        } else {
+          fenceLine += ch
+        }
+        i++
+        continue
+      }
+
+      // ``` at the start of a line opens a fence. The whole marker line
+      // (incl. language tag) must be in hand before we commit — hold a partial.
+      if (atLineStart && ch === "`") {
+        const rest = s.slice(i)
+        if (/^`{1,2}$/.test(rest)) {
+          pending = rest // might become ``` with the next chunk
+          break
+        }
+        if (rest.startsWith("```")) {
+          const nl = rest.indexOf("\n")
+          if (nl === -1) {
+            pending = rest // wait for the full ```lang line
+            break
+          }
+          fence = true
+          fenceLine = ""
+          out += fg(C.faint) + rest.slice(0, nl) + DEFFG + "\n"
+          atLineStart = true
+          i += nl + 1
+          continue
+        }
+        // a single ` at line start — fall through to the inline-code toggle
+      }
+
       // A newline closes an active heading and resets line state.
       if (ch === "\n") {
         if (heading) {
-          out += BOLD_OFF
+          out += HEAD_OFF
           heading = false
         }
         out += "\n"
@@ -203,7 +257,7 @@ export function createMarkdownStream() {
         continue
       }
 
-      // `# ` … `###### ` at the start of a line → bold the rest of the line.
+      // `# ` … `###### ` at the start of a line → accent-bold the rest of it.
       if (atLineStart && ch === "#") {
         let j = i
         while (j < s.length && s[j] === "#") j++
@@ -215,10 +269,27 @@ export function createMarkdownStream() {
           i = j + 1
           heading = true
           atLineStart = false
-          out += BOLD_ON
+          out += HEAD_ON
           continue
         }
         // not a heading — fall through and print the '#' literally
+      }
+
+      // `- ` / `* ` at the start of a line → an accent bullet `•`. (A lone
+      // marker at the chunk edge waits for the next char; `* ` only counts as a
+      // bullet at line start, so emphasis elsewhere is untouched.)
+      if (atLineStart && (ch === "-" || ch === "*")) {
+        if (i + 1 >= s.length) {
+          pending = ch
+          break
+        }
+        if (s[i + 1] === " ") {
+          out += fg(C.accent) + "•" + DEFFG + " "
+          atLineStart = false
+          i += 2
+          continue
+        }
+        // not a bullet — fall through ('-' prints literally; '*' is emphasis)
       }
 
       // `code` span.
@@ -257,8 +328,14 @@ export function createMarkdownStream() {
   }
 
   function flush(): string {
-    const tail = pending
+    let tail = pending
     pending = ""
+    if (fence && fenceLine) {
+      // Answer ended mid-fence — emit what we have, highlighted.
+      tail += highlightCode(fenceLine) + DEFFG
+      fenceLine = ""
+      fence = false
+    }
     return tail + closeAll()
   }
 

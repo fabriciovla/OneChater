@@ -60,10 +60,11 @@ export function recentAudit(limit = 20): AuditEntry[] {
 // so a model stuck in a loop (or steered by a malicious prompt) can't hammer the
 // machine. Per-process: the budget resets when the REPL restarts.
 const WINDOW_MS = 60_000
-const LIMITS: Record<"command" | "mutation", number> = { command: 30, mutation: 60 }
-const hits: Record<"command" | "mutation", number[]> = { command: [], mutation: [] }
+type RateKind = "command" | "mutation" | "network"
+const LIMITS: Record<RateKind, number> = { command: 30, mutation: 60, network: 30 }
+const hits: Record<RateKind, number[]> = { command: [], mutation: [], network: [] }
 
-export function rateLimit(kind: "command" | "mutation"): void {
+export function rateLimit(kind: RateKind): void {
   const now = Date.now()
   const recent = hits[kind].filter((t) => now - t < WINDOW_MS)
   if (recent.length >= LIMITS[kind]) {

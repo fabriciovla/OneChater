@@ -291,6 +291,13 @@ export type Config = {
   // OneChater web session (set by `/login`). When present, the CLI is linked to
   // the user's onechater.com account and can sync their connected providers.
   web?: WebSession
+  // Permission allowlist: tool actions matching one of these rules auto-approve
+  // (skip the panel). A rule is a tool name ("git_status") or, for run_command,
+  // "run_command:<prefix>" matching by command prefix ("run_command:npm test").
+  allow?: string[]
+  // Automation run after a successful file mutation (e.g. a formatter). "$FILE"
+  // is replaced with the changed file. A project's .onechater/hooks.json wins.
+  hooks?: { afterEdit?: string }
 }
 
 export type WebSession = {
@@ -329,6 +336,26 @@ const DEFAULT_CONFIG: Config = {
   fusionSynthesizer: "anthropic",
   providers: {},
   favorites: [],
+  allow: [],
+}
+
+// Whether an allowlist rule matches a tool call. Bare tool name → matches any
+// args; "run_command:<prefix>" → matches when the command starts with <prefix>.
+export function allowMatches(rules: string[] | undefined, name: string, args: Record<string, unknown>): boolean {
+  if (!rules?.length) return false
+  for (const rule of rules) {
+    const colon = rule.indexOf(":")
+    if (colon === -1) {
+      if (rule === name) return true
+    } else {
+      const tool = rule.slice(0, colon)
+      const prefix = rule.slice(colon + 1).trim()
+      if (tool !== name) continue
+      const cmd = String(args.command ?? "")
+      if (prefix && cmd.startsWith(prefix)) return true
+    }
+  }
+  return false
 }
 
 function ensureDir() {
@@ -344,6 +371,7 @@ export function loadConfig(): Config {
       ...raw,
       providers: raw.providers ?? {},
       favorites: Array.isArray(raw.favorites) ? raw.favorites.filter(isProvider) : [],
+      allow: Array.isArray(raw.allow) ? raw.allow.filter((r: unknown) => typeof r === "string") : [],
     }
   } catch {
     return { ...DEFAULT_CONFIG }

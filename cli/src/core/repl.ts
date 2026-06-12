@@ -1,6 +1,8 @@
 import readline from "node:readline"
-import { readFileSync, existsSync } from "node:fs"
+import { readFileSync, writeFileSync, existsSync, statSync } from "node:fs"
+import { resolve as resolvePath, isAbsolute } from "node:path"
 import { stdin, stdout } from "node:process"
+import { spawn as spawnChild } from "node:child_process"
 import {
   type Config,
   type Provider,
@@ -34,21 +36,59 @@ import {
   syncFromWeb,
   TokenRejectedError,
 } from "./auth.js"
-import { type ChatMessage, streamChat, humanizeProviderError } from "./providers.js"
+import {
+  type ChatMessage,
+  type ImageAttachment,
+  streamChat,
+  collectChat,
+  humanizeProviderError,
+} from "./providers.js"
 import { type Turn, buildHistory, gatherFusion, buildSynthesisMessages } from "./fusion.js"
 import { loadMemory, MEMORY_PATH } from "./memory.js"
 import {
+  type SavedChat,
+  CHATS_DIR,
+  listChats,
+  loadChat,
+  saveChat,
+  deleteChat,
+  renameChat,
+  newChat,
+  capTurns,
+  relTime,
+  slugify,
+} from "./chats.js"
+import {
   type ToolCall,
+  type ToolSpec,
   WORKSPACE,
   TOOL_NAMES,
   getTool,
+  isMutating,
   parseToolCalls,
   stripToolBlocks,
   toolsSystemPrompt,
   createToolBlockHider,
   resolveInWorkspace,
   applyEdit,
+  dynamicToolSpecs,
+  registerDynamicTool,
+  addToolPromptBlock,
+  killAllProcesses,
 } from "./tools.js"
+import { type ExtensionState, loadExtensions } from "./extensions.js"
+import { MCP_CONFIG_PATH, ensureMcpConfigFile, loadMcpConfig } from "./mcp.js"
+import { SKILLS_DIR, ensureSkillsDir } from "./skills.js"
+import {
+  type ProjectCommand,
+  type Hooks,
+  loadProjectContext,
+  projectContextBlock,
+  loadProjectCommands,
+  expandCommand,
+  loadProjectHooks,
+} from "./project.js"
+import { allowMatches } from "./config.js"
 import { type Decision, audit, rateLimit, recentAudit, AUDIT_PATH } from "./security.js"
 import {
   C,
@@ -58,13 +98,14 @@ import {
   dim,
   muted,
   white,
+  accent,
   wordmark,
   divider,
   gutter,
   kv,
   boxTop,
-  boxBottom,
   boxPrompt,
+  inputFooter,
   createMarkdownStream,
   createWrapper,
   renderDiff,
@@ -85,9 +126,20 @@ const COMMANDS: Command[] = [
   { name: "/model", args: "<prov> <model>", desc: "set a provider's model" },
   { name: "/default", args: "<provider>", desc: "pick the synthesizer" },
   { name: "/tools", args: "", desc: "list workspace tools" },
+  { name: "/mcp", args: "", desc: "connected MCP servers & tools" },
+  { name: "/skills", args: "", desc: "available skills" },
   { name: "/workspace", args: "", desc: "show the workspace dir" },
   { name: "/audit", args: "", desc: "recent tool actions log" },
   { name: "/memory", args: "", desc: "show persistent memory" },
+  { name: "/save", args: "[name]", desc: "name & save this chat" },
+  { name: "/chats", args: "[query]", desc: "list / resume / delete saved chats" },
+  { name: "/rename", args: "<name>", desc: "rename the current chat" },
+  { name: "/compare", args: "<prompt>", desc: "all models answer, side by side" },
+  { name: "/export", args: "", desc: "export this chat to markdown" },
+  { name: "/usage", args: "", desc: "session token estimate" },
+  { name: "/yolo", args: "", desc: "toggle auto-approve for tools" },
+  { name: "/allow", args: "[rule]", desc: "auto-approve specific tool actions" },
+  { name: "/hooks", args: "", desc: "run a command after each file edit" },
   { name: "/clear", args: "", desc: "reset the conversation" },
   { name: "/help", args: "", desc: "command list" },
   { name: "/exit", args: "", desc: "quit" },
@@ -121,6 +173,31 @@ try {
 // so an accidental send can be edited and resent.
 let lastInput = ""
 
+// Session token/cost accounting — a rough chars/4 estimate (we don't parse
+// provider usage events), good enough to see the order of magnitude.
+const usage = { turns: 0, inChars: 0, outChars: 0 }
+
+// /yolo: skip the per-action permission panel for this session.
+let autoApprove = false
+
+// Permission allowlist for this turn (mirrors cfg.allow). A matching mutating
+// action auto-approves. Refreshed from cfg every loop iteration.
+let allowRules: string[] = []
+
+// File-mutation hooks for this session (cfg.hooks merged with the project's
+// .onechater/hooks.json — project wins). Run after a successful edit.
+let projectHooks: Hooks = {}
+
+// Session-wide input history, walked with ↑/↓ in the prompt (newest last).
+const inputHistory: string[] = []
+const HISTORY_MAX = 200
+function pushHistory(line: string) {
+  if (!line.trim()) return
+  if (inputHistory[inputHistory.length - 1] === line) return // skip consecutive dupes
+  inputHistory.push(line)
+  if (inputHistory.length > HISTORY_MAX) inputHistory.shift()
+}
+
 // A small in-place "thinking" spinner. Returns a stop() that clears the line.
 function startSpinner(label: string): () => void {
   if (!stdout.isTTY) return () => {}
@@ -128,12 +205,108 @@ function startSpinner(label: string): () => void {
   let i = 0
   stdout.write("\x1b[?25l")
   const timer = setInterval(() => {
-    stdout.write("\r  " + muted(frames[i % frames.length]) + " " + dim(label) + "\x1b[K")
+    stdout.write("\r  " + accent(frames[i % frames.length]) + " " + dim(label) + "\x1b[K")
     i++
   }, 80)
   return () => {
     clearInterval(timer)
     stdout.write("\r\x1b[K\x1b[?25h") // clear the spinner line, show cursor
+  }
+}
+
+// True when semver `a` is newer than `b` (major.minor.patch, lax parsing).
+function isNewer(a: string, b: string): boolean {
+  const pa = a.split(".").map((n) => parseInt(n, 10) || 0)
+  const pb = b.split(".").map((n) => parseInt(n, 10) || 0)
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) > (pb[i] ?? 0)) return true
+    if ((pa[i] ?? 0) < (pb[i] ?? 0)) return false
+  }
+  return false
+}
+
+// Non-blocking npm update check. Resolves the newer version string, or "" when
+// offline / unpublished / already current. Never throws.
+function fetchLatestVersion(): Promise<string> {
+  return (async () => {
+    try {
+      const ctrl = new AbortController()
+      const t = setTimeout(() => ctrl.abort(), 3000)
+      const res = await fetch("https://registry.npmjs.org/onechater/latest", { signal: ctrl.signal })
+      clearTimeout(t)
+      if (!res.ok) return ""
+      const j: any = await res.json()
+      const latest = typeof j?.version === "string" ? j.version : ""
+      return latest && VERSION && isNewer(latest, VERSION) ? latest : ""
+    } catch {
+      return ""
+    }
+  })()
+}
+
+// Summarize old (capped-out) turns with the first connected model, so a long
+// resumed chat keeps its memory. Best-effort: "" when no model or on error.
+async function summarizeTurns(cfg: Config, old: Turn[]): Promise<string> {
+  const provider = activeProviders(cfg)[0]
+  if (!provider) return ""
+  const { apiKey, model } = getProviderConfig(cfg, provider)
+  if (!apiKey.trim()) return ""
+  let text = old.map((t) => `User: ${t.user}\nAssistant: ${t.assistant}`).join("\n\n")
+  if (text.length > 80_000) text = text.slice(-80_000) // keep the newest part
+  const stop = startSpinner("summarizing older history…")
+  try {
+    const messages: ChatMessage[] = [
+      {
+        role: "system",
+        content:
+          "You summarize conversations. Reply ONLY with the summary, written in the same language as the conversation.",
+      },
+      {
+        role: "user",
+        content: `Summarize this conversation concisely: key facts, decisions, names, code/file references, open questions. Max ~300 words.\n\n${text}`,
+      },
+    ]
+    const out = await collectChat(provider, apiKey, model, messages)
+    stop()
+    return out.trim().slice(0, 6000)
+  } catch {
+    stop()
+    return ""
+  }
+}
+
+// Live fusion status line: "⠋ Claude · ✓ GPT · ✗ Gemini", repainted in place
+// while the models answer in parallel. Falls back to a no-op off-TTY.
+function startFusionStatus(active: Provider[]) {
+  const status = new Map<Provider, "pending" | "done" | "error">(active.map((p) => [p, "pending"]))
+  if (!stdout.isTTY) return { update: (p: Provider, s: "done" | "error") => status.set(p, s), end: () => {} }
+  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+  let f = 0
+  const render = () => {
+    const line = active
+      .map((p) => {
+        const s = status.get(p)
+        const mark = s === "done" ? accent("✓") : s === "error" ? muted("✗") : accent(frames[f % frames.length])
+        return mark + " " + (s === "pending" ? dim(PROVIDER_NAMES[p]) : white(PROVIDER_NAMES[p]))
+      })
+      .join(dim("  ·  "))
+    stdout.write("\r  " + line + "\x1b[K")
+  }
+  stdout.write("\x1b[?25l")
+  render()
+  const timer = setInterval(() => {
+    f++
+    render()
+  }, 80)
+  return {
+    update(p: Provider, s: "done" | "error") {
+      status.set(p, s)
+      render()
+    },
+    end() {
+      clearInterval(timer)
+      stdout.write("\r\x1b[K\x1b[?25h")
+    },
   }
 }
 
@@ -147,6 +320,20 @@ function startSpinner(label: string): () => void {
 //     prompt. Slash commands manage providers live.
 export async function runRepl(cfg: Config, opts: ReplOptions) {
   const turns: Turn[] = []
+  // Kicked off now (in parallel with sign-in), consulted right after the
+  // banner — so the note never lands mid-input and corrupts the prompt frame.
+  const updateCheck = fetchLatestVersion()
+
+  // Saved-chat session state. `currentChat` is the named chat this session is
+  // attached to (null = unnamed/unsaved). When a long chat is resumed, only a
+  // capped tail of it goes into `turns` (the live model context); `diskPrefix`
+  // holds the older turns so every save still writes the FULL history.
+  let currentChat: SavedChat | null = null
+  let diskPrefix: Turn[] = []
+  let saveHintShown = false
+  // Synthetic turns injected at the head of `turns` (the AI summary of older
+  // history). They give the models context but must never be written to disk.
+  let syntheticTurns = 0
 
   // Sign-in is required before chatting: the account's plan (Free vs Pro)
   // decides which models the terminal may use, so an anonymous session has
@@ -166,14 +353,215 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
     opts = { ...opts, provider: undefined }
   }
 
+  // Connect configured MCP servers + load local skills. Their tools join the
+  // dynamic registry for this session and are usable by every model, exactly
+  // like the built-ins. Best-effort: a server that won't start is reported, not
+  // fatal. `ext` is consulted by /mcp, /skills and torn down on exit.
+  let ext: ExtensionState = { mcp: [], skills: [], toolCount: 0, disconnect: () => {} }
+  const hasServers = Object.values(loadMcpConfig().mcpServers).some((s) => s && !s.disabled)
+  if (hasServers) console.log("  " + dim("connecting MCP servers…"))
+  try {
+    ext = await loadExtensions()
+  } catch {}
+
+  // Project awareness: inject this repo's AGENTS.md (conventions) into every
+  // system prompt, load its custom slash commands, and pick up its edit hooks.
+  // loadExtensions() above resets the dynamic prompt blocks, so this must run
+  // after it. Hooks: a project's .onechater/hooks.json overrides the user's cfg.
+  const projectCtx = loadProjectContext()
+  if (projectCtx) addToolPromptBlock(projectContextBlock(projectCtx))
+  const projectCommands = loadProjectCommands()
+  projectHooks = { ...(cfg.hooks ?? {}), ...loadProjectHooks() }
+
+  // Subagent: a tool that runs a focused, fresh-context agent loop and returns
+  // just its result — for parallelizable or self-contained side-quests. Its own
+  // tool calls still flow through the approval panel. Registered here (not in
+  // tools.ts) because it needs cfg + the agent loop, and after loadExtensions so
+  // it survives the dynamic-registry reset.
+  registerDynamicTool(spawnAgentSpec(() => cfg))
+
+  // Load a saved chat into the live session: full history stays on disk, a
+  // capped tail becomes the model context. Clears the screen and reprints the
+  // banner (like /clear) so the session visibly "becomes" that chat.
+  const resumeChat = async (slug: string): Promise<boolean> => {
+    const chat = loadChat(slug)
+    if (!chat) {
+      console.log("  " + dim("couldn't load that chat"))
+      return false
+    }
+    currentChat = chat
+    const capped = capTurns(chat.turns)
+    diskPrefix = chat.turns.slice(0, chat.turns.length - capped.length)
+    turns.length = 0
+    syntheticTurns = 0
+    turns.push(...capped)
+    if (stdout.isTTY) stdout.write("\x1b[2J\x1b[3J\x1b[H")
+    banner(cfg, opts, chat.name)
+    console.log(
+      dim(
+        `  · resumed "${chat.name}" — ${chat.turns.length} turn${chat.turns.length === 1 ? "" : "s"} on disk` +
+          (diskPrefix.length ? `, last ${capped.length} in context` : "")
+      )
+    )
+
+    // The turns the cap dropped still matter: summarize them once (cached in
+    // the chat file) and inject the summary as a synthetic first turn, so the
+    // AI remembers even a 200-turn chat. Best-effort — skipped if no model.
+    if (diskPrefix.length) {
+      let summary = chat.summary && chat.summaryUpto === diskPrefix.length ? chat.summary : ""
+      if (!summary) {
+        summary = await summarizeTurns(cfg, diskPrefix)
+        if (summary) {
+          chat.summary = summary
+          chat.summaryUpto = diskPrefix.length
+          saveChat(chat)
+        }
+      }
+      if (summary) {
+        turns.unshift({
+          user: "(context note) Briefly, what happened earlier in this conversation?",
+          assistant: summary,
+        })
+        syntheticTurns = 1
+        console.log(dim(`  · older history summarized into context`))
+      }
+    }
+    return true
+  }
+
   banner(cfg, opts)
+
+  // Update note (the fetch ran during sign-in; don't wait more than a beat).
+  const latest = await Promise.race([
+    updateCheck,
+    new Promise<string>((r) => setTimeout(() => r(""), 800)),
+  ])
+  if (latest) console.log(dim(`  · update available: v${latest} — npm i -g onechater`))
+
+  // Extensions summary: what MCP servers came up (and how many tools) + skills.
+  const okMcp = ext.mcp.filter((m) => m.ok)
+  const badMcp = ext.mcp.filter((m) => !m.ok)
+  if (okMcp.length) {
+    const list = okMcp.map((m) => `${m.name} (${m.toolCount})`).join(", ")
+    console.log(dim(`  · MCP connected: ${list}`))
+  }
+  for (const m of badMcp) console.log(dim(`  · MCP "${m.name}" failed: ${m.error ?? "couldn't start"}`))
+  if (ext.skills.length) {
+    console.log(dim(`  · skills loaded: ${ext.skills.map((s) => s.name).join(", ")}`))
+  }
+  if (projectCtx) console.log(dim(`  · project context: ${projectCtx.file}`))
+  if (projectCommands.size) {
+    console.log(dim(`  · project commands: ${[...projectCommands.keys()].map((n) => "/" + n).join(", ")}`))
+  }
+  if (projectHooks.afterEdit) console.log(dim(`  · edit hook: ${projectHooks.afterEdit}`))
+
+  // Resume picker: when there are saved chats, offer to pick up where the user
+  // left off (Esc / "new chat" = fresh session). Skipped on pipes.
+  if (stdin.isTTY) {
+    const recent = listChats().slice(0, 8)
+    if (recent.length) {
+      const idx = await selectMenu(
+        "Resume a chat?",
+        [
+          { label: "new chat" },
+          ...recent.map((c) => ({
+            label: c.name,
+            hint: `${c.turnCount} turn${c.turnCount === 1 ? "" : "s"} · ${relTime(c.updatedAt)}`,
+          })),
+        ],
+        "↑↓ move · enter select · esc new chat"
+      )
+      if (idx !== null && idx > 0) await resumeChat(recent[idx - 1].slug)
+    }
+  }
+
+  // One chat turn (a plain message, or the expansion of a project command).
+  // Extracted so custom /commands can reuse the exact same path. Closes over the
+  // session state above; the early `return`s replace the old loop `continue`s.
+  const chatTurn = async (input: string): Promise<void> => {
+    // Signed out mid-session (/logout)? Chatting stays behind the login gate.
+    if (!cfg.web) {
+      console.log(
+        "\n  " + bar(C.text) + " " + bold(white("sign-in required")) + "\n  " +
+          dim("link your onechater.com account with ") + white("/login") + dim(" to keep chatting")
+      )
+      return
+    }
+
+    const active = activeProviders(cfg)
+    const memory = loadMemory().trim()
+
+    // Forced single model via `chat -p`, otherwise auto: 2+ connected = fusion.
+    const forced =
+      opts.provider &&
+      getProviderConfig(cfg, opts.provider).apiKey.trim() &&
+      planAllows(cfg, opts.provider)
+        ? opts.provider
+        : undefined
+
+    if (!forced && active.length === 0) {
+      console.log(
+        "\n  " + bar(C.text) + " " + bold(white("no models connected")) + "\n  " +
+          dim("add one:  ") + white("/providers") + dim("   (free key: " + (FREE_KEY_URL.groq ?? "") + ")")
+      )
+      return
+    }
+
+    lastInput = input // remember it for double-Esc recall
+
+    // Vision: any image path pasted in the message gets read, base64'd and
+    // attached so multimodal providers can actually see it.
+    const images = extractImages(input)
+    if (images.labels.length) {
+      console.log("  " + dim(`image attached: ${images.labels.join(", ")}`))
+    }
+
+    const turnStart = Date.now()
+    try {
+      let answer: string
+      if (forced) {
+        answer = await singleTurn(cfg, turns, input, forced, memory, [forced], images.images)
+      } else if (active.length >= 2) {
+        answer = await fusionTurn(cfg, turns, input, active, memory, images.images)
+      } else {
+        answer = await singleTurn(cfg, turns, input, active[0], memory, active, images.images)
+      }
+      usage.turns++
+      usage.inChars += turns.reduce((n, t) => n + t.user.length + t.assistant.length, 0) + input.length
+      usage.outChars += answer.length
+      // Long answer finished while the user may be elsewhere — ring the bell.
+      if (stdout.isTTY && Date.now() - turnStart > 10_000) stdout.write("\x07")
+      turns.push({ user: input, assistant: answer })
+      if (currentChat) {
+        // Crash-safety: persist the FULL history (capped-out prefix + live
+        // turns) after every turn — a kill loses at most the in-flight one.
+        // Synthetic turns (the injected summary) never reach the disk.
+        currentChat.turns = diskPrefix.concat(turns.slice(syntheticTurns))
+        currentChat.updatedAt = new Date().toISOString()
+        saveChat(currentChat)
+      } else if (!saveHintShown && turns.length === 1) {
+        saveHintShown = true
+        console.log(dim("\n  · tip: /save <name> keeps this chat for next time"))
+      }
+    } catch (err) {
+      // Explain what happened in plain language — never dump the raw HTTP/JSON
+      // blob at the user. For a single-model turn we know which provider failed;
+      // in fusion the per-model notes already cover it.
+      const prov = forced ?? (active.length >= 2 ? undefined : active[0])
+      const { summary, hint } = humanizeProviderError(err, prov ? PROVIDER_NAMES[prov] : "the model")
+      console.log("\n  " + bar(C.text) + " " + white(summary))
+      if (hint) console.log("  " + dim(hint))
+    }
+  }
 
   while (true) {
     webSession = cfg.web // keep the palette's auth row in sync with login state
+    allowRules = cfg.allow ?? [] // refresh the auto-approve allowlist
     const raw = await readBoxedInput()
     if (raw === null) break
     const input = raw.trim()
     if (!input) continue
+    pushHistory(input) // ↑/↓ in the prompt walks past inputs
 
     // ── Slash commands ──────────────────────────────────────────────────────
     if (input.startsWith("/")) {
@@ -185,10 +573,239 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
         continue
       }
       if (cmd === "/clear") {
+        // Detach, don't delete: a named chat keeps its file (last auto-save);
+        // /chats or the startup picker bring it back.
+        const kept = currentChat?.name
         turns.length = 0
+        currentChat = null
+        diskPrefix = []
+        syntheticTurns = 0
         if (stdout.isTTY) stdout.write("\x1b[2J\x1b[3J\x1b[H")
         banner(cfg, opts)
-        console.log(dim("  · conversation cleared"))
+        console.log(dim(kept ? `  · conversation cleared — "${kept}" kept on disk` : "  · conversation cleared"))
+        continue
+      }
+      if (cmd === "/export") {
+        const list = diskPrefix.concat(turns.slice(syntheticTurns))
+        if (!list.length) {
+          console.log("  " + dim("nothing to export yet"))
+          continue
+        }
+        const title = currentChat?.name ?? "onechater chat"
+        const file = resolvePath(process.cwd(), slugify(title) + ".md")
+        const md =
+          `# ${title}\n\n` +
+          list.map((t) => `## You\n\n${t.user}\n\n## OneChater\n\n${t.assistant}`).join("\n\n---\n\n") +
+          "\n"
+        try {
+          writeFileSync(file, md, "utf8")
+          console.log("  " + accent("✓") + " " + dim("exported → ") + white(file))
+        } catch (err) {
+          console.log("  " + dim("export failed: " + (err instanceof Error ? err.message : "error")))
+        }
+        continue
+      }
+      if (cmd === "/usage") {
+        const tok = (n: number) => `~${Math.round(n / 4).toLocaleString("en-US")} tokens`
+        console.log("")
+        console.log("  " + bold("Usage") + dim("   this session · rough estimate (chars ÷ 4)"))
+        console.log(kv("turns", white(String(usage.turns))))
+        console.log(kv("sent", white(tok(usage.inChars)) + dim(`   (${usage.inChars.toLocaleString("en-US")} chars)`)))
+        console.log(kv("received", white(tok(usage.outChars)) + dim(`   (${usage.outChars.toLocaleString("en-US")} chars)`)))
+        console.log("")
+        continue
+      }
+      if (cmd === "/yolo") {
+        autoApprove = !autoApprove
+        if (autoApprove) {
+          console.log(
+            "\n  " + bar(C.accent) + " " + bold(white("auto-approve ON")) + "\n  " +
+              dim("models can now edit files and run commands WITHOUT asking — /yolo again to turn it off")
+          )
+        } else {
+          console.log("  " + accent("✓") + " " + dim("auto-approve off — actions ask for permission again"))
+        }
+        continue
+      }
+      if (cmd === "/allow") {
+        const arg = rest.join(" ").trim()
+        if (!arg) {
+          console.log("")
+          console.log("  " + bold("Allowlist") + dim("   these tool actions auto-approve (skip the panel)"))
+          const rules = cfg.allow ?? []
+          if (!rules.length) console.log("  " + dim("(empty) — /allow <rule>, e.g. /allow git_status  or  /allow run_command:npm test"))
+          else for (const r of rules) console.log("    " + accent("•") + " " + white(r))
+          console.log("  " + dim("/allow <rule> add · /allow clear reset"))
+          console.log("")
+          continue
+        }
+        if (arg === "clear") {
+          cfg = { ...cfg, allow: [] }
+          saveConfig(cfg)
+          console.log("  " + accent("✓") + " " + dim("allowlist cleared"))
+          continue
+        }
+        const rules = cfg.allow ?? []
+        if (rules.includes(arg)) {
+          console.log("  " + dim(`already allowed: ${arg}`))
+          continue
+        }
+        cfg = { ...cfg, allow: [...rules, arg] }
+        saveConfig(cfg)
+        console.log("  " + accent("✓") + " " + dim("auto-approving ") + white(arg))
+        continue
+      }
+      if (cmd === "/hooks") {
+        const sub = rest[0]
+        if (sub === "clear") {
+          cfg = { ...cfg, hooks: {} }
+          saveConfig(cfg)
+          projectHooks = { ...loadProjectHooks() }
+          console.log("  " + accent("✓") + " " + dim("afterEdit hook cleared"))
+          continue
+        }
+        if (sub === "afteredit" || sub === "afterEdit") {
+          const command = rest.slice(1).join(" ").trim()
+          if (!command) {
+            console.log("  " + dim("usage: /hooks afterEdit <command>   ($FILE = the changed file)"))
+            continue
+          }
+          cfg = { ...cfg, hooks: { ...(cfg.hooks ?? {}), afterEdit: command } }
+          saveConfig(cfg)
+          projectHooks = { ...(cfg.hooks ?? {}), ...loadProjectHooks() }
+          console.log("  " + accent("✓") + " " + dim("afterEdit = ") + white(command))
+          continue
+        }
+        console.log("")
+        console.log("  " + bold("Hooks") + dim("   run automatically after a file edit"))
+        console.log(kv("afterEdit", projectHooks.afterEdit ? white(projectHooks.afterEdit) : dim("(none)")))
+        console.log("  " + dim("/hooks afterEdit <cmd>  ·  /hooks clear  ·  $FILE = changed file"))
+        console.log("  " + dim("a project's .onechater/hooks.json overrides this"))
+        console.log("")
+        continue
+      }
+      if (cmd === "/compare") {
+        // Side-by-side view: every connected model answers, NO synthesis. The
+        // comparison is view-only — it doesn't enter the conversation history.
+        const q = rest.join(" ").trim()
+        const act = activeProviders(cfg)
+        if (act.length < 2) {
+          console.log("  " + dim("need 2+ connected models to compare — /providers"))
+          continue
+        }
+        if (!q) {
+          console.log("  " + dim("usage: /compare <prompt>"))
+          continue
+        }
+        const mem = loadMemory().trim()
+        const stop = startFusionStatus(act)
+        const parts = await gatherFusion(turns, act, cfg, mem, q, "", undefined, (p, s) =>
+          stop.update(p, s)
+        )
+        stop.end()
+        for (const p of parts) {
+          console.log("\n" + gutter(PROVIDER_NAMES[p.provider], C.text, p.model))
+          if (p.error) {
+            const { short } = humanizeProviderError(p.error, PROVIDER_NAMES[p.provider])
+            console.log("  " + dim(short))
+          } else {
+            renderText(stripToolBlocks(p.answer).trim() || p.answer.trim())
+          }
+        }
+        console.log("")
+        continue
+      }
+      if (cmd === "/save") {
+        let name = rest.join(" ").trim()
+        if (!name) name = await promptText("chat name:")
+        if (!name) {
+          console.log("  " + dim("cancelled"))
+          continue
+        }
+        if (currentChat) {
+          const r = renameChat(currentChat.slug, name)
+          if (r) currentChat = r
+          console.log("  " + accent("✓") + " " + dim("chat renamed to ") + white(name))
+        } else {
+          currentChat = newChat(name, turns.slice(syntheticTurns))
+          diskPrefix = []
+          saveChat(currentChat)
+          console.log(
+            "  " + accent("✓") + " " + dim("saved as ") + white(currentChat.name) +
+              dim(` — auto-saves every turn (${CHATS_DIR})`)
+          )
+        }
+        continue
+      }
+      if (cmd === "/rename") {
+        if (!currentChat) {
+          console.log("  " + dim("this chat isn't saved yet — use /save <name>"))
+          continue
+        }
+        const name = rest.join(" ").trim() || (await promptText("new name:"))
+        if (!name) continue
+        const r = renameChat(currentChat.slug, name)
+        if (r) {
+          currentChat = r
+          console.log("  " + accent("✓") + " " + dim("renamed to ") + white(r.name))
+        }
+        continue
+      }
+      if (cmd === "/chats") {
+        let metas = listChats()
+        if (!metas.length) {
+          console.log("  " + dim("no saved chats — /save <name> keeps the current one"))
+          continue
+        }
+        // `/chats foo` filters by name AND message content.
+        const q = rest.join(" ").trim().toLowerCase()
+        if (q) {
+          metas = metas.filter(
+            (m) =>
+              m.name.toLowerCase().includes(q) ||
+              (loadChat(m.slug)?.turns ?? []).some(
+                (t) => t.user.toLowerCase().includes(q) || t.assistant.toLowerCase().includes(q)
+              )
+          )
+          if (!metas.length) {
+            console.log("  " + dim(`no saved chats match "${q}"`))
+            continue
+          }
+        }
+        const res = await selectMenuEx(
+          "Saved chats",
+          metas.map((m) => ({
+            label: (currentChat?.slug === m.slug ? accent("● ") : "") + m.name,
+            hint: `${m.turnCount} turn${m.turnCount === 1 ? "" : "s"} · ${relTime(m.updatedAt)}`,
+          })),
+          "↑↓ move · enter resume · d delete · esc close",
+          ["d"]
+        )
+        if (!res) continue
+        const meta = metas[res.index]
+        if (res.action === "d") {
+          deleteChat(meta.slug)
+          if (currentChat?.slug === meta.slug) {
+            currentChat = null
+            diskPrefix = []
+          }
+          console.log("  " + dim(`deleted "${meta.name}"`))
+          continue
+        }
+        if (currentChat?.slug === meta.slug) {
+          console.log("  " + dim("already on that chat"))
+          continue
+        }
+        // Switching would drop the current unsaved turns — confirm first.
+        if (turns.length && !currentChat) {
+          const ok = await selectMenu(
+            "Current chat is unsaved — discard it?",
+            [{ label: "Discard and resume" }, { label: "Cancel" }],
+            "↑↓ choose · enter confirm · esc cancels"
+          )
+          if (ok !== 0) continue
+        }
+        await resumeChat(meta.slug)
         continue
       }
       if (cmd === "/providers" || cmd === "/status") {
@@ -197,9 +814,50 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
       }
       if (cmd === "/tools") {
         console.log("")
-        console.log("  " + bold("Tools") + dim("   single-model turns can use these (with approval)"))
-        for (const t of TOOL_NAMES) console.log("    " + dim("•") + " " + white(t))
+        console.log("  " + bold("Tools") + dim("   models can use these (with approval)"))
+        for (const t of TOOL_NAMES) console.log("    " + accent("•") + " " + white(t))
+        // Dynamic tools (MCP servers + skills) registered this session.
+        const dyn = dynamicToolSpecs()
+        if (dyn.length) {
+          console.log("  " + dim("from MCP / skills:"))
+          for (const t of dyn) console.log("    " + accent("•") + " " + white(t.name) + dim(`  ${t.source ?? ""}`))
+        }
         console.log(kv("workspace", dim(WORKSPACE)))
+        console.log("")
+        continue
+      }
+      if (cmd === "/mcp") {
+        console.log("")
+        console.log("  " + bold("MCP servers") + dim(`   ${MCP_CONFIG_PATH}`))
+        if (!ext.mcp.length) {
+          ensureMcpConfigFile()
+          console.log("  " + dim("none configured — edit mcp.json (mcpServers), then relaunch"))
+          console.log("  " + dim('example: {"mcpServers":{"fs":{"command":"npx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}}'))
+        } else {
+          for (const m of ext.mcp) {
+            const dot = m.ok ? accent("●") : muted("✗")
+            const tail = m.ok ? dim(`${m.toolCount} tool${m.toolCount === 1 ? "" : "s"}`) : muted(m.error ?? "failed")
+            console.log("  " + dot + " " + white(m.name) + "  " + tail)
+            if (m.ok && m.tools.length) console.log("      " + dim(m.tools.join(", ")))
+          }
+          console.log("  " + dim("edit mcp.json and relaunch to change servers"))
+        }
+        console.log("")
+        continue
+      }
+      if (cmd === "/skills") {
+        console.log("")
+        console.log("  " + bold("Skills") + dim(`   ${SKILLS_DIR}`))
+        if (!ext.skills.length) {
+          ensureSkillsDir()
+          console.log("  " + dim("none yet — drop a folder with a SKILL.md in the skills dir, then relaunch"))
+          console.log("  " + dim("a starter skill was just created there as a template"))
+        } else {
+          for (const s of ext.skills) {
+            console.log("  " + accent("•") + " " + white(s.name) + dim(`   ${s.description}`))
+          }
+          console.log("  " + dim("the model loads a skill automatically when it matches the task"))
+        }
         console.log("")
         continue
       }
@@ -221,7 +879,7 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
                 ? muted("×")
                 : e.decision === "denied" || e.decision === "blocked"
                   ? muted("✗")
-                  : white("✓")
+                  : accent("✓")
             const tag =
               e.decision === "denied" || e.decision === "blocked" ? muted(e.decision) : dim(e.decision)
             console.log(
@@ -261,63 +919,146 @@ export async function runRepl(cfg: Config, opts: ReplOptions) {
         cfg = await cmdDefault(cfg, rest)
         continue
       }
+      // Project-defined slash command (.onechater/commands/<name>.md)? Expand
+      // its template with the typed args and run it as a normal chat turn.
+      const custom = projectCommands.get(cmd.slice(1).toLowerCase())
+      if (custom) {
+        const expanded = expandCommand(custom, rest.join(" "))
+        await chatTurn(expanded)
+        continue
+      }
       console.log("  " + dim(`unknown command ${cmd} — /help`))
       continue
     }
 
-    // ── Chat turn ───────────────────────────────────────────────────────────
-    // Signed out mid-session (/logout)? Chatting stays behind the login gate.
-    if (!cfg.web) {
-      console.log(
-        "\n  " + bar(C.text) + " " + bold(white("sign-in required")) + "\n  " +
-          dim("link your onechater.com account with ") + white("/login") + dim(" to keep chatting")
-      )
-      continue
-    }
+    // ── Chat turn (plain message) ──
+    await chatTurn(input)
+  }
 
-    const active = activeProviders(cfg)
-    const memory = loadMemory().trim()
-
-    // Forced single model via `chat -p`, otherwise auto: 2+ connected = fusion.
-    const forced =
-      opts.provider &&
-      getProviderConfig(cfg, opts.provider).apiKey.trim() &&
-      planAllows(cfg, opts.provider)
-        ? opts.provider
-        : undefined
-
-    if (!forced && active.length === 0) {
-      console.log(
-        "\n  " + bar(C.text) + " " + bold(white("no models connected")) + "\n  " +
-          dim("add one:  ") + white("/providers") + dim("   (free key: " + (FREE_KEY_URL.groq ?? "") + ")")
-      )
-      continue
-    }
-
-    lastInput = input // remember it for double-Esc recall
-
-    try {
-      let answer: string
-      if (forced) {
-        answer = await singleTurn(cfg, turns, input, forced, memory, [forced])
-      } else if (active.length >= 2) {
-        answer = await fusionTurn(cfg, turns, input, active, memory)
-      } else {
-        answer = await singleTurn(cfg, turns, input, active[0], memory, active)
-      }
-      turns.push({ user: input, assistant: answer })
-    } catch (err) {
-      // Explain what happened in plain language — never dump the raw HTTP/JSON
-      // blob at the user. For a single-model turn we know which provider failed;
-      // in fusion the per-model notes already cover it.
-      const prov = forced ?? (active.length >= 2 ? undefined : active[0])
-      const { summary, hint } = humanizeProviderError(err, prov ? PROVIDER_NAMES[prov] : "the model")
-      console.log("\n  " + bar(C.text) + " " + white(summary))
-      if (hint) console.log("  " + dim(hint))
+  // Leaving with an unsaved conversation: offer to keep it (Enter / Ctrl-C =
+  // skip). Named chats need nothing — they auto-saved on every turn.
+  if (turns.length > 0 && !currentChat && stdin.isTTY) {
+    console.log("")
+    const name = await promptText("save this chat as (enter to skip):")
+    if (name) {
+      const chat = newChat(name, turns.slice(syntheticTurns))
+      saveChat(chat)
+      console.log("  " + accent("✓") + " " + dim("saved as ") + white(chat.name))
     }
   }
 
+  killAllProcesses() // stop any background dev servers/watchers we started
+  ext.disconnect() // stop MCP child processes before we exit
   console.log(dim("\n  see you.\n"))
+}
+
+type HeadlessOptions = {
+  provider?: Provider
+  prompt: string
+  // Run the agent loop with tools, auto-approving every action. Without it,
+  // headless just answers in plain text (no tools) — safe for pipes/CI.
+  tools?: boolean
+}
+
+// One-shot, non-interactive run: `onechater -p "..."` or `cat x | onechater -p`.
+// Prints the answer to stdout and returns — no banner, no REPL, no prompts. Uses
+// the cached account/plan (the browser sign-in flow is interactive, so headless
+// requires an already-linked session). With `tools`, it runs the full agent loop
+// auto-approving actions; otherwise it just answers (no tools), which is the safe
+// default for scripting.
+export async function runHeadless(cfg: Config, opts: HeadlessOptions): Promise<void> {
+  if (!cfg.web) {
+    console.error("onechater: not signed in — run `onechater` once interactively to link your account")
+    process.exitCode = 1
+    return
+  }
+  const active = activeProviders(cfg)
+  const chosen =
+    opts.provider && getProviderConfig(cfg, opts.provider).apiKey.trim() && planAllows(cfg, opts.provider)
+      ? opts.provider
+      : active[0]
+  if (!chosen) {
+    console.error("onechater: no models connected — run `onechater` and add one with /providers")
+    process.exitCode = 1
+    return
+  }
+  const memory = loadMemory().trim()
+  const question = opts.prompt.trim()
+  if (!question) return
+
+  if (opts.tools) {
+    // Agentic headless: load extensions + project context, auto-approve, run.
+    autoApprove = true
+    let ext: ExtensionState | null = null
+    try {
+      ext = await loadExtensions()
+    } catch {}
+    const projectCtx = loadProjectContext()
+    if (projectCtx) addToolPromptBlock(projectContextBlock(projectCtx))
+    projectHooks = { ...(cfg.hooks ?? {}), ...loadProjectHooks() }
+    registerDynamicTool(spawnAgentSpec(() => cfg))
+    const messages = buildHistory([], [chosen], chosen, memory, question, toolsSystemPrompt())
+    try {
+      await agentLoop(cfg, chosen, messages)
+    } catch (err) {
+      const { summary } = humanizeProviderError(err, PROVIDER_NAMES[chosen])
+      console.error("onechater: " + summary)
+      process.exitCode = 1
+    } finally {
+      killAllProcesses()
+      ext?.disconnect()
+    }
+    return
+  }
+
+  // Plain headless: a single answer, no tools — clean for piping.
+  const { apiKey, model } = getProviderConfig(cfg, chosen)
+  const messages = buildHistory([], [chosen], chosen, memory, question, "")
+  try {
+    const answer = await collectChat(chosen, apiKey, model, messages)
+    process.stdout.write(stripToolBlocks(answer).trim() + "\n")
+  } catch (err) {
+    const { summary } = humanizeProviderError(err, PROVIDER_NAMES[chosen])
+    console.error("onechater: " + summary)
+    process.exitCode = 1
+  }
+}
+
+// ─── Vision: image paths pasted into the message ───────────────────────────────
+
+const IMAGE_MIME: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+}
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024
+const MAX_IMAGES = 4
+
+// Scan the user's message for paths to existing image files (quoted or bare,
+// absolute or relative to the cwd) and load them as base64 attachments. Paths
+// that don't resolve to a real image are simply left as text.
+function extractImages(input: string): { images: ImageAttachment[]; labels: string[] } {
+  const images: ImageAttachment[] = []
+  const labels: string[] = []
+  const tokens = input.match(/"[^"]+"|'[^']+'|\S+/g) ?? []
+  for (const raw of tokens) {
+    if (images.length >= MAX_IMAGES) break
+    const t = raw.replace(/^['"]|['"]$/g, "")
+    const ext = t.match(/\.(png|jpe?g|gif|webp)$/i)?.[1]?.toLowerCase()
+    if (!ext) continue
+    const abs = isAbsolute(t) ? t : resolvePath(process.cwd(), t)
+    try {
+      const st = statSync(abs)
+      if (!st.isFile() || st.size > MAX_IMAGE_BYTES) continue
+      images.push({ mime: IMAGE_MIME[ext === "jpeg" ? "jpg" : ext], data: readFileSync(abs).toString("base64") })
+      labels.push(t)
+    } catch {
+      // not a real file — leave the token as plain text
+    }
+  }
+  return { images, labels }
 }
 
 // ─── Streaming a model answer to the terminal (markdown + word-wrap) ───────────
@@ -424,6 +1165,45 @@ function renderText(text: string) {
   stdout.write("  " + wrap.write(md.write(text)) + wrap.write(md.flush()) + wrap.flush() + "\n")
 }
 
+const SUBAGENT_PROMPT =
+  "You are a focused sub-agent spawned by the main assistant to complete ONE " +
+  "specific task with the same workspace tools. You have NO prior conversation " +
+  "context — work only from the task given. Use tools to investigate and act, " +
+  "then reply with a concise result the main assistant can use directly. Be brief."
+
+// The spawn_agent tool: run a fresh, self-contained agent loop for a sub-task and
+// return only its final text. `getCfg` reads the live config (it changes across
+// the session). Read-only at this level — the sub-agent's own mutating tools are
+// each approved through the normal panel.
+function spawnAgentSpec(getCfg: () => Config): ToolSpec {
+  return {
+    name: "spawn_agent",
+    source: "builtin",
+    mutates: false,
+    describe: (a) => `Sub-agent: ${String(a.task ?? "").slice(0, 60)}`,
+    prompt: "- spawn_agent(task)                     ← run a focused sub-agent on one task; returns its result",
+    run: async (a) => {
+      const cfg = getCfg()
+      const task = String(a.task ?? "").trim()
+      if (!task) return "spawn_agent needs a 'task'"
+      const provider = activeProviders(cfg)[0]
+      if (!provider) return "no model available for the sub-agent"
+      const memory = loadMemory().trim()
+      const messages: ChatMessage[] = [
+        {
+          role: "system",
+          content:
+            SUBAGENT_PROMPT + "\n\n" + toolsSystemPrompt() + (memory ? "\n\nMEMORY:\n" + memory : ""),
+        },
+        { role: "user", content: task },
+      ]
+      console.log("\n  " + accent("▸") + " " + dim("sub-agent: ") + white(task.slice(0, 70)))
+      const result = await agentLoop(cfg, provider, messages)
+      return stripToolBlocks(result).trim() || result.trim() || "(sub-agent returned nothing)"
+    },
+  }
+}
+
 // Single-model turn — the model can use tools (agent loop), or just chat.
 async function singleTurn(
   cfg: Config,
@@ -431,12 +1211,13 @@ async function singleTurn(
   question: string,
   provider: Provider,
   memory: string,
-  active: Provider[]
+  active: Provider[],
+  images?: ImageAttachment[]
 ): Promise<string> {
   const { apiKey, model } = getProviderConfig(cfg, provider)
   if (!apiKey.trim()) throw new Error(`no API key for ${provider} — add it with /providers`)
 
-  const messages = buildHistory(turns, active, provider, memory, question, toolsSystemPrompt())
+  const messages = buildHistory(turns, active, provider, memory, question, toolsSystemPrompt(), images)
   console.log("\n" + gutter(PROVIDER_NAMES[provider], C.text, model) + "\n")
   return agentLoop(cfg, provider, messages)
 }
@@ -479,9 +1260,12 @@ function liveSink() {
 // Run a batch of tool calls: confirm the mutating ones once, then execute each
 // (read-only tools never need approval). Returns a text block of results.
 async function runToolCalls(calls: ToolCall[]): Promise<string> {
-  const mutating = calls.filter((c) => getTool(c.name)?.mutates)
+  // A call needs the panel when it mutates AND isn't covered by the allowlist.
+  const needsApproval = calls.filter(
+    (c) => isMutating(c.name, c.args) && !allowMatches(allowRules, c.name, c.args)
+  )
   let allowed = true
-  if (mutating.length) allowed = await confirmActions(mutating)
+  if (needsApproval.length) allowed = await confirmActions(needsApproval)
 
   const results: string[] = []
   for (const c of calls) {
@@ -492,18 +1276,20 @@ async function runToolCalls(calls: ToolCall[]): Promise<string> {
       continue
     }
     const detail = tool.describe(c.args)
-    if (tool.mutates && !allowed) {
+    const mut = isMutating(c.name, c.args)
+    const preApproved = mut && allowMatches(allowRules, c.name, c.args)
+    if (mut && !preApproved && !allowed) {
       audit({ tool: c.name, detail, decision: "denied", status: "ok" })
       results.push(`${c.name}: DENIED by the user`)
       continue
     }
-    // Read-only tools run without a prompt → "auto"; mutating ones the user
-    // just approved → "allowed".
-    const decision: Decision = tool.mutates ? "allowed" : "auto"
+    // Read-only or allowlisted → "auto"; mutating ones the user just approved
+    // → "allowed".
+    const decision: Decision = mut && !preApproved ? "allowed" : "auto"
     try {
       // Cap the rate of mutating actions (write/delete/run) — a second brake on
       // a runaway loop, on top of run_command's own per-command limit.
-      if (tool.mutates) rateLimit("mutation")
+      if (mut) rateLimit("mutation")
 
       // Commands stream their output live (git clone, npm install…). Show the
       // command like a shell prompt and pipe stdout/stderr to the screen as it
@@ -517,12 +1303,19 @@ async function runToolCalls(calls: ToolCall[]): Promise<string> {
         out = await tool.run(c.args, sink)
         sink.end()
       } else {
-        console.log("  " + white("▸") + " " + dim(detail))
+        if (preApproved) console.log("  " + accent("▸") + " " + dim(detail) + dim("  · allowlisted"))
+        else console.log("  " + accent("▸") + " " + dim(detail))
         out = await tool.run(c.args)
       }
 
       audit({ tool: c.name, detail, decision, status: "ok" })
       results.push(`${c.name} → ${out}`)
+
+      // Post-edit hook: after a successful file write, run the configured
+      // formatter/command on that file (best-effort, never blocks the turn).
+      if (out && (c.name === "create_file" || c.name === "write_file" || c.name === "edit_file")) {
+        await runAfterEditHook(String(c.args.path ?? ""))
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "error"
       console.log("  " + muted("×") + " " + dim(msg))
@@ -531,6 +1324,37 @@ async function runToolCalls(calls: ToolCall[]): Promise<string> {
     }
   }
   return results.join("\n\n")
+}
+
+// Run the afterEdit hook (e.g. a formatter) on a just-written file. The command
+// has "$FILE" replaced with the path; runs in the workspace, output suppressed,
+// failures swallowed — it must never break the turn.
+async function runAfterEditHook(path: string): Promise<void> {
+  const tmpl = projectHooks.afterEdit
+  if (!tmpl || !path) return
+  const command = tmpl.includes("$FILE") ? tmpl.replace(/\$FILE/g, `"${path}"`) : `${tmpl} "${path}"`
+  await new Promise<void>((res) => {
+    try {
+      const child = spawnChild(command, { cwd: WORKSPACE, shell: true, windowsHide: true })
+      const timer = setTimeout(() => {
+        try {
+          child.kill()
+        } catch {}
+        res()
+      }, 30_000)
+      child.on("error", () => {
+        clearTimeout(timer)
+        res()
+      })
+      child.on("close", () => {
+        clearTimeout(timer)
+        console.log("  " + accent("▸") + " " + dim(`hook: ${tmpl} → ${path}`))
+        res()
+      })
+    } catch {
+      res()
+    }
+  })
 }
 
 // Per-action glyph. Create = green +, delete = red −  (the same accents diffs
@@ -560,9 +1384,17 @@ function currentContent(pathArg: unknown): string {
 // allow/deny key. Enter = allow.
 async function confirmActions(calls: ToolCall[]): Promise<boolean> {
   const n = calls.length
+  // /yolo mode: act without asking (the audit log still records everything).
+  if (autoApprove) {
+    console.log(
+      "\n  " + accent("▸") + " " +
+        dim(`auto-approved ${n} action${n === 1 ? "" : "s"} — /yolo to turn confirmation back on`)
+    )
+    return true
+  }
   console.log("")
   console.log(
-    "  " + bar(C.text) + " " + bold(white("Permission required")) +
+    "  " + bar(C.accent) + " " + bold(white("Permission required")) +
       dim(`   ${n} action${n === 1 ? "" : "s"} · review before allowing`)
   )
   console.log("")
@@ -596,7 +1428,7 @@ async function confirmActions(calls: ToolCall[]): Promise<boolean> {
     "↑↓ choose · enter confirm · esc denies"
   )
   const ok = choice?.index === 0
-  console.log("  " + (ok ? white("✓ allowed") : muted("✗ denied")) + "\n")
+  console.log("  " + (ok ? accent("✓ allowed") : muted("✗ denied")) + "\n")
   return ok
 }
 
@@ -654,7 +1486,7 @@ function selectMenuEx(
       items.forEach((it, i) => {
         const on = i === sel
         lines.push(
-          "  " + (on ? white("›") : " ") + " " +
+          "  " + (on ? accent("›") : " ") + " " +
             (on ? bold(white(it.label)) : white(it.label)) +
             (it.hint ? "  " + dim(it.hint) : "")
         )
@@ -721,15 +1553,20 @@ async function fusionTurn(
   turns: Turn[],
   question: string,
   active: Provider[],
-  memory: string
+  memory: string,
+  images?: ImageAttachment[]
 ): Promise<string> {
-  // Phase 1 — every connected model answers in parallel (silently). They get
-  // the tools protocol too, so they propose actions instead of refusing.
+  // Phase 1 — every connected model answers in parallel. A live status line
+  // shows who's already done (✓), who failed (✗) and who's still thinking (⠋),
+  // instead of a blind spinner.
   const names = active.map((p) => PROVIDER_NAMES[p]).join(" · ")
   console.log("\n" + gutter("fusion", C.text, names))
-  const stop = startSpinner(`${names} thinking together…`)
-  const parts = await gatherFusion(turns, active, cfg, memory, question, toolsSystemPrompt())
-  stop()
+  const stop = startFusionStatus(active)
+  const parts = await gatherFusion(
+    turns, active, cfg, memory, question, toolsSystemPrompt(), images,
+    (p, status) => stop.update(p, status)
+  )
+  stop.end()
   // Only note models that failed; successes are implied by the answer below.
   // Each gets a short, plain-language reason instead of a raw error.
   for (const p of parts.filter((x) => x.error)) {
@@ -742,7 +1579,7 @@ async function fusionTurn(
   // Phase 2 — the synthesizer (first model) merges the answers AND can use
   // tools to act, via the agent loop. No extra header; the answer just follows.
   console.log("")
-  const messages = buildSynthesisMessages(turns, parts, question)
+  const messages = buildSynthesisMessages(turns, parts, question, images)
   messages.unshift({ role: "system", content: toolsSystemPrompt() })
   return agentLoop(cfg, active[0], messages)
 }
@@ -788,9 +1625,9 @@ function cmdProviders(cfg: Config): Promise<Config> {
         const allowed = planAllows(cfg, p)
         const on = isActive(cfg, p) && allowed
         const onSel = i === sel
-        const star = isFavorite(cfg, p) ? white("★") : " "
+        const star = isFavorite(cfg, p) ? accent("★") : " "
         // ● on · ◯ off-but-key-saved · ○ no key
-        const dot = on ? "●" : keyed ? "◯" : "○"
+        const dot = on ? accent("●") : keyed ? "◯" : "○"
         const state = !allowed
           ? "pro plan required"
           : on
@@ -803,7 +1640,7 @@ function cmdProviders(cfg: Config): Promise<Config> {
         const tags = [state, on && p === active[0] ? "synth" : ""].filter(Boolean).join(" · ")
         const label = `${star} ${dot} ${PROVIDER_NAMES[p]}`
         lines.push(
-          "  " + (onSel ? white("›") : " ") + " " +
+          "  " + (onSel ? accent("›") : " ") + " " +
             (onSel ? bold(white(label)) : white(label)) +
             (tags ? "  " + dim(tags) : "")
         )
@@ -1032,7 +1869,7 @@ async function cmdLogin(cfg: Config): Promise<Config> {
     saveConfig(next)
     stop()
     console.log(
-      "  " + white("✓") + " " + bold(white("logged in")) +
+      "  " + accent("✓") + " " + bold(white("logged in")) +
         (email ? dim("  " + email) : "") +
         (plan ? dim("  ·  ") + bold(white(`${plan} plan`)) : "") +
         dim(count ? `   · synced ${count} model${count === 1 ? "" : "s"}` : "   · no models on your account yet")
@@ -1059,7 +1896,7 @@ function cmdLogout(cfg: Config): Config {
   }
   const next = setWebSession(cfg, null)
   saveConfig(next)
-  console.log("  " + white("✓") + " " + dim("logged out of ") + white(WEB_BASE))
+  console.log("  " + accent("✓") + " " + dim("logged out of ") + white(WEB_BASE))
   return next
 }
 
@@ -1078,7 +1915,7 @@ async function cmdDisconnect(cfg: Config, rest: string[]): Promise<Config> {
   if (!isProvider(provider)) return cfg
   cfg = setProviderKey(cfg, provider, "")
   saveConfig(cfg)
-  console.log("  " + white("✓") + " " + bold(white(PROVIDER_NAMES[provider])) + " disconnected")
+  console.log("  " + accent("✓") + " " + bold(white(PROVIDER_NAMES[provider])) + " disconnected")
   return cfg
 }
 
@@ -1143,7 +1980,7 @@ async function cmdModel(cfg: Config, rest: string[]): Promise<Config> {
   cfg = setProviderModel(cfg, provider, model)
   saveConfig(cfg)
   console.log(
-    "  " + white("✓") + " " + bold(white(PROVIDER_NAMES[provider])) +
+    "  " + accent("✓") + " " + bold(white(PROVIDER_NAMES[provider])) +
       dim("  model = ") + white(modelLabel(provider, model))
   )
   return cfg
@@ -1167,13 +2004,13 @@ async function cmdDefault(cfg: Config, rest: string[]): Promise<Config> {
   }
   cfg = { ...cfg, defaultProvider: provider }
   saveConfig(cfg)
-  console.log("  " + white("✓") + dim("  default / synthesizer = ") + bold(white(PROVIDER_NAMES[provider])))
+  console.log("  " + accent("✓") + dim("  default / synthesizer = ") + bold(white(PROVIDER_NAMES[provider])))
   return cfg
 }
 
 // ─── Banner & info ─────────────────────────────────────────────────────────────
 
-function banner(cfg: Config, opts: ReplOptions) {
+function banner(cfg: Config, opts: ReplOptions, chatName?: string) {
   const active = activeProviders(cfg)
   const memory = loadMemory().trim()
   console.log("")
@@ -1186,28 +2023,32 @@ function banner(cfg: Config, opts: ReplOptions) {
   const forced = opts.provider && getProviderConfig(cfg, opts.provider).apiKey.trim() ? opts.provider : undefined
   if (forced) {
     const { model } = getProviderConfig(cfg, forced)
-    console.log(kv("mode", bold(white("single")) + dim(`  ${PROVIDER_NAMES[forced]} · ${model}`)))
+    console.log(kv("mode", bold(accent("single")) + dim(`  ${PROVIDER_NAMES[forced]} · ${model}`)))
   } else if (active.length >= 2) {
-    console.log(kv("mode", bold(white("fusion")) + dim(`  ${active.length} models think together`)))
+    console.log(kv("mode", bold(accent("fusion")) + dim(`  ${active.length} models think together`)))
     console.log(kv("models", active.map((p) => bold(white(PROVIDER_NAMES[p]))).join(dim(" · "))))
     console.log(kv("synth", bold(white(PROVIDER_NAMES[active[0]]))))
   } else if (active.length === 1) {
     const { model } = getProviderConfig(cfg, active[0])
-    console.log(kv("mode", bold(white("single")) + dim(`  ${PROVIDER_NAMES[active[0]]} · ${model}`)))
+    console.log(kv("mode", bold(accent("single")) + dim(`  ${PROVIDER_NAMES[active[0]]} · ${model}`)))
     console.log(kv("tip", dim("add another model → ") + white("/providers") + dim(" → fusion")))
   } else {
     console.log(kv("mode", dim("no models connected")))
     console.log(kv("start", white("/providers") + dim("   free key: " + (FREE_KEY_URL.groq ?? ""))))
   }
+  console.log(kv("chat", chatName ? bold(white(chatName)) + dim("   auto-saved") : dim("unsaved — /save <name>")))
   console.log(kv("memory", memory ? bold(white("on")) : dim("empty")))
-  console.log(kv("tools", bold(white("on")) + dim(`   ${WORKSPACE}`)))
+  const dynN = dynamicToolSpecs().length
+  console.log(
+    kv("tools", bold(white("on")) + (dynN ? dim(`   +${dynN} from MCP/skills`) : "") + dim(`   ${WORKSPACE}`))
+  )
   // Account line: show the signed-in email (and how to sign out) when linked,
   // plus the plan that gates which models are available.
   if (cfg.web) {
     console.log(kv("account", bold(white(cfg.web.email ?? "signed in")) + dim("   /logout")))
     const plan = cfg.web.plan ?? "free"
     console.log(
-      kv("plan", bold(white(plan)) + (plan === "free" ? dim("   free-tier models · upgrade for all") : ""))
+      kv("plan", bold(accent(plan)) + (plan === "free" ? dim("   free-tier models · upgrade for all") : ""))
     )
   }
 
@@ -1230,8 +2071,8 @@ function printProviders(cfg: Config) {
     const keyed = hasKey(cfg, p)
     const allowed = planAllows(cfg, p)
     const on = isActive(cfg, p) && allowed
-    const star = isFavorite(cfg, p) ? white("★") : " "
-    const dot = on ? white("●") : keyed ? dim("◯") : dim("○")
+    const star = isFavorite(cfg, p) ? accent("★") : " "
+    const dot = on ? accent("●") : keyed ? dim("◯") : dim("○")
     const name = on ? bold(white(PROVIDER_NAMES[p].padEnd(11))) : muted(PROVIDER_NAMES[p].padEnd(11))
     const note = !allowed ? dim(" pro ") : keyed && !on ? dim(" off ") : isFree(p) ? dim(" free") : "     "
     const synth = on && p === active[0] ? "  " + dim("synth") : ""
@@ -1258,10 +2099,21 @@ function printHelp(cfg: Config) {
   console.log(row("/disconnect", "", "remove a model"))
   console.log(row("/model", "", "set a provider's model"))
   console.log(row("/default", "", "pick the synthesizer model"))
-  console.log(row("/tools", "", "list the workspace tools"))
+  console.log(row("/tools", "", "list the workspace + MCP/skill tools"))
+  console.log(row("/mcp", "", "connected MCP servers & their tools"))
+  console.log(row("/skills", "", "available skills (auto-loaded when relevant)"))
   console.log(row("/workspace", "", "show the workspace directory"))
   console.log(row("/audit", "", "recent tool actions log"))
   console.log(row("/memory", "", "show the persistent memory"))
+  console.log(row("/save", "[name]", "name & save this chat (then auto-saves)"))
+  console.log(row("/chats", "[query]", "list / resume / delete saved chats"))
+  console.log(row("/rename", "<name>", "rename the current chat"))
+  console.log(row("/compare", "<prompt>", "all models answer, side by side (no synthesis)"))
+  console.log(row("/export", "", "export this chat to markdown in the cwd"))
+  console.log(row("/usage", "", "session token estimate"))
+  console.log(row("/yolo", "", "toggle auto-approve for tool actions"))
+  console.log(row("/allow", "[rule]", "auto-approve specific tools (e.g. run_command:npm test)"))
+  console.log(row("/hooks", "", "run a command after each file edit (formatter)"))
   console.log(row("/clear", "", "reset the conversation"))
   console.log(row("/help", "", "this list"))
   console.log(row("/exit", "", "quit"))
@@ -1330,7 +2182,7 @@ function readBoxedInput(): Promise<string | null> {
       stdout.write(promptStr)
       pipeReadLine().then((line) => {
         stdout.write((line ?? "") + "\n")
-        console.log(boxBottom())
+        console.log(inputFooter())
         resolve(line)
       })
       return
@@ -1346,16 +2198,16 @@ function readBoxedInput(): Promise<string | null> {
     let sel = 0 // highlighted row in the command palette
     let dismissed = false // palette closed with Esc until the next edit
     let sawEsc = false // previous key was a standalone Esc (for double-Esc recall)
+    let histIdx = inputHistory.length // history cursor (one past the end = live draft)
+    let draft = "" // what was being typed before walking into history
 
     // The rule ABOVE the input is printed ONCE here, static — never redrawn, so
-    // on resize it just reflows in scrollback. It uses the SAME short labelled
-    // bar as the one below the input (railBar) so the two frames are identical.
-    // Why short and not full-width: a full-width rule BELOW the input reflows to
-    // two rows when the window shrinks, which moves the cursor off the input row
-    // and makes the redraw stack a second prompt. A short bar never wraps, so the
-    // input stays exactly one physical row and the clear-and-reprint in draw()
-    // can never duplicate the prompt.
-    stdout.write("\n" + railBar() + "\n")
+    // on resize it just reflows in scrollback (it can wrap there harmlessly; it
+    // is ordinary output, not part of the redrawn block). Full width, plain:
+    //   ─────────────────────────────────────────────  (top, boxTop)
+    //   › input
+    //   ───────────────| OneChater |─────────────────  (bottom, inputFooter)
+    stdout.write("\n" + boxTop() + "\n")
     stdin.setRawMode(true)
     stdin.resume()
     stdin.setEncoding("utf8")
@@ -1374,22 +2226,11 @@ function readBoxedInput(): Promise<string | null> {
     function paletteLines(ms: Command[]): string[] {
       return ms.map((c, i) => {
         const on = i === sel
-        const marker = on ? white("›") : " "
+        const marker = on ? accent("›") : " "
         const name = on ? bold(white(c.name.padEnd(12))) : white(c.name.padEnd(12))
         const args = dim((c.args || "").padEnd(17))
         return "  " + marker + " " + name + args + dim(c.desc)
       })
-    }
-
-    // The short labelled "OneChater" bar — used BOTH for the static rule above
-    // the input and the one redrawn below it, so the two frames are identical.
-    // Deliberately short (a fixed handful of dashes, not the full width) so it
-    // can never wrap onto a second physical row when the window shrinks — that's
-    // what keeps the input exactly one physical row and the redraw from ever
-    // stacking a second prompt. Hoisted (not a const arrow) so it's callable at
-    // the static top-rule print above and inside draw().
-    function railBar() {
-      return "  " + muted("─────") + dim(" OneChater ") + muted("─────")
     }
 
     // Redraw the input line, the "OneChater" bar beneath it, and the command
@@ -1411,7 +2252,11 @@ function readBoxedInput(): Promise<string | null> {
       const ms = matches()
       if (sel >= ms.length) sel = Math.max(0, ms.length - 1)
       const pal = ms.length ? paletteLines(ms) : []
-      const below = [railBar(), ...pal] // always ≥1 row under the input
+      // Every row under the input is clamped to the width so it can never wrap:
+      // the climb back up (\x1b[{n}A) counts LOGICAL lines, and a wrapped row
+      // would make it land inside the footer instead of on the input — that's
+      // how stray `›` prompts used to pile up.
+      const below = [inputFooter(), ...pal].map((l) => fitLine(l, cols - 1))
 
       let out = "\x1b[?25l\r\x1b[J" // hide cursor, col 0, clear to end of screen
       out += promptStr + visible
@@ -1425,6 +2270,46 @@ function readBoxedInput(): Promise<string | null> {
       first = false
     }
 
+    // Truncate a styled line to `max` VISIBLE chars (ANSI sequences pass
+    // through uncounted), closing with a reset so a cut doesn't bleed color.
+    function fitLine(s: string, max: number): string {
+      let shown = 0
+      let out = ""
+      let i = 0
+      while (i < s.length) {
+        if (s[i] === "\x1b") {
+          const m = /^\x1b\[[0-9;]*m/.exec(s.slice(i))
+          if (m) {
+            out += m[0]
+            i += m[0].length
+            continue
+          }
+        }
+        if (shown >= max) break
+        out += s[i]
+        shown++
+        i++
+      }
+      return out + "\x1b[0m"
+    }
+
+    // Repaint ONLY the input row (clearing everything below it). One physical
+    // row, no climb — there is no way for this to leave a stray prompt behind,
+    // whatever the terminal did to the rows underneath.
+    function drawInputOnly() {
+      const cols = Math.max(8, stdout.columns || 80)
+      const avail = Math.max(1, cols - promptW - 1)
+      if (pos < off) off = pos
+      if (pos > off + avail) off = pos - avail
+      if (off < 0) off = 0
+      const visible = buf.slice(off, off + avail).join("")
+      let out = "\x1b[?25l\r\x1b[J" + promptStr + visible + "\r"
+      const col = promptW + (pos - off)
+      if (col > 0) out += `\x1b[${col}C`
+      out += "\x1b[?25h"
+      stdout.write(out)
+    }
+
     // Coalesce bursts (key-repeat delivers many data events) into one redraw.
     function scheduleDraw() {
       if (scheduled || done) return
@@ -1435,16 +2320,27 @@ function readBoxedInput(): Promise<string | null> {
       })
     }
 
+    // During a window drag the width changes faster than our writes land: a
+    // footer printed for the previous width can wrap onto two rows, and any
+    // redraw that climbs over it lands one row short — leaving the old `›`
+    // behind (one duplicate per resize tick). So while resizing we keep the
+    // block climb-free: repaint just the input row immediately, and restore
+    // the footer/palette with a full draw once the size has settled.
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null
     const onResize = () => {
-      // The input is the last row and the cursor sits on it, so a plain redraw
-      // (clear the row + everything below, reprint) handles a resize with no
-      // special casing — the static rule above just reflows in scrollback.
-      if (!done && !first) draw()
+      if (done || first) return
+      drawInputOnly()
+      if (resizeTimer) clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        resizeTimer = null
+        if (!done) draw()
+      }, 150)
     }
     stdout.on("resize", onResize)
 
     function cleanup() {
       done = true
+      if (resizeTimer) clearTimeout(resizeTimer)
       stdout.write("\x1b[?2004l") // disable bracketed paste
       stdout.removeListener("resize", onResize)
       stdin.setRawMode(false)
@@ -1550,11 +2446,29 @@ function readBoxedInput(): Promise<string | null> {
         if (ch === "\x1b") {
           const seq = data.slice(i)
           if (seq.startsWith("\x1b[A")) {
-            // Up: move palette selection, else ignore.
-            if (pal.length) sel = (sel - 1 + pal.length) % pal.length
+            // Up: palette selection when open, otherwise walk input history.
+            if (pal.length) {
+              sel = (sel - 1 + pal.length) % pal.length
+            } else if (histIdx > 0) {
+              if (histIdx === inputHistory.length) draft = buf.join("")
+              histIdx--
+              buf.length = 0
+              buf.push(...inputHistory[histIdx])
+              pos = buf.length
+              dismissed = true // recalled "/cmd" shouldn't pop the palette
+            }
             i += 3
           } else if (seq.startsWith("\x1b[B")) {
-            if (pal.length) sel = (sel + 1) % pal.length
+            if (pal.length) {
+              sel = (sel + 1) % pal.length
+            } else if (histIdx < inputHistory.length) {
+              histIdx++
+              const next = histIdx === inputHistory.length ? draft : inputHistory[histIdx]
+              buf.length = 0
+              buf.push(...next)
+              pos = buf.length
+              dismissed = true
+            }
             i += 3
           } else if (seq.startsWith("\x1b[D")) {
             if (pos > 0) pos--

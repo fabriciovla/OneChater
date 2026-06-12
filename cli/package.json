@@ -1,6 +1,6 @@
 {
   "name": "onechater",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "OneChater CLI — multi-model terminal with fusion mode, persistent memory and workspace tools (BYOK)",
   "type": "module",
   "bin": {
