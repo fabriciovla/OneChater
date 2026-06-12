@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
-// Legacy slug. A refresh / direct hit always lands the user on the home top.
+// Pretty slug. A direct hit / refresh redirects home with ?to=, which scrolls to
+// the matching section and rewrites the URL back to /como-funciona.
 export default function ComoFuncionaPage() {
-  redirect("/");
+  redirect("/?to=como-funciona");
 }

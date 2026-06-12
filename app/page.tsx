@@ -471,11 +471,23 @@ function Navbar() {
 
   const close = () => setMobileOpen(false);
 
-  // Smooth-scroll to a section. We intentionally do NOT push a slug into the
-  // URL — the path stays "/" so a page refresh always lands on the home top.
+  // Smooth-scroll to a section AND reflect it in the URL so a section is
+  // shareable/bookmarkable (onechater.com/precios instead of a bare "/"). We use
+  // replaceState (no extra history entry per click) and the pretty slug when the
+  // section has a route; the matching /<slug> page redirects back here with ?to=
+  // on a direct hit, so a refresh lands on the same section.
+  const ID_TO_SLUG: Record<string, string> = {
+    "how-it-works": "como-funciona",
+    memoria: "memoria",
+    models: "modelos",
+    fusion: "fusion",
+    pricing: "precios",
+  };
   const scrollTo = (sectionId: string) => {
     const el = document.getElementById(sectionId);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    const slug = ID_TO_SLUG[sectionId];
+    window.history.replaceState(null, "", slug ? `/${slug}` : `/#${sectionId}`);
   };
 
   return (
@@ -2205,10 +2217,18 @@ function SectionScrollHandler() {
     const to = searchParams.get("to");
     if (!to) return;
     const map: Record<string, string> = {
+      // Spanish slugs
       precios: "pricing",
-      funcionalidades: "features",
       "como-funciona": "how-it-works",
       memoria: "memoria",
+      modelos: "models",
+      fusion: "fusion",
+      funcionalidades: "models", // legacy slug → capabilities/models section
+      // English slugs
+      pricing: "pricing",
+      "how-it-works": "how-it-works",
+      memory: "memoria",
+      models: "models",
     };
     const id = map[to];
     if (!id) return;
