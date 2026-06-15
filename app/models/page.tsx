@@ -1,7 +1,15 @@
-import { redirect } from "next/navigation";
+import SeoLanding from "../_seo/SeoLanding";
+import { models, buildMetadata } from "../_seo/content";
 
-// English slug for the models section. Redirects home with ?to=, which scrolls to
-// the section and rewrites the URL back to /models.
-export default function ModelsPage() {
-  redirect("/?to=models");
+export const metadata = buildMetadata({
+  title: "Supported AI models",
+  description:
+    "Chat with GPT, Claude, Gemini and any OpenAI-compatible model in one place. Bring your own API keys and pay each provider directly with no markup.",
+  slug: "/models",
+  alt: { lang: "es", path: "/modelos" },
+  locale: "en",
+});
+
+export default function Page() {
+  return <SeoLanding content={models} />;
 }

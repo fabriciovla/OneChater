@@ -1,7 +1,15 @@
-import { redirect } from "next/navigation";
+import SeoLanding from "../_seo/SeoLanding";
+import { pricing, buildMetadata } from "../_seo/content";
 
-// English slug for the pricing section. Redirects home with ?to=, which scrolls
-// to the section and rewrites the URL back to /pricing.
-export default function PricingPage() {
-  redirect("/?to=pricing");
+export const metadata = buildMetadata({
+  title: "Pricing",
+  description:
+    "OneChater pricing: bring your own API keys and pay OpenAI, Anthropic and Google directly with no markup. Start free, upgrade for all models and persistent memory.",
+  slug: "/pricing",
+  alt: { lang: "es", path: "/precios" },
+  locale: "en",
+});
+
+export default function Page() {
+  return <SeoLanding content={pricing} />;
 }

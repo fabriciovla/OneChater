@@ -42,8 +42,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     }
   }
 
-  // Standalone pages.
-  entries.push({ url: `${SITE_URL}/cli`, changeFrequency: "weekly", priority: 0.7 });
+  // Standalone pages. (/cli is an auth bridge — intentionally not listed.)
   for (const path of ["/terms", "/privacy", "/refunds"]) {
     entries.push({ url: `${SITE_URL}${path}`, changeFrequency: "monthly", priority: 0.5 });
   }

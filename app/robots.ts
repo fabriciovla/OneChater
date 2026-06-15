@@ -8,7 +8,8 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
       // Private app surfaces and APIs shouldn't be crawled.
-      disallow: ["/api/", "/chat", "/dashboard", "/login"],
+      // /cli is an auth bridge; /security is an authed settings page.
+      disallow: ["/api/", "/chat", "/dashboard", "/login", "/security", "/cli"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,

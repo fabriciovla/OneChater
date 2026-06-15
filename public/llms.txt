@@ -1,0 +1,27 @@
+# OneChater
+
+> OneChater is an AI chat app that runs GPT, Claude and Gemini in one place with a persistent, per-user memory that travels across every model. It is bring-your-own-key (BYOK): users connect their own provider API keys and pay OpenAI, Anthropic and Google directly, with no markup from OneChater.
+
+## Key facts
+
+- One interface for multiple AI models: GPT (OpenAI), Claude (Anthropic), Gemini (Google), plus Groq, Amazon Bedrock, Azure OpenAI, Replicate and any OpenAI-compatible endpoint.
+- Persistent memory: a private, editable, per-user memory profile that follows the user across every model. Encrypted, tied to the account only, never shared.
+- Fusion: send one prompt to multiple models at once and merge their best parts into a single answer.
+- Pricing: bring your own API keys and pay each provider directly with no markup. Free to start; upgrade for all models and persistent memory.
+- Privacy: users keep full control — review, edit or delete stored memory at any time.
+- Languages: English and Spanish.
+
+## Pages
+
+- [How it works](https://www.onechater.com/how-it-works): Connect API keys, chat with every model side by side, and build a persistent memory.
+- [Persistent memory](https://www.onechater.com/memory): Private per-user memory that travels across GPT, Claude and Gemini.
+- [Supported models](https://www.onechater.com/models): Every major model plus any OpenAI-compatible endpoint, BYOK.
+- [Fusion](https://www.onechater.com/fusion): Merge multiple models into one stronger answer.
+- [Pricing](https://www.onechater.com/pricing): BYOK, pay providers directly, no markup, free to start.
+
+## Spanish pages
+
+- [Cómo funciona](https://www.onechater.com/como-funciona)
+- [Memoria persistente](https://www.onechater.com/memoria)
+- [Modelos compatibles](https://www.onechater.com/modelos)
+- [Precios](https://www.onechater.com/precios)

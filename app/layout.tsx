@@ -87,11 +87,19 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  manifest: "/manifest.webmanifest",
   icons: {
+    // Google's favicon crawler prefers a raster .ico / PNG; SVG alone often
+    // isn't rendered in search results. Offer the full set so every surface
+    // (search, tabs, iOS home screen, PWA) has a logo.
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-192.png", type: "image/png", sizes: "192x192" },
     ],
-    shortcut: "/favicon.svg",
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -111,25 +119,48 @@ export default function RootLayout({
   const cookieLang = cookies().get("oc_lang")?.value;
   const lang: Lang = cookieLang === "es" || cookieLang === "en" ? cookieLang : "en";
 
+  // A @graph lets generative engines (and Google) read Organization, WebSite
+  // and the product as one connected entity — better entity grounding for GEO.
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "OneChater",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    url: SITE_URL,
-    description:
-      "AI chat app with GPT, Claude and Gemini in one place and a persistent memory that travels across every model. Bring your own API keys.",
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.9",
-      ratingCount: "2400",
-    },
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${SITE_URL}/#organization`,
+        name: "OneChater",
+        url: SITE_URL,
+        logo: `${SITE_URL}/favicon-512.png`,
+        description:
+          "OneChater is an AI chat app that runs GPT, Claude and Gemini in one place with a persistent, per-user memory that travels across every model. Bring your own API keys.",
+        founder: { "@type": "Person", name: "Fabricio Varela" },
+        sameAs: ["https://github.com/fabriciovla"],
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_URL}/#website`,
+        url: SITE_URL,
+        name: "OneChater",
+        inLanguage: ["en", "es"],
+        publisher: { "@id": `${SITE_URL}/#organization` },
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${SITE_URL}/#app`,
+        name: "OneChater",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        url: SITE_URL,
+        publisher: { "@id": `${SITE_URL}/#organization` },
+        description:
+          "AI chat app with GPT, Claude and Gemini in one place and a persistent memory that travels across every model. Bring your own API keys.",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: "4.9",
+          ratingCount: "2400",
+        },
+      },
+    ],
   };
 
   return (

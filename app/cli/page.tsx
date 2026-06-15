@@ -14,6 +14,10 @@ import CliCode from "./CliCode"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+// Auth bridge, not a marketing page — it bounces to /login when signed out.
+// Keep it out of the index so crawlers don't log a "redirect" / thin page.
+export const metadata = { robots: { index: false, follow: false } }
+
 async function mintCliToken(userId: string, email?: string | null): Promise<string> {
   const secret = new TextEncoder().encode(process.env.AUTH_SECRET)
   return new SignJWT({ scope: "cli", email: email ?? undefined })

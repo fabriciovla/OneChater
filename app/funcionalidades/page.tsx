@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-// Pretty slug. A direct hit / refresh redirects home with ?to=, which scrolls to
-// the matching section and rewrites the URL back to /funcionalidades.
+// Legacy slug. Permanently redirect (308) to the real /modelos page so any
+// inbound links or stale index entries consolidate onto the canonical URL.
 export default function FuncionalidadesPage() {
-  redirect("/?to=funcionalidades");
+  permanentRedirect("/modelos");
 }
