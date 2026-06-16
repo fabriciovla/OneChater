@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { createProCheckout } from "@/lib/lemonsqueezy";
+import { createProCheckout } from "@/lib/dodo";
 
 export async function POST() {
   const session = await auth();

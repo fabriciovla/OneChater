@@ -38,6 +38,11 @@ model User {
   lsSubscriptionId    String?   @map("ls_subscription_id")
   lsSubscriptionStatus String?  @map("ls_subscription_status") // active | cancelled | expired | past_due | on_trial
   lsCurrentPeriodEnd  DateTime? @map("ls_current_period_end") @db.Timestamptz
+  // Dodo Payments (Merchant of Record). Mirrors the LS bookkeeping fields.
+  dodoCustomerId        String?   @map("dodo_customer_id")
+  dodoSubscriptionId    String?   @map("dodo_subscription_id")
+  dodoSubscriptionStatus String?  @map("dodo_subscription_status") // active | cancelled | on_hold | failed
+  dodoCurrentPeriodEnd  DateTime? @map("dodo_current_period_end") @db.Timestamptz
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
