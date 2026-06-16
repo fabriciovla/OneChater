@@ -6,10 +6,24 @@ import DodoPayments from "dodopayments";
 let _dodo: DodoPayments | null = null;
 export function getDodo(): DodoPayments {
   if (_dodo) return _dodo;
+  // Trim — pasted keys often carry a trailing space/newline, which 401s.
+  const key = (process.env.DODO_API_KEY ?? "").trim();
+  const mode = (process.env.DODO_MODE ?? "").trim().toLowerCase();
+  const environment = mode === "live" || mode === "live_mode" || mode === "production"
+    ? "live_mode"
+    : "test_mode";
+  // Safe diagnostic: never logs the full key.
+  console.log(
+    "[dodo] env=", environment,
+    "DODO_MODE=", JSON.stringify(process.env.DODO_MODE),
+    "keyLen=", key.length,
+    "keyHead=", key.slice(0, 7),
+    "productId=", process.env.DODO_PRODUCT_ID,
+  );
   _dodo = new DodoPayments({
-    bearerToken: process.env.DODO_API_KEY!,
-    webhookKey: process.env.DODO_WEBHOOK_SECRET,
-    environment: process.env.DODO_MODE === "live" ? "live_mode" : "test_mode",
+    bearerToken: key,
+    webhookKey: (process.env.DODO_WEBHOOK_SECRET ?? "").trim(),
+    environment,
   });
   return _dodo;
 }
