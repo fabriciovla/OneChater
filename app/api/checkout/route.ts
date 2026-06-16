@@ -12,7 +12,14 @@ export async function POST() {
     const url = await createProCheckout(session.user.email, session.user.id);
     return NextResponse.json({ url });
   } catch (err) {
-    console.error("Checkout error:", err);
-    return NextResponse.json({ error: "Failed to create checkout" }, { status: 500 });
+    // Surface the real Dodo error (status + body) so failures are debuggable.
+    const e = err as { status?: number; message?: string; error?: unknown };
+    const detail =
+      typeof e?.error === "object" ? JSON.stringify(e.error) : e?.message ?? String(err);
+    console.error("Checkout error:", e?.status, detail, err);
+    return NextResponse.json(
+      { error: "Failed to create checkout", status: e?.status, detail },
+      { status: 500 },
+    );
   }
 }
