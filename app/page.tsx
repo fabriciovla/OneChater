@@ -94,7 +94,7 @@ const LP = {
     footer: {
       tagline: "One memory. Every AI. Bring your keys, own your data.",
       groups: { Product: "Product", Resources: "Resources", Legal: "Legal", Community: "Community" },
-      links: { features: "Features", how: "How it works", pricing: "Pricing", models: "Models", docs: "Documentation", api: "API reference", status: "Status", contact: "Contact", privacy: "Privacy policy", terms: "Terms of use", refunds: "Refund policy", discord: "Discord", twitter: "Twitter / X", reddit: "Reddit", newsletter: "Newsletter" },
+      links: { features: "Features", how: "How it works", memory: "Memory", pricing: "Pricing", models: "Models", docs: "Documentation", api: "API reference", status: "Status", contact: "Contact", privacy: "Privacy policy", terms: "Terms of use", refunds: "Refund policy", discord: "Discord", twitter: "Twitter / X", reddit: "Reddit", newsletter: "Newsletter" },
       rights: "All rights reserved.", systems: "All systems operational", privacy: "Privacy", terms: "Terms", refunds: "Refunds",
     },
   },
@@ -181,7 +181,7 @@ const LP = {
     footer: {
       tagline: "Una memoria. Todas las IAs. Traé tus keys, controlá tus datos.",
       groups: { Product: "Producto", Resources: "Recursos", Legal: "Legal", Community: "Comunidad" },
-      links: { features: "Funcionalidades", how: "Cómo funciona", pricing: "Precios", models: "Modelos", docs: "Documentación", api: "Referencia API", status: "Estado", contact: "Contacto", privacy: "Política de privacidad", terms: "Términos de uso", refunds: "Política de reembolsos", discord: "Discord", twitter: "Twitter / X", reddit: "Reddit", newsletter: "Newsletter" },
+      links: { features: "Funcionalidades", how: "Cómo funciona", memory: "Memoria", pricing: "Precios", models: "Modelos", docs: "Documentación", api: "Referencia API", status: "Estado", contact: "Contacto", privacy: "Política de privacidad", terms: "Términos de uso", refunds: "Política de reembolsos", discord: "Discord", twitter: "Twitter / X", reddit: "Reddit", newsletter: "Newsletter" },
       rights: "Todos los derechos reservados.", systems: "Todos los sistemas operativos", privacy: "Privacidad", terms: "Términos", refunds: "Reembolsos",
     },
   },
@@ -453,6 +453,7 @@ function PerplexityLogo() {
 function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
+  const { lang } = useLang();
   const t = useT(LP);
 
   type NavItem = { label: string; sectionId: string };
@@ -475,18 +476,22 @@ function Navbar() {
   // shareable/bookmarkable (onechater.com/precios instead of a bare "/"). We use
   // replaceState (no extra history entry per click) and the pretty slug when the
   // section has a route; the matching /<slug> page redirects back here with ?to=
-  // on a direct hit, so a refresh lands on the same section.
-  const ID_TO_SLUG: Record<string, string> = {
-    "how-it-works": "como-funciona",
-    memoria: "memoria",
-    models: "modelos",
-    fusion: "fusion",
-    pricing: "precios",
+  // on a direct hit, so a refresh lands on the same section. Slugs are
+  // lang-aware so the URL always matches the language actually on screen —
+  // and nav items render as real <a href> (not JS-only buttons) so the
+  // standalone SEO pages get a crawlable inbound link from every page load.
+  const SECTION_SLUG: Record<string, { en: string; es: string }> = {
+    "how-it-works": { en: "how-it-works", es: "como-funciona" },
+    memoria: { en: "memory", es: "memoria" },
+    models: { en: "models", es: "modelos" },
+    fusion: { en: "fusion", es: "fusion" },
+    pricing: { en: "pricing", es: "precios" },
   };
+  const slugFor = (sectionId: string) => SECTION_SLUG[sectionId]?.[lang] ?? sectionId;
   const scrollTo = (sectionId: string) => {
     const el = document.getElementById(sectionId);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    const slug = ID_TO_SLUG[sectionId];
+    const slug = slugFor(sectionId);
     window.history.replaceState(null, "", slug ? `/${slug}` : `/#${sectionId}`);
   };
 
@@ -504,13 +509,14 @@ function Navbar() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              <button
+              <a
                 key={item.sectionId}
-                onClick={() => scrollTo(item.sectionId)}
+                href={`/${slugFor(item.sectionId)}`}
+                onClick={(e) => { e.preventDefault(); scrollTo(item.sectionId); }}
                 className="nav-item-link px-3.5 py-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/[0.05] transition-all duration-200 cursor-pointer flex items-center gap-1.5"
               >
                 {item.label}
-              </button>
+              </a>
             ))}
             <span className="nav-separator mx-2 h-5 w-px bg-gradient-to-b from-transparent via-black/15 to-transparent" />
             <a href="https://github.com/fabriciovla" target="_blank" rel="noopener noreferrer"
@@ -584,16 +590,17 @@ function Navbar() {
         {/* Nav links */}
         <nav className="px-5 mt-2">
           {navItems.map((item) => (
-            <button
+            <a
               key={item.sectionId}
-              onClick={() => { scrollTo(item.sectionId); close(); }}
+              href={`/${slugFor(item.sectionId)}`}
+              onClick={(e) => { e.preventDefault(); scrollTo(item.sectionId); close(); }}
               className="nav-overlay-link w-full text-left"
             >
               <span className="inline-flex items-center gap-2">{item.label}</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 opacity-30">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
-            </button>
+            </a>
           ))}
         </nav>
 
@@ -1965,12 +1972,18 @@ function CTASection() {
 // â"€â"€â"€ Footer â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function Footer() {
+  const { lang } = useLang();
   const tf = useT(LP).footer;
+  // Real hrefs to the standalone SEO pages (not in-page "#" anchors) so the
+  // footer gives every crawl of the homepage a genuine inbound link to each
+  // page — those pages were only reachable via sitemap.xml otherwise, which
+  // is why Search Console had them stuck on "Discovered - not indexed".
   const groups: { id: keyof typeof tf.groups; items: { label: string; href: string }[] }[] = [
     { id: "Product", items: [
-      { label: tf.links.how,      href: "#how-it-works" },
-      { label: tf.links.pricing,  href: "#pricing" },
-      { label: tf.links.models,   href: "#models" },
+      { label: tf.links.how,      href: lang === "es" ? "/como-funciona" : "/how-it-works" },
+      { label: tf.links.memory,   href: lang === "es" ? "/memoria" : "/memory" },
+      { label: tf.links.pricing,  href: lang === "es" ? "/precios" : "/pricing" },
+      { label: tf.links.models,   href: lang === "es" ? "/modelos" : "/models" },
     ] },
     { id: "Resources", items: [
       { label: tf.links.docs,    href: "#" },
